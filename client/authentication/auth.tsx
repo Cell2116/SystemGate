@@ -16,8 +16,8 @@ export const AuthContext = createContext<AuthContextType>(
   { 
     user:{
       name: "Cello",
-      role: "HR"
-    } 
-  }
-);
+      role: "User"
+    }  
+    }        
+  );  
 export const useAuth = () => useContext(AuthContext);

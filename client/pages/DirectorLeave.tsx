@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Clock2 from "../components/dashboard/clock"
-import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X } from "lucide-react";
+import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Crown } from "lucide-react";
 
 export default function DirectorLeavePage() {
   const [isOpen, setIsOpen] = useState(false);
@@ -39,160 +39,153 @@ export default function DirectorLeavePage() {
     name: string;
     licensePlate: string;
     department: string;
+    role: string;
     date: string;
     exitTime: string;
     returnTime: string;
     reason: string;
     approval: string;
     statusFromDirector: string;
+    statusFromDepartment: string;
     statusFromHR: string;
     submittedAt: string;
   }>>([
     {
       id: "1",
-      name: "John Smith",
-      licensePlate: "ABC-1234",
-      department: "Engineering",
+      name: "David Wilson",
+      licensePlate: "JKL-7890",
+      department: "IT",
+      role: "Staff",
       date: "2024-01-15",
-      exitTime: "17:30",
-      returnTime: "09:00",
-      reason: "Meeting with development team to discuss new project requirements and technical specifications.",
-      approval: "approved",
-      statusFromDirector: "approved",
-      statusFromHR: "approved",
-      submittedAt: "2024-01-15, 08:45:00"
+      exitTime: "17:00",
+      returnTime: "08:00",
+      reason: "Server maintenance and network infrastructure upgrade for the new office building.",
+      approval: "pending",
+      statusFromDepartment: "pending",
+      statusFromHR: "pending",
+      statusFromDirector: "pending",
+      submittedAt: "2024-01-15, 07:45:00"
     },
     {
       id: "2",
-      name: "Sarah Johnson",
-      licensePlate: "XYZ-5678",
-      department: "Marketing",
-      date: "2024-01-15",
-      exitTime: "09:30",
-      returnTime: "10:30",
-      reason: "Client presentation and product demo session.",
-      approval: "pending",
-      statusFromDirector: "pending",
+      name: "Alice Cooper",
+      licensePlate: "ABC-5678",
+      department: "IT",
+      role: "Staff",
+      date: "2024-01-14",
+      exitTime: "16:30",
+      returnTime: "09:00",
+      reason: "Client site visit for system installation and user training session.",
+      approval: "approved",
+      statusFromDepartment: "approved",
       statusFromHR: "approved",
-      submittedAt: "2024-01-15, 10:15:00"
+      statusFromDirector: "approved",
+      submittedAt: "2024-01-14, 08:30:00"
     },
     {
       id: "3",
-      name: "Michael Chen",
-      licensePlate: "DEF-9012",
-      department: "Finance",
-      date: "2024-01-14",
-      exitTime: "16:00",
+      name: "Mike Johnson",
+      licensePlate: "XYZ-9012",
+      department: "IT",
+      role: "Staff",
+      date: "2024-01-13",
+      exitTime: "18:00",
       returnTime: "08:30",
-      reason: "Quarterly budget review and financial analysis meeting.",
+      reason: "Emergency database recovery at client location downtown.",
       approval: "rejected",
-      statusFromDirector: "rejected",
-      statusFromHR: "rejected",
-      submittedAt: "2024-01-14, 08:20:00"
+      statusFromDepartment: "rejected",
+      statusFromHR: "pending",
+      statusFromDirector: "pending",
+      submittedAt: "2024-01-13, 09:15:00"
     },
     {
       id: "4",
-      name: "Emily Davis",
-      licensePlate: "GHI-3456",
-      department: "HR",
-      date: "2024-01-14",
-      exitTime: "18:00",
+      name: "Emma Davis",
+      licensePlate: "DEF-3456",
+      department: "IT",
+      role: "Staff",
+      date: "2024-01-12",
+      exitTime: "17:30",
       returnTime: "09:15",
-      reason: "Interview sessions for new candidates and team building workshop.",
-      approval: "approved",
-      statusFromDirector: "approved",
-      statusFromHR: "approved",
-      submittedAt: "2024-01-14, 09:00:00"
+      reason: "Hardware procurement meeting with vendors and technical evaluation.",
+      approval: "pending",
+      statusFromDepartment: "approved",
+      statusFromHR: "pending",
+      statusFromDirector: "pending",
+      submittedAt: "2024-01-12, 08:45:00"
     },
+    // Add Department Head's own request - auto-approved at department level
     {
       id: "5",
-      name: "David Wilson",
-      licensePlate: "JKL-7890",
-      department: "IT Support",
-      date: "2024-01-13",
-      exitTime: "17:00",
+      name: "Sarah Johnson", // Current user (Department Head)
+      licensePlate: "SAR-1234",
+      department: "IT",
+      role: "Department Head",
+      date: "2024-01-11",
+      exitTime: "15:30",
       returnTime: "08:00",
-      reason: "Server maintenance and network infrastructure upgrade.",
-      approval: "approved",
-      statusFromDirector: "approved",
+      reason: "Strategic planning meeting with board of directors and quarterly review session.",
+      approval: "pending",
+      statusFromDepartment: "approved", // Auto-approved (self)
       statusFromHR: "pending",
-      submittedAt: "2024-01-13, 07:45:00"
+      statusFromDirector: "pending",
+      submittedAt: "2024-01-11, 07:30:00"
     },
+    // Add some entries from other departments to show they're filtered out
     {
       id: "6",
-      name: "Lisa Rodriguez",
-      licensePlate: "MNO-2468",
-      department: "Legal",
-      date: "2024-01-13",
-      exitTime: "16:30",
-      returnTime: "10:00",
-      reason: "Contract review and compliance audit meeting.",
-      approval: "rejected",
-      statusFromDirector: "rejected",
-      statusFromHR: "approved",
-      submittedAt: "2024-01-13, 09:30:00"
+      name: "John Smith",
+      licensePlate: "GHI-7890",
+      department: "Engineering",
+      role: "Staff",
+      date: "2024-01-11",
+      exitTime: "16:00",
+      returnTime: "08:00",
+      reason: "Project meeting with external partners.",
+      approval: "pending",
+      statusFromDepartment: "pending",
+      statusFromHR: "pending",
+      statusFromDirector: "pending",
+      submittedAt: "2024-01-11, 07:30:00"
     },
     {
       id: "7",
-      name: "Robert Taylor",
-      licensePlate: "PQR-1357",
-      department: "Sales",
-      date: "2024-01-12",
-      exitTime: "19:00",
-      returnTime: "09:30",
-      reason: "Client onboarding and product demonstration sessions.",
-      approval: "approved",
-      statusFromDirector: "approved",
-      statusFromHR: "approved",
-      submittedAt: "2024-01-12, 09:00:00"
+      name: "Smith",
+      licensePlate: "GHI-7890",
+      department: "Engineering",
+      role: "Department Head",
+      date: "2024-01-11",
+      exitTime: "16:00",
+      returnTime: "08:00",
+      reason: "Project meeting with external partners.",
+      approval: "pending",
+      statusFromDepartment: "pending",
+      statusFromHR: "pending",
+      statusFromDirector: "pending",
+      submittedAt: "2024-01-11, 07:30:00"
     },
     {
       id: "8",
-      name: "Amanda Foster",
-      licensePlate: "STU-9753",
-      department: "Operations",
-      date: "2024-01-12",
-      exitTime: "",
-      returnTime: "11:00",
-      reason: "Process optimization and workflow analysis.",
+      name: "Smith2",
+      licensePlate: "GHI-7890",
+      department: "Engineering",
+      role: "Department Head",
+      date: "2024-01-11",
+      exitTime: "16:00",
+      returnTime: "08:00",
+      reason: "Project meeting with external partners.",
       approval: "pending",
-      statusFromDirector: "pending",
+      statusFromDepartment: "pending",
       statusFromHR: "pending",
-      submittedAt: "2024-01-12, 10:45:00"
-    },
-    {
-      id: "9",
-      name: "Kevin Brown",
-      licensePlate: "VWX-4682",
-      department: "Research",
-      date: "2024-01-11",
-      exitTime: "15:45",
-      returnTime: "08:15",
-      reason: "Laboratory equipment calibration and research data analysis.",
-      approval: "approved",
       statusFromDirector: "approved",
-      statusFromHR: "rejected",
-      submittedAt: "2024-01-11, 08:00:00"
-    },
-    {
-      id: "10",
-      name: "Jennifer Lee",
-      licensePlate: "YZA-8024",
-      department: "Quality Assurance",
-      date: "2024-01-11",
-      exitTime: "16:15",
-      returnTime: "09:45",
-      reason: "Product testing and quality control inspection.",
-      approval: "rejected",
-      statusFromDirector: "rejected",
-      statusFromHR: "approved",
-      submittedAt: "2024-01-11, 09:30:00"
-    },
+      submittedAt: "2024-01-11, 07:30:00"
+    }
   ]);
   const [formData, setFormData] = useState({
     name: "",
     licensePlate: "",
     department: "",
+    role: "",
     date: "",
     exitTime: "",
     returnTime: "",
@@ -202,29 +195,29 @@ export default function DirectorLeavePage() {
     statusFromHR: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newEntry = {
-      id: Date.now().toString(),
-      ...formData,
-      approval: "pending",
-      submittedAt: new Date().toLocaleString(),
-    };
-    setEntries(prev => [newEntry, ...prev]);
-    setIsOpen(false);
-    setFormData({
-      name: "",
-      licensePlate: "",
-      department: "",
-      date: "",
-      exitTime: "",
-      returnTime: "",
-      reason: "",
-      approval: "",
-      statusFromDirector: "",
-      statusFromHR: ""
-    });
-  };
+  // const handleSubmit = (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   const newEntry = {
+  //     id: Date.now().toString(),
+  //     ...formData,
+  //     approval: "pending",
+  //     submittedAt: new Date().toLocaleString(),
+  //   };
+  //   setEntries(prev => [newEntry, ...prev]);
+  //   setIsOpen(false);
+  //   setFormData({
+  //     name: "",
+  //     licensePlate: "",
+  //     department: "",
+  //     date: "",
+  //     exitTime: "",
+  //     returnTime: "",
+  //     reason: "",
+  //     approval: "",
+  //     statusFromDirector: "",
+  //     statusFromHR: ""
+  //   });
+  // };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -249,7 +242,7 @@ export default function DirectorLeavePage() {
       <div className="z-10 sticky top-0 pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Leave Permission Request (HR Side)</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Leave Permission Request (Director Side)</h1>
             <p className="mt-1 text-sm text-gray-500">
               Hello, lets see who want to go out during the working hours.
             </p>
@@ -276,7 +269,7 @@ export default function DirectorLeavePage() {
                   className="group relative px-2 py-2 text-sm font-semibold border-2 hover:bg-primary hover:text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                 >
                   <Eye className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                  View Pending ({entries.filter(e => e.approval === 'pending').length})
+                  View Pending ({entries.filter(e => (e.statusFromDirector === 'pending' && (e.role === 'Department Head'))).length})
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
@@ -289,7 +282,7 @@ export default function DirectorLeavePage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
-                  {entries.filter(e => e.approval === 'pending').length === 0 ? (
+                  {entries.filter(e => (e.statusFromDirector === 'pending') && (e.role == 'Department Head')).length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p className="text-lg">No pending entries</p>
@@ -311,7 +304,7 @@ export default function DirectorLeavePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {entries.filter(e => e.approval === 'pending').map((entry) => (
+                        {entries.filter(e => (e.statusFromDirector === 'pending') && (e.role === 'Department Head')).map((entry) => (
                           <TableRow key={entry.id}>
                             <TableCell className="font-medium">{entry.name}</TableCell>
                             <TableCell className="font-mono">{entry.licensePlate}</TableCell>
@@ -382,11 +375,11 @@ export default function DirectorLeavePage() {
                         </p>
                       </div>
                       <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        selectedEntry.approval === 'approved' ? 'bg-green-100 text-green-800' :
-                        selectedEntry.approval === 'rejected' ? 'bg-red-100 text-red-800' :
+                        selectedEntry.statusFromDirector === 'approved' ? 'bg-green-100 text-green-800' :
+                        selectedEntry.statusFromDirector === 'rejected' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {selectedEntry.approval.charAt(0).toUpperCase() + selectedEntry.approval.slice(1)}
+                        {selectedEntry.statusFromDirector.charAt(0).toUpperCase() + selectedEntry.statusFromDirector.slice(1)}
                       </div>
                     </div>
 
@@ -457,7 +450,7 @@ export default function DirectorLeavePage() {
                       </p>
                     </div>
 
-                    {selectedEntry.approval === 'pending' && (
+                    {selectedEntry.statusFromDirector === 'pending' && (
                       <div className="pt-4 border-t border-border/30">
                         <label className="text-sm font-medium text-muted-foreground mb-3 block">Director Actions</label>
                         <div className="flex gap-3">
@@ -486,7 +479,7 @@ export default function DirectorLeavePage() {
           </div>
 
           {/* Recent Processed Entries Table */}
-          {entries.filter(e => e.approval !== 'pending').length > 0 && (
+          {entries.filter(e => (e.statusFromDirector !== 'pending') && (e.role === 'Department Head')).length > 0 && (
             // Table Section List
             <div className="max-w-6xl mx-auto">
               <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
@@ -496,6 +489,7 @@ export default function DirectorLeavePage() {
                     <TableRow className="sticky top-0 bg-white z-10">
                       <TableHead>Name</TableHead>
                       <TableHead>License Plate</TableHead>
+                      <TableHead>Role</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Exit</TableHead>
@@ -506,11 +500,17 @@ export default function DirectorLeavePage() {
                   </TableHeader>
                   <TableBody>
                     {entries
-                      .filter(e => e.approval !== 'pending')
+                      .filter(e => (e.statusFromDirector !== 'pending') && (e.role === 'Department Head'))
                       .map((entry) => (
                         <TableRow key={entry.id}>
                           <TableCell className="font-medium">{entry.name}</TableCell>
                           <TableCell className="font-mono">{entry.licensePlate}</TableCell>
+                          <TableCell className="font-mono">
+                            <div className="flex items-center">
+                            <Crown className="w-5 h-5 mr-2 text-yellow-600"/>
+                            {entry.role}
+                            </div>
+                          </TableCell>
                           <TableCell>{entry.department}</TableCell>
                           <TableCell>{entry.date}</TableCell>
                           <TableCell>
@@ -527,10 +527,10 @@ export default function DirectorLeavePage() {
                           </TableCell>
                           <TableCell>
                             <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                              entry.approval === 'approved' ? 'bg-green-100 text-green-800' :
+                              entry.statusFromDirector === 'approved' ? 'bg-green-100 text-green-800' :
                               'bg-red-100 text-red-800'
                             }`}>
-                              {entry.approval.charAt(0).toUpperCase() + entry.approval.slice(1)}
+                              {entry.statusFromDirector.charAt(0).toUpperCase() + entry.statusFromDirector.slice(1)}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
