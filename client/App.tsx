@@ -16,6 +16,8 @@ import NotFound from "./pages/NotFound";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import InOutTrucks from "./pages/InOutTrucks";
 import LeavePermission from "./pages/LeavePermission";
+import Login from "./pages/Login";
+import ProtectedRoute from "./authentication/protectedRoute";
 
 
 const queryClient = new QueryClient();
@@ -24,7 +26,12 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout />}>
+          <Route path="/login" element = {<Login/>}/>
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout/>
+            </ProtectedRoute>
+          }>
             <Route index element = {<Dashboard />}/>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/employee" element={<EmployeeDashboard />} />
