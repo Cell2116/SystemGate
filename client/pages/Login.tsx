@@ -1,151 +1,3 @@
-
-
-// import { useState } from "react";
-// import { Input } from "@/components/ui/input";
-// import { Button } from "@/components/ui/button";
-// import {
-//   Select,
-//   SelectTrigger,
-//   SelectValue,
-//   SelectContent,
-//   SelectItem,
-// } from "@/components/ui/select";
-
-
-// export default function LoginPage() {
-//   const [view, setView] = useState<"menu" | "login" | "register">("menu");
-//   const dummyUsers = [
-//   {
-//     id: 1,
-//     name: "Sarah Johnson",
-//     email: "sarah@company.com",
-//     password: "123456", // Untuk testing saja
-//     role: "Department Head",
-//   },
-//   {
-//     id: 2,
-//     name: "David Wilson",
-//     email: "david@company.com",
-//     password: "123456",
-//     role: "Staff",
-//   },
-//   {
-//     id: 3,
-//     name: "Alice Cooper",
-//     email: "alice@company.com",
-//     password: "123456",
-//     role: "HR",
-//   },
-// ];
-
-
-//   return (
-//     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-//       <div className="flex w-full max-w-5xl h-[70vh] shadow-xl rounded-2xl overflow-hidden bg-white">
-
-//         {/* Left side - Image */}
-//         <div
-//           className="hidden md:block w-1/2 bg-cover bg-center relative"
-//           style={{ backgroundImage: "url('/alkindofoto.jpeg')"}}
-//         >
-//           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center text-white p-8">
-//             <h2 className="text-3xl font-bold text-yellow-500">PT Alkindo Naratama</h2>
-//           </div>
-//         </div>
-
-
-//         {/* Right side - Auth Card */}
-//         <div className="w-full md:w-1/2 p-10 flex items-center justify-center">
-//           <div className="w-full max-w-md space-y-6">
-
-//             {view === "menu" && (
-//               <div className="flex flex-col items-center space-y-5">
-//                 <h1 className="text-3xl font-bold text-gray-800">Welcome to, <span className="text-blue-400">Gate System</span></h1>
-//                 <p className="text-gray-500">Please select an option to proceed</p>
-//                 <Button className="w-full" onClick={() => setView("login")}>Login</Button>
-//                 <Button variant="outline" className="w-full" onClick={() => setView("register")}>Register</Button>
-//               </div>
-//             )}
-
-//             {view === "login" && (
-//               <div className="space-y-4">
-//                 <h2 className="text-2xl font-bold text-center">Log in</h2>
-//                 <Input type="email" placeholder="Email" />
-//                 <Input type="username" placeholder="Username" />
-//                 <Button className="w-full">Sign In</Button>
-//                 <p className="text-sm text-center text-gray-500">
-//                   Don’t have an account?{" "}
-//                   <span
-//                     className="text-blue-600 cursor-pointer hover:underline"
-//                     onClick={() => setView("register")}
-//                   >
-//                     Register
-//                   </span>
-//                 </p>
-//                 <Button variant="ghost" className="w-full text-sm" onClick={() => setView("menu")}>
-//                   ← Back
-//                 </Button>
-//               </div>
-//             )}
-//             {view === "register" && (
-//               <div className="space-y-4">
-//                 <h2 className="text-2xl font-bold text-center">Register</h2>
-
-//                 <Input type="text" placeholder="Full Name" />
-//                 <Input type="email" placeholder="Email" />
-
-//                 {/* Dropdown for Role */}
-//                 <div className="space-y-1">
-//                   <label className="text-sm font-medium text-gray-500">Select Role</label>
-//                   <Select>
-//                     <SelectTrigger className="w-full text-gray-500">
-//                       <SelectValue placeholder="Choose your role" />
-//                     </SelectTrigger>
-//                     <SelectContent>
-//                       <SelectItem value="staff">Staff</SelectItem>
-//                       <SelectItem value="department-head ">Department Head</SelectItem>
-//                       <SelectItem value="hr">HR</SelectItem>
-//                     </SelectContent>
-//                   </Select>
-//                 </div>
-//                 <div className="space-y-1">
-//                   <label className="text-sm font-medium text-gray-500">Select Department</label>
-//                   <Select>
-//                     <SelectTrigger className="w-full text-gray-500">
-//                       <SelectValue placeholder="Choose your Department" />
-//                     </SelectTrigger>
-//                     <SelectContent>
-//                       <SelectItem value="it">IT</SelectItem>
-//                       <SelectItem value="produksi">Produksi</SelectItem>
-//                       <SelectItem value="hr">HR</SelectItem>
-//                     </SelectContent>
-//                   </Select>
-//                 </div>
-
-//                 <Button className="w-full">Sign Up</Button>
-
-//                 <p className="text-sm text-center text-gray-500">
-//                   Already have an account?{" "}
-//                   <span
-//                     className="text-blue-600 cursor-pointer hover:underline"
-//                     onClick={() => setView("login")}
-//                   >
-//                     Login
-//                   </span>
-//                 </p>
-//                 <Button variant="ghost" className="w-full text-sm" onClick={() => setView("menu")}>
-//                   ← Back
-//                 </Button>
-//               </div>
-//             )}
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -156,16 +8,23 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { register } from "module";
+import {useUser} from "../authentication/userContext";
+import {useNavigate} from "react-router-dom";
+import DepartmentHead from "./DepartmentLeave";
+
 
 export default function LoginPage() {
   const [view, setView] = useState("menu");
+  const [username, setUsername] = useState("");
+  const [error, setError] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
+  const [registerMessage, setRegisterMessage] = useState({type:"", text:""});
+  const {setRole} = useUser();
+  const navigate = useNavigate();
   const [registerData, setRegisterData] = useState({
     name: "",
     email: "",
-    password: "",
     role: "",
     department: "",
   });
@@ -175,41 +34,107 @@ export default function LoginPage() {
       id: 1,
       name: "Sarah Johnson",
       email: "dh@dh.com",
-      password: "123456",
-      role: "Department Head",
+      username: "sarahj",
+      department: "Engineering",
+      role: "Head Department",
     },
     {
       id: 2,
       name: "David Wilson",
       email: "s@s.com",
-      password: "123456",
+      username: "davidw",
+      department: "Production", 
       role: "Staff",
     },
     {
       id: 3,
       name: "Alice Cooper",
       email: "hr@hr.com",
-      password: "123456",
+      department: "Mechanic",
+      username: "alicec",
       role: "HR",
     },
+    {
+      id: 4,
+      name: "Zianarya",
+      email: "sc@sc.com",
+      department: "Security",
+      username: "zizi",
+      role: "Security",
+    },
+    {
+      id: 5,
+      name: "Lulu",
+      email: "dr@dr.com",
+      department: "Director",
+      username: "didi",
+      role: "Director",
+    },
+    {
+      id: 5,
+      name: "Cello",
+      email: "C@C.com",
+      department: "IT",
+      username: "Cello",
+      role: "Head Department",
+    },
   ];
+  
+  const validRoles = ["Security", "HR", "User", "Head Department", "Director"] as const;
+  type Role = typeof validRoles[number];
 
   const handleLogin = () => {
-    const user = dummyUsers.find(
-      (u) => u.email === email && u.password === password
-    );
+  const user = dummyUsers.find(
+    (u) => u.username === username && u.email === email
+  );
 
-    if (user) {
-      alert(`Welcome, ${user.name} (${user.role})`);
-      localStorage.setItem("user", JSON.stringify(user));
-    } else {
-      alert("Email atau password salah.");
+  if (user) {
+    const normalizedRole = user.role === "Staff" ? "User" : user.role;
+
+    localStorage.setItem("user", JSON.stringify(user)); // tetap simpan 'Staff' agar UI bisa menampilkan
+    localStorage.setItem("userRole", normalizedRole);   // simpan yang dikenali untuk accessControl
+    localStorage.setItem("isLoggedIn", "true");
+
+    setRole(normalizedRole as Role);
+    setError("");
+
+    switch (normalizedRole) {
+      case "HR":
+      case "User":
+      case "Head Department":
+      case "Director":
+        navigate("/leave");
+        break;
+      case "Security":
+        navigate("/dashboard");
+        break;
+      default:
+        navigate("/leave");
     }
-  };
+    // alert(`Welcome, ${user.name} (${user.role})`);
+  } else {
+    setError("Username/Email invalid!");
+  }
+};
+
+
+  const handleRegister = () =>{
+    const {name, email, role, department} = registerData;
+    if(!name || !email || !role || !department) {
+      setRegisterMessage({type: "error", text: "All Field Should Be Filled"});
+      return; 
+    }
+    setRegisterMessage({type: "success", text: "Register Successfull"});
+    setRegisterData({name:"", email:"", role:"", department:""});
+    setTimeout(()=>{
+      setView("login");
+      setRegisterMessage({type:"", text:""});
+    }, 1500);
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="flex w-full max-w-5xl h-[70vh] shadow-xl rounded-2xl overflow-hidden bg-white">
+      <div className="flex w-full max-w-5xl h-[90vh] shadow-xl rounded-2xl overflow-hidden bg-white">
         {/* Left Side */}
         <div
           className="hidden md:block w-1/2 bg-cover bg-center relative"
@@ -237,22 +162,47 @@ export default function LoginPage() {
             {view === "login" && (
               <div className="space-y-4">
                 <h2 className="text-2xl font-bold text-center">Log in</h2>
-                <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input
+                  placeholder="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
                 <Button className="w-full" onClick={handleLogin}>Sign In</Button>
+                {error && (
+                  <p className="text-red-500 text-sm font-bold text-center mt-2">{error}</p>
+                )}
                 <p className="text-sm text-center text-gray-500">
-                  Don’t have an account? <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setView("register")}>Register</span>
+                  Don’t have an account?{" "}
+                  <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setView("register")}>
+                    Register
+                  </span>
                 </p>
-                <Button variant="ghost" className="w-full text-sm" onClick={() => setView("menu")}>← Back</Button>
+                <Button variant="ghost" className="w-full text-sm" onClick={() => setView("menu")}>
+                  ← Back
+                </Button>
               </div>
             )}
 
             {view === "register" && (
-              <div className="space-y-4">
+              <div className="space-y-4 flex w-full flex-col overflow-auto h-90 scrollbar-hide">
                 <h2 className="text-2xl font-bold text-center">Register</h2>
-                <Input placeholder="Full Name" value={registerData.name} onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })} />
-                <Input type="email" placeholder="Email" value={registerData.email} onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })} />
-                <Input type="password" placeholder="Password" value={registerData.password} onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })} />
+                <Input
+                  placeholder="Full Name"
+                  value={registerData.name}
+                  onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
+                />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={registerData.email}
+                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                />
 
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-500">Select Role</label>
@@ -261,7 +211,7 @@ export default function LoginPage() {
                       <SelectValue placeholder="Choose your role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Staff">Staff</SelectItem>
+                      <SelectItem value="User">Staff</SelectItem>
                       <SelectItem value="Department Head">Department Head</SelectItem>
                       <SelectItem value="HR">HR</SelectItem>
                     </SelectContent>
@@ -282,11 +232,30 @@ export default function LoginPage() {
                   </Select>
                 </div>
 
-                <Button className="w-full" onClick={() => alert("Registered successfully (simulasi)")}>Sign Up</Button>
+                <Button className="w-full" onClick={handleRegister}>
+                  Sign Up
+                </Button>
+                            
+                {registerMessage.text && (
+                  <p
+                    className={`text-sm text-center mt-2 ${
+                      registerMessage.type === "error" ? "text-red-500" : "text-green-500"
+                    }`}
+                  >
+                    {registerMessage.text}
+                  </p>
+                )}
+
+
                 <p className="text-sm text-center text-gray-500">
-                  Already have an account? <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setView("login")}>Login</span>
+                  Already have an account?{" "}
+                  <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setView("login")}>
+                    Login
+                  </span>
                 </p>
-                <Button variant="ghost" className="w-full text-sm" onClick={() => setView("menu")}>← Back</Button>
+                <Button variant="ghost" className="w-full text-sm" onClick={() => setView("menu")}>
+                  ← Back
+                </Button>
               </div>
             )}
           </div>

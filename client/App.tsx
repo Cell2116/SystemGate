@@ -18,31 +18,62 @@ import InOutTrucks from "./pages/InOutTrucks";
 import LeavePermission from "./pages/LeavePermission";
 import Login from "./pages/Login";
 import ProtectedRoute from "./authentication/protectedRoute";
+import { UserProvider } from "./authentication/userContext";
 
 
 const queryClient = new QueryClient();
 
+// const App = () => (
+//   <QueryClientProvider client={queryClient}>
+//     <BrowserRouter>
+//     <UserProvider>
+//         <Routes>
+//           <Route path="/login" element = {<Login/>}/>
+//           <Route path="/" element={
+//             <ProtectedRoute>
+//               <Layout/>
+//             </ProtectedRoute>
+//           }>
+//             <Route index element = {<Dashboard />}/>
+//             <Route path="/dashboard" element={<Dashboard />} />
+//             <Route path="/employee" element={<EmployeeDashboard />} />
+//             <Route path="/trucks" element={<InOutTrucks />} />
+//             <Route path="/leave" element={<LeavePermission />} />
+//             <Route path="/asd" element={<Products />} />
+//           </Route>
+//           <Route path="*" element={<NotFound />} />
+//         </Routes>
+//       </UserProvider>
+//     </BrowserRouter>
+//   </QueryClientProvider>
+// );
+
+
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
+      <UserProvider> 
         <Routes>
-          <Route path="/login" element = {<Login/>}/>
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout/>
-            </ProtectedRoute>
-          }>
-            <Route index element = {<Dashboard />}/>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/employee" element={<EmployeeDashboard />} />
-            <Route path="/trucks" element={<InOutTrucks />} />
-            <Route path="/leave" element={<LeavePermission />} />
-            <Route path="/asd" element={<Products />} />
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout /> {/* ⬅ ini seharusnya render */}
+              </ProtectedRoute>
+            }
+            >
+            <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="employee" element={<EmployeeDashboard />} />
+            <Route path="trucks" element={<InOutTrucks />} />
+            <Route path="leave" element={<LeavePermission />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
+      </UserProvider>
     </BrowserRouter>
   </QueryClientProvider>
 );
-
 createRoot(document.getElementById("root")!).render(<App />);

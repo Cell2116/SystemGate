@@ -35,15 +35,25 @@ const Clock2 = () => (
     {new Date().toLocaleTimeString()}
   </div>
 );
+import { useEffect } from "react";
+
+interface User {
+  name: string;
+  department: string;
+  role: string;
+}
 
 export default function DepartmentHead() {
   // Current user is IT Department Head
-  const currentUser = {
-    name: "Sarah Johnson",
-    department: "IT",
-    role: "Department Head"
-  };
+  // const currentUser = {
+  //   name: "Sarah Johnson",
+  //   department: "Engineering",
+  //   role: "Department Head"
+  // };
+  // // const [currentUser, setCurrentUser] = useState<User | null>(null);
 
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -84,7 +94,7 @@ export default function DepartmentHead() {
       id: "2",
       name: "Alice Cooper",
       licensePlate: "ABC-5678",
-      department: "IT",
+      department: "Engineering",
       role: "Staff",
       date: "2024-01-14",
       exitTime: "16:30",
@@ -163,17 +173,270 @@ export default function DepartmentHead() {
       submittedAt: "2024-01-11, 07:30:00"
     }
   ]);
+
+  // if (!currentUser) {
+  //   return <p>Loading user data...</p>;
+  // } 
   
+  // const [formData, setFormData] = useState({
+  //   name: currentUser.name, // Pre-fill with current user's name
+  //   licensePlate: "",
+  //   department: currentUser.department, // Pre-filled and locked to current department
+  //   role: currentUser.role, // Set to Department Head
+  //   date: "",
+  //   exitTime: "",
+  //   returnTime: "",
+  //   reason: "",
+  // });
+
+  // // Filter entries to only show current department
+  // const getDepartmentEntries = () => {
+  //   return entries.filter(entry => entry.department === currentUser.department);
+  // };
+
+  // // Get entries that need department approval
+  // const getPendingDepartmentEntries = () => {
+  //   return getDepartmentEntries().filter(e => e.statusFromDepartment === 'pending');
+  // };
+
+  // // Get entries that have been processed by department
+  // const getProcessedDepartmentEntries = () => {
+  //   return getDepartmentEntries().filter(e => e.statusFromDepartment !== 'pending');
+  // };
+
+  // // Helper function to get overall approval status for Department Head
+  // const getOverallStatus = (entry: any) => {
+  //   if (entry.role === "Department Head") {
+  //     // For Department Head: needs HR and Director approval
+  //     if (entry.statusFromHR === "rejected" || entry.statusFromDirector === "rejected") return "rejected";
+  //     if (entry.statusFromHR === "approved" && entry.statusFromDirector === "approved") return "approved";
+  //     return "pending";
+  //   } else {
+  //     // For Staff: needs Department and HR approval
+  //     if (entry.statusFromDepartment === "rejected" || entry.statusFromHR === "rejected") return "rejected";
+  //     if (entry.statusFromDepartment === "approved" && entry.statusFromHR === "approved") return "approved";
+  //     return "pending";
+  //   }
+  // };
+  
+
+  // const handleSubmit = (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   const newEntry = {
+  //     id: Date.now().toString(),
+  //     ...formData,
+  //     approval: "pending",
+  //     statusFromDepartment: formData.role === "Department Head" ? "approved" : "pending", // Auto-approve for Department Head
+  //     statusFromHR: "pending",
+  //     statusFromDirector: "pending",
+  //     submittedAt: new Date().toLocaleString(),
+  //   };
+  //   setEntries(prev => [newEntry, ...prev]);
+  //   setIsOpen(false);
+  //   setFormData({
+  //     name: currentUser.name,
+  //     licensePlate: "",
+  //     department: currentUser.department,
+  //     role: currentUser.role,
+  //     date: "",
+  //     exitTime: "",
+  //     returnTime: "",
+  //     reason: "",
+  //   });
+  // };
+
+  // const handleInputChange = (field: string, value: string) => {
+  //   setFormData(prev => ({ ...prev, [field]: value }));
+  // };
+
+  // const handleViewDetails = (entry: any) => {
+  //   setSelectedEntry(entry);
+  //   setIsDetailsOpen(true);
+  // };
+
+  // const handleDepartmentApprovalAction = (entryId: string, action: 'approved' | 'rejected') => {
+  //   setEntries(prev => prev.map(entry => {
+  //     if (entry.id === entryId) {
+  //       const updatedEntry = { ...entry, statusFromDepartment: action };
+  //       updatedEntry.approval = getOverallStatus(updatedEntry);
+  //       return updatedEntry;
+  //     }
+  //     return entry;
+  //   }));
+  //   setIsDetailsOpen(false);
+  // };
+useEffect(() => {
+    const loadUserFromStorage = () => {
+      try {
+        // In a real environment, this would work:
+        // const storedUser = localStorage.getItem("user");
+        // const storedRole = localStorage.getItem("userRole");
+        // const isLoggedIn = localStorage.getItem("isLoggedIn");
+        
+        // For demo purposes in Claude.ai, we'll simulate localStorage data
+        // In your actual implementation, uncomment the lines above and remove the simulation below
+        const simulatedStorageData = JSON.stringify({
+          id: 1,
+          name: "Sarah Johnson",
+          email: "dh@dh.com",
+          username: "sarahj",
+          department: "Engineering",
+          role: "Head Department"
+        });
+        const simulatedRole = "Head Department";
+        const simulatedLogin = "true";
+        
+        const storedUser = localStorage.getItem("user"); // Replace with localStorage.getItem("user") in real app
+        const storedRole = localStorage.getItem("userRole"); // Replace with localStorage.getItem("userRole") in real app
+        const isLoggedIn = localStorage.getItem("isLoggedIn"); // Replace with localStorage.getItem("isLoggedIn") in real app
+        
+        // Check if user is logged in
+        if (!isLoggedIn || isLoggedIn !== "true") {
+          console.error("User not logged in");
+          return;
+        }
+        
+        if (storedUser && storedRole) {
+          const parsedUser = JSON.parse(storedUser);
+          
+          // Validate that the user has Head Department role (matching your login system)
+          if (storedRole === "Head Department" || parsedUser.role === "Head Department") {
+            setCurrentUser({
+              name: parsedUser.name,
+              department: parsedUser.department,
+              role: "Department Head" // Normalize to match UI expectations
+            });
+            
+            // Add a sample entry for the logged-in department head
+            const departmentHeadEntry = {
+              id: "5",
+              name: parsedUser.name,
+              licensePlate: "SAR-1234",
+              department: parsedUser.department,
+              role: "Department Head",
+              date: "2024-01-11",
+              exitTime: "15:30",
+              returnTime: "08:00",
+              reason: "Strategic planning meeting with board of directors and quarterly review session.",
+              approval: "pending",
+              statusFromDepartment: "approved", // Auto-approved (self)
+              statusFromHR: "pending",
+              statusFromDirector: "pending",
+              submittedAt: "2024-01-11, 07:30:00"
+            };
+            
+            setEntries(prev => {
+              // Check if entry already exists
+              const exists = prev.some(entry => entry.id === "5");
+              if (!exists) {
+                return [...prev, departmentHeadEntry];
+              }
+              return prev;
+            });
+          } else {
+            console.error("User is not a Department Head. Current role:", storedRole);
+            // In a real app, you might redirect to login or show an error
+          }
+        } else {
+          console.error("No user data found in localStorage");
+          // In a real app, you might redirect to login
+        }
+      } catch (error) {
+        console.error("Error loading user from localStorage:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserFromStorage();
+  }, []);
+
+  // Initialize form data when currentUser is loaded
   const [formData, setFormData] = useState({
-    name: currentUser.name, // Pre-fill with current user's name
+    name: "",
     licensePlate: "",
-    department: currentUser.department, // Pre-filled and locked to current department
-    role: currentUser.role, // Set to Department Head
+    department: "",
+    role: "",
     date: "",
     exitTime: "",
     returnTime: "",
     reason: "",
   });
+
+  // Update form data when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        name: currentUser.name,
+        department: currentUser.department,
+        role: currentUser.role,
+      }));
+    }
+  }, [currentUser]);
+
+  // Show loading state while user data is being loaded
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg">Loading user data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if no user data is found
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <Shield className="w-16 h-16 mx-auto mb-2" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            No user data found or insufficient permissions.
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Verify user has Department Head role
+  if (currentUser.role !== "Department Head") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-yellow-500 mb-4">
+            <Crown className="w-16 h-16 mx-auto mb-2" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Insufficient Permissions</h2>
+          <p className="text-gray-600 mb-4">
+            This page is only accessible to Department Heads.
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            Current role: {currentUser.role}
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button onClick={() => window.history.back()}>
+              Go Back
+            </Button>
+            <Button variant="outline" onClick={() => {
+              // In real app: localStorage.clear(); navigate("/login");
+              window.location.reload();
+            }}>
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Filter entries to only show current department
   const getDepartmentEntries = () => {
@@ -204,6 +467,7 @@ export default function DepartmentHead() {
       return "pending";
     }
   };
+  
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
