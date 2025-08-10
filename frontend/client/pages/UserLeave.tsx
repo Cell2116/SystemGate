@@ -22,13 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FilePlus, DoorOpen, Plus, Send, Sparkles, Zap, Calendar, Clock, User, CircleCheck, XCircle } from "lucide-react";
-
+import Clock2 from "../components/dashboard/clock"
 // Clock component placeholder
-const Clock2 = () => (
-  <div className="text-sm text-gray-500">
-    {new Date().toLocaleTimeString()}
-  </div>
-);
 
 export default function UserLeavePage(){
   const [isOpen, setIsOpen] = useState(false);
@@ -132,7 +127,7 @@ export default function UserLeavePage(){
       name: "Sarah Johnson",
       licensePlate: "SAR-1234",
       department: "IT",
-      role: "Department Head",
+      role: "Head Department",
       date: "2024-01-11",
       exitTime: "15:30",
       returnTime: "08:00",
@@ -165,8 +160,8 @@ export default function UserLeavePage(){
   const calculateOverallApproval = (entry: typeof entries[0]) => {
     const requiredApprovals = ["statusFromDepartment", "statusFromHR"];
     
-    // Add director approval for Department Heads
-    if (entry.role === "Department Head") {
+    // Add director approval for Head Departments
+    if (entry.role === "Head Department") {
       requiredApprovals.push("statusFromDirector");
     }
 
@@ -389,7 +384,7 @@ export default function UserLeavePage(){
                       </Label>
                       <textarea
                         id="reason"
-                        placeholder="Enter reason for visit..."
+                        placeholder="Enter Reason for Leave..."
                         value={formData.reason}
                         onChange={(e) => handleInputChange("reason", e.target.value)}
                         className="flex min-h-[80px] w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 resize-none transition-all duration-200"
@@ -583,7 +578,7 @@ export default function UserLeavePage(){
                                           {selectedEntry.statusFromHR}
                                         </span>
                                       </div>
-                                      {selectedEntry.role === "Department Head" && (
+                                      {selectedEntry.role === "Head Department" && (
                                         <div className="flex items-center gap-2">
                                           <span className="text-xs">Director:</span>
                                           <span className={`px-2 py-1 rounded text-xs ${

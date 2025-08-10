@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./client/*"],
+      "@shared/*": ["./shared/*"]
+    },
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node", "react", "react-dom"],
+    "strict": true
+  },
+  "include": [
+    "client/**/*",
+    "server/**/*",
+    "shared/**/*",
+    "vite.config.ts",
+    "vite.config.server.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

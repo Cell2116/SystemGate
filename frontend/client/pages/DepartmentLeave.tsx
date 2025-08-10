@@ -27,15 +27,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Clock2 from "../components/dashboard/clock"
 import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Shield, Crown, Building, BookUser } from "lucide-react";
 
-// Mock Clock component
-const Clock2 = () => (
-  <div className="text-sm text-gray-500">
-    {new Date().toLocaleTimeString()}
-  </div>
-);
 import { useEffect } from "react";
+import { useDashboardStore } from "@/store/dashboardStore";
 
 interface User {
   name: string;
@@ -44,13 +40,6 @@ interface User {
 }
 
 export default function DepartmentHead() {
-  // Current user is IT Department Head
-  // const currentUser = {
-  //   name: "Sarah Johnson",
-  //   department: "Engineering",
-  //   role: "Department Head"
-  // };
-  // // const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +47,13 @@ export default function DepartmentHead() {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
+  const {
+    leavePermissions,
+    fetchLeavePermission,
+    addLeavePermission,
+    loading,
+    error,
+  } = useDashboardStore();
   const [entries, setEntries] = useState<Array<{
     id: string;
     name: string;
@@ -138,13 +134,13 @@ export default function DepartmentHead() {
       statusFromDirector: "pending",
       submittedAt: "2024-01-12, 08:45:00"
     },
-    // Add Department Head's own request - auto-approved at department level
+    // Add Head Department's own request - auto-approved at department level
     {
       id: "5",
-      name: "Sarah Johnson", // Current user (Department Head)
+      name: "Sarah Johnson", // Current user (Head Department)
       licensePlate: "SAR-1234",
       department: "IT",
-      role: "Department Head",
+      role: "Head Department",
       date: "2024-01-11",
       exitTime: "15:30",
       returnTime: "08:00",
@@ -174,97 +170,6 @@ export default function DepartmentHead() {
     }
   ]);
 
-  // if (!currentUser) {
-  //   return <p>Loading user data...</p>;
-  // } 
-  
-  // const [formData, setFormData] = useState({
-  //   name: currentUser.name, // Pre-fill with current user's name
-  //   licensePlate: "",
-  //   department: currentUser.department, // Pre-filled and locked to current department
-  //   role: currentUser.role, // Set to Department Head
-  //   date: "",
-  //   exitTime: "",
-  //   returnTime: "",
-  //   reason: "",
-  // });
-
-  // // Filter entries to only show current department
-  // const getDepartmentEntries = () => {
-  //   return entries.filter(entry => entry.department === currentUser.department);
-  // };
-
-  // // Get entries that need department approval
-  // const getPendingDepartmentEntries = () => {
-  //   return getDepartmentEntries().filter(e => e.statusFromDepartment === 'pending');
-  // };
-
-  // // Get entries that have been processed by department
-  // const getProcessedDepartmentEntries = () => {
-  //   return getDepartmentEntries().filter(e => e.statusFromDepartment !== 'pending');
-  // };
-
-  // // Helper function to get overall approval status for Department Head
-  // const getOverallStatus = (entry: any) => {
-  //   if (entry.role === "Department Head") {
-  //     // For Department Head: needs HR and Director approval
-  //     if (entry.statusFromHR === "rejected" || entry.statusFromDirector === "rejected") return "rejected";
-  //     if (entry.statusFromHR === "approved" && entry.statusFromDirector === "approved") return "approved";
-  //     return "pending";
-  //   } else {
-  //     // For Staff: needs Department and HR approval
-  //     if (entry.statusFromDepartment === "rejected" || entry.statusFromHR === "rejected") return "rejected";
-  //     if (entry.statusFromDepartment === "approved" && entry.statusFromHR === "approved") return "approved";
-  //     return "pending";
-  //   }
-  // };
-  
-
-  // const handleSubmit = (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   const newEntry = {
-  //     id: Date.now().toString(),
-  //     ...formData,
-  //     approval: "pending",
-  //     statusFromDepartment: formData.role === "Department Head" ? "approved" : "pending", // Auto-approve for Department Head
-  //     statusFromHR: "pending",
-  //     statusFromDirector: "pending",
-  //     submittedAt: new Date().toLocaleString(),
-  //   };
-  //   setEntries(prev => [newEntry, ...prev]);
-  //   setIsOpen(false);
-  //   setFormData({
-  //     name: currentUser.name,
-  //     licensePlate: "",
-  //     department: currentUser.department,
-  //     role: currentUser.role,
-  //     date: "",
-  //     exitTime: "",
-  //     returnTime: "",
-  //     reason: "",
-  //   });
-  // };
-
-  // const handleInputChange = (field: string, value: string) => {
-  //   setFormData(prev => ({ ...prev, [field]: value }));
-  // };
-
-  // const handleViewDetails = (entry: any) => {
-  //   setSelectedEntry(entry);
-  //   setIsDetailsOpen(true);
-  // };
-
-  // const handleDepartmentApprovalAction = (entryId: string, action: 'approved' | 'rejected') => {
-  //   setEntries(prev => prev.map(entry => {
-  //     if (entry.id === entryId) {
-  //       const updatedEntry = { ...entry, statusFromDepartment: action };
-  //       updatedEntry.approval = getOverallStatus(updatedEntry);
-  //       return updatedEntry;
-  //     }
-  //     return entry;
-  //   }));
-  //   setIsDetailsOpen(false);
-  // };
 useEffect(() => {
     const loadUserFromStorage = () => {
       try {
@@ -272,9 +177,7 @@ useEffect(() => {
         // const storedUser = localStorage.getItem("user");
         // const storedRole = localStorage.getItem("userRole");
         // const isLoggedIn = localStorage.getItem("isLoggedIn");
-        
-        // For demo purposes in Claude.ai, we'll simulate localStorage data
-        // In your actual implementation, uncomment the lines above and remove the simulation below
+      
         const simulatedStorageData = JSON.stringify({
           id: 1,
           name: "Sarah Johnson",
@@ -286,9 +189,9 @@ useEffect(() => {
         const simulatedRole = "Head Department";
         const simulatedLogin = "true";
         
-        const storedUser = localStorage.getItem("user"); // Replace with localStorage.getItem("user") in real app
-        const storedRole = localStorage.getItem("userRole"); // Replace with localStorage.getItem("userRole") in real app
-        const isLoggedIn = localStorage.getItem("isLoggedIn"); // Replace with localStorage.getItem("isLoggedIn") in real app
+        const storedUser = localStorage.getItem("user"); 
+        const storedRole = localStorage.getItem("userRole");
+        const isLoggedIn = localStorage.getItem("isLoggedIn");
         
         // Check if user is logged in
         if (!isLoggedIn || isLoggedIn !== "true") {
@@ -304,22 +207,22 @@ useEffect(() => {
             setCurrentUser({
               name: parsedUser.name,
               department: parsedUser.department,
-              role: "Department Head" // Normalize to match UI expectations
+              role: "Head Department" // Normalize to match UI expectations
             });
             
-            // Add a sample entry for the logged-in department head
+            // Add a sample entry for the logged-in Head Department
             const departmentHeadEntry = {
               id: "5",
               name: parsedUser.name,
               licensePlate: "SAR-1234",
               department: parsedUser.department,
-              role: "Department Head",
+              role: "Head Department",
               date: "2024-01-11",
               exitTime: "15:30",
               returnTime: "08:00",
               reason: "Strategic planning meeting with board of directors and quarterly review session.",
               approval: "pending",
-              statusFromDepartment: "approved", // Auto-approved (self)
+              statusFromDepartment: "approved", 
               statusFromHR: "pending",
               statusFromDirector: "pending",
               submittedAt: "2024-01-11, 07:30:00"
@@ -334,7 +237,7 @@ useEffect(() => {
               return prev;
             });
           } else {
-            console.error("User is not a Department Head. Current role:", storedRole);
+            console.error("User is not a Head Department. Current role:", storedRole);
             // In a real app, you might redirect to login or show an error
           }
         } else {
@@ -361,6 +264,8 @@ useEffect(() => {
     exitTime: "",
     returnTime: "",
     reason: "",
+    reasonType: "", // PT, Outside, Sick
+    outsideReason: "", // Only for Outside
   });
 
   // Update form data when currentUser changes
@@ -368,12 +273,14 @@ useEffect(() => {
     if (currentUser) {
       setFormData(prev => ({
         ...prev,
-        name: currentUser.name,
         department: currentUser.department,
-        role: currentUser.role,
       }));
     }
   }, [currentUser]);
+
+  useEffect(()=>{
+    fetchLeavePermission();
+  }, [fetchLeavePermission]);
 
   // Show loading state while user data is being loaded
   if (isLoading) {
@@ -407,8 +314,8 @@ useEffect(() => {
     );
   }
 
-  // Verify user has Department Head role
-  if (currentUser.role !== "Department Head") {
+  // Verify user has Head Department role
+  if (currentUser.role !== "Head Department") {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -417,7 +324,7 @@ useEffect(() => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Insufficient Permissions</h2>
           <p className="text-gray-600 mb-4">
-            This page is only accessible to Department Heads.
+            This page is only accessible to Head Departments.
           </p>
           <p className="text-sm text-gray-500 mb-4">
             Current role: {currentUser.role}
@@ -440,7 +347,7 @@ useEffect(() => {
 
   // Filter entries to only show current department
   const getDepartmentEntries = () => {
-    return entries.filter(entry => entry.department === currentUser.department);
+    return leavePermissions.filter(entry => entry.department === currentUser.department);
   };
 
   // Get entries that need department approval
@@ -453,10 +360,10 @@ useEffect(() => {
     return getDepartmentEntries().filter(e => e.statusFromDepartment !== 'pending');
   };
 
-  // Helper function to get overall approval status for Department Head
+  // Helper function to get overall approval status for Head Department
   const getOverallStatus = (entry: any) => {
-    if (entry.role === "Department Head") {
-      // For Department Head: needs HR and Director approval
+    if (entry.role === "Head Department") {
+      // For Head Department: needs HR and Director approval
       if (entry.statusFromHR === "rejected" || entry.statusFromDirector === "rejected") return "rejected";
       if (entry.statusFromHR === "approved" && entry.statusFromDirector === "approved") return "approved";
       return "pending";
@@ -469,33 +376,51 @@ useEffect(() => {
   };
   
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let reasonValue = formData.reasonType === "Outside" ? formData.outsideReason : formData.reasonType;
     const newEntry = {
       id: Date.now().toString(),
       ...formData,
+      reason: reasonValue,
       approval: "pending",
-      statusFromDepartment: formData.role === "Department Head" ? "approved" : "pending", // Auto-approve for Department Head
+      statusFromDepartment: formData.role === "Head Department" ? "approved" : "pending", // Auto-approve for Head Department
       statusFromHR: "pending",
       statusFromDirector: "pending",
       submittedAt: new Date().toLocaleString(),
     };
-    setEntries(prev => [newEntry, ...prev]);
-    setIsOpen(false);
-    setFormData({
-      name: currentUser.name,
-      licensePlate: "",
-      department: currentUser.department,
-      role: currentUser.role,
-      date: "",
-      exitTime: "",
-      returnTime: "",
-      reason: "",
-    });
+    try {
+      await addLeavePermission(newEntry);
+      setIsOpen(false);
+      setFormData({
+        name: currentUser.name,
+        licensePlate: "",
+        department: currentUser.department,
+        role: currentUser.role,
+        date: "",
+        exitTime: "",
+        returnTime: "",
+        reason: "",
+        reasonType: "",
+        outsideReason: "",
+      });
+    } catch (err) {
+      alert("Failed to submit leave request.");
+      console.error(err);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // If reasonType is changed to 'Sick', clear returnTime
+    if (field === "reasonType") {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+        returnTime: value === "Sick" ? "" : prev.returnTime,
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleViewDetails = (entry: any) => {
@@ -520,9 +445,9 @@ useEffect(() => {
       <div className="z-10 sticky top-0 pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Leave Permission Request (Department Head)</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Leave Permission Request (Head Department)</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Welcome {currentUser.name} - {currentUser.department} Department Head. Review leave requests for your department.
+              Welcome {currentUser.name} - {currentUser.department} Head Department. Review leave requests for your department.
             </p>
           </div>
           <div className="mt-4 sm:mt-0">
@@ -548,7 +473,7 @@ useEffect(() => {
                 </Button>
               </DialogTrigger>
               
-              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
+              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50 scrollbar-hide">
                 <DialogHeader className="space-y-3">
                   <DialogTitle className="text-2xl font-bold text-center">
                     Leave Request Registration - {currentUser.department}
@@ -562,30 +487,35 @@ useEffect(() => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name" className="text-sm font-medium">
-                        Name
+                        Staff Name
                       </Label>
                       <Input
                         id="name"
-                        placeholder="Enter name"
+                        placeholder="Enter staff name"
                         value={formData.name}
                         onChange={(e) => handleInputChange("name", e.target.value)}
                         className="h-10 border-border/50 focus:border-primary"
                         required
                       />
-                      <p className="text-xs text-blue-600">Creating request for yourself as Department Head</p>
+                      <p className="text-xs text-blue-600">You can request for any staff in your department</p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="licensePlate" className="text-sm font-medium">
-                        License Plate
+                    <div className="space-y-2 flex flex-col">
+                      <Label htmlFor="role" className="text-sm font-medium   ">
+                        Role
                       </Label>
-                      <Input
-                        id="licensePlate"
-                        placeholder="ABC-1234"
-                        value={formData.licensePlate}
-                        onChange={(e) => handleInputChange("licensePlate", e.target.value)}
-                        className="h-10 border-border/50 focus:border-primary"
+                      <select
+                        id="role"
+                        title="Role"
+                        value={formData.role}
+                        onChange={(e) => handleInputChange("role", e.target.value)}
+                        className="h-10 border border-border/50 rounded-md px-3 py-2 bg-background text-gray-500 text-sm focus:border-primary"
                         required
-                      />
+                      >
+                        <option value="">Select role</option>
+                        <option value="Staff">Staff</option>
+                        <option value="Head Department">Head Department</option>
+                      </select>
+                      <p className="text-xs text-muted-foreground">Select the role for this request</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -602,16 +532,17 @@ useEffect(() => {
                       <p className="text-xs text-muted-foreground">Your department</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="role" className="text-sm font-medium">
-                        Role
+                      <Label htmlFor="licensePlate" className="text-sm font-medium">
+                        License Plate
                       </Label>
                       <Input
-                        id="role"
-                        value="Department Head"
-                        disabled
-                        className="h-10 border-border/50 bg-muted/50"
+                        id="licensePlate"
+                        placeholder="ABC-1234"
+                        value={formData.licensePlate}
+                        onChange={(e) => handleInputChange("licensePlate", e.target.value)}
+                        className="h-10 border-border/50 focus:border-primary"
+                        required
                       />
-                      <p className="text-xs text-muted-foreground">Your role in the organization</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -651,21 +582,47 @@ useEffect(() => {
                       value={formData.returnTime}
                       onChange={(e) => handleInputChange("returnTime", e.target.value)}
                       className="h-10 border-border/50 focus:border-primary"
-                      required
+                      required={formData.reasonType !== "Sick"}
+                      disabled={formData.reasonType === "Sick"}
                     />
+                    {formData.reasonType === "Sick" && (
+                      <p className="text-xs text-muted-foreground">Return time is not required for sick leave.</p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reason" className="text-sm font-medium">
-                      Reason for Visit
+                    <Label htmlFor="reasonType" className="text-sm font-medium">
+                      Reason to Leave
                     </Label>
-                    <textarea
-                      id="reason"
-                      placeholder="Enter reason for visit..."
-                      value={formData.reason}
-                      onChange={(e) => handleInputChange("reason", e.target.value)}
-                      className="flex min-h-[80px] w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 resize-none transition-all duration-200"
+                    <select
+                      id="reasonType"
+                      title="Reason"
+                      value={formData.reasonType}
+                      onChange={e => handleInputChange("reasonType", e.target.value)}
+                      className="h-10 border border-border/50 rounded-md px-3 py-2 bg-background text-gray-500 text-sm focus:border-primary"
                       required
-                    />
+                    >
+                      <option value="">Select reason</option>
+                      <option value="PT">Plant 1</option>
+                      <option value="Outside">Outside</option>
+                      <option value="Sick">Sick</option>
+                    </select>
+                    {formData.reasonType === "Outside" && (
+                      <div className="mt-2">
+                        <Label htmlFor="outsideReason" className="text-sm font-medium">Explain Reason (Outside)</Label>
+                        <textarea
+                          id="outsideReason"
+                          placeholder="Enter reason for leaving (Outside)..."
+                          value={formData.outsideReason}
+                          onChange={e => handleInputChange("outsideReason", e.target.value)}
+                          className="flex min-h-[80px] w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 resize-none transition-all duration-200"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">Please explain the reason for leaving if you select Outside.</p>
+                      </div>
+                    )}
+                    {formData.reasonType && formData.reasonType !== "Outside" && (
+                      <p className="text-xs text-muted-foreground mt-2">Reason will be set as <span className="font-semibold">{formData.reasonType}</span>.</p>
+                    )}
                   </div>
                   
                   {/* Approval Flow Information */}
@@ -674,10 +631,10 @@ useEffect(() => {
                     <div className="text-xs text-blue-700">
                       <div className="flex items-center gap-2">
                         <Crown className="w-4 h-4" />
-                        <span>Department Head (Auto-approved) → HR → Director</span>
+                        <span>Head Department (Auto-approved) → HR → Director</span>
                       </div>
                       <p className="mt-2 text-xs text-blue-600">
-                        As Department Head, your request will be auto-approved at department level and sent to HR and Director for final approval.
+                        As Head Department, your request will be auto-approved at department level and sent to HR and Director for final approval.
                       </p>
                     </div>
                   </div>
@@ -721,7 +678,7 @@ useEffect(() => {
                     Pending Department Approval - {currentUser.department}
                   </DialogTitle>
                   <DialogDescription className="text-center text-muted-foreground">
-                    Leave requests awaiting your approval as Department Head
+                    Leave requests awaiting your approval as Head Department
                   </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
@@ -794,7 +751,7 @@ useEffect(() => {
 
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent className="sm:max-w-2xl bg-card/95 border-border/50">
+              <DialogContent className="sm:max-w-2xl bg-card/95 border-border/50 h-full overflow-auto scrollbar-hide">
                 <DialogHeader className="space-y-3">
                   <DialogTitle className="text-2xl font-bold text-center">
                     Leave Permission Detail
@@ -840,7 +797,7 @@ useEffect(() => {
                           </p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-muted-foreground">Visit Date</label>
+                          <label className="text-sm font-medium text-muted-foreground">Date</label>
                           <p className="text-lg mt-1">{selectedEntry.date}</p>
                         </div>
                       </div>
@@ -863,7 +820,7 @@ useEffect(() => {
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">Approval Flow</label>
                           <p className="text-sm mt-1 bg-blue-50 px-3 py-2 rounded-lg">
-                            {selectedEntry.role === "Department Head" ? "Department (Auto) → HR → Director" : "Department Head → HR"}
+                            {selectedEntry.role === "Head Department" ? "Department (Auto) → HR → Director" : "Head Department → HR"}
                           </p>
                         </div>
                       </div>
@@ -875,7 +832,7 @@ useEffect(() => {
                         <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                           <div className="flex items-center">
                             <Building className="w-4 h-4 mr-2 text-blue-600" />
-                            <label className="text-sm font-medium">Department Head</label>
+                            <label className="text-sm font-medium">Head Department</label>
                           </div>
                           <div className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
                             selectedEntry.statusFromDepartment === 'approved' ? 'bg-green-100 text-green-800' :
@@ -898,7 +855,7 @@ useEffect(() => {
                             {selectedEntry.statusFromHR.charAt(0).toUpperCase() + selectedEntry.statusFromHR.slice(1)}
                           </div>
                         </div>
-                        {selectedEntry.role === 'Department Head' && (
+                        {selectedEntry.role === 'Head Department' && (
                           <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                           <div className="flex items-center">
                             <BookUser className="w-4 h-4 mr-2 text-red-600" />
@@ -917,7 +874,7 @@ useEffect(() => {
                     </div>
 
                     <div className="pt-4 border-t border-border/30">
-                      <label className="text-sm font-medium text-muted-foreground">Reason for Visit</label>
+                      <label className="text-sm font-medium text-muted-foreground">Reason for Leave</label>
                       <p className="mt-2 text-sm leading-relaxed bg-muted/30 p-4 rounded-lg">
                         {selectedEntry.reason}
                       </p>
@@ -925,7 +882,7 @@ useEffect(() => {
 
                     {selectedEntry.statusFromDepartment === 'pending' && (
                       <div className="pt-4 border-t border-border/30">
-                        <label className="text-sm font-medium text-muted-foreground mb-3 block">Department Head Actions</label>
+                        <label className="text-sm font-medium text-muted-foreground mb-3 block">Head Department Actions</label>
                         <div className="flex gap-3">
                           <Button
                             onClick={() => handleDepartmentApprovalAction(selectedEntry.id, 'approved')}
@@ -954,12 +911,12 @@ useEffect(() => {
           {/* Department Entries Table */}
           {getProcessedDepartmentEntries().length > 0 && (
             <div className="max-w-6xl mx-auto">
-              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
+              <div className="bg-card/50 border border-border/50 rounded-2xl p-5 shadow-lg">
                 <h3 className="text-lg font-semibold mb-4">
                   {currentUser.department} Department Leave Requests
                 </h3>
-                <div className="overflow-auto h-[60vh] scrollbar-hide">
-                  <Table className="min-w-full">
+                <div className="block w-screen max-w-full overflow-x-auto overflow-y-auto h-[60vh] scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <Table className="min-w-max">
                     <TableHeader className="">
                       <TableRow className="">
                         <TableHead className="items-center justify-center text-center">Name</TableHead>
@@ -978,7 +935,7 @@ useEffect(() => {
                         <TableRow key={entry.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center">
-                              {entry.role === "Department Head" ? (
+                              {entry.role === "Head Department" ? (
                                 <Crown className="w-4 h-4 mr-2 text-yellow-600" />
                               ) : (
                                 <User className="w-4 h-4 mr-2 text-blue-600" />
@@ -988,7 +945,7 @@ useEffect(() => {
                           </TableCell>
                           <TableCell>
                             <span className={`text-sm px-2 py-1 rounded-full ${
-                              entry.role === "Department Head" 
+                              entry.role === "Head Department" 
                                 ? "bg-yellow-100 text-yellow-800" 
                                 : "bg-blue-100 text-blue-800"
                             }`}>
@@ -1033,7 +990,7 @@ useEffect(() => {
                                 entry.statusFromHR === 'rejected' ? 'bg-red-500' :
                                 'bg-yellow-500'
                               }`} title={`HR: ${entry.statusFromHR}`} />
-                              {entry.role === "Department Head" && (
+                              {entry.role === "Head Department" && (
                                 <>
                                 <div className="w-2 h-0.5 bg-gray-300 mx-1" />
                                   {/* Director approval status */}
@@ -1062,7 +1019,7 @@ useEffect(() => {
                               }`}>
                                 H
                               </span>
-                              {entry.role === "Department Head" && (
+                              {entry.role === "Head Department" && (
                                 <>
                                   →
                                   <span className={`${
@@ -1096,7 +1053,7 @@ useEffect(() => {
             </div>
           )}
 
-          {/* Summary Cards */}
+          {/* Summary Cards
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
             <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg">
               <div className="flex items-center justify-between">
@@ -1129,7 +1086,7 @@ useEffect(() => {
                 <Building className="w-8 h-8 text-blue-600" />
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

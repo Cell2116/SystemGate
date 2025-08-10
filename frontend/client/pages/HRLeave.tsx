@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDashboardStore } from "../store/dashboardStore";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,118 +27,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Clock2 from "../components/dashboard/clock"
 import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Shield, Crown } from "lucide-react";
 
 // Mock Clock component
-const Clock2 = () => (
-  <div className="text-sm text-gray-500">
-    {new Date().toLocaleTimeString()}
-  </div>
-);
 
 export default function HR() {
   const [isOpen, setIsOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
-  const [entries, setEntries] = useState<Array<{
-    id: string;
-    name: string;
-    licensePlate: string;
-    department: string;
-    role: string; // Added role field
-    date: string;
-    exitTime: string;
-    returnTime: string;
-    reason: string;
-    approval: string;
-    statusFromHR: string;
-    statusFromHeadDept: string; // Added Head Department approval
-    statusFromDirector: string;
-    submittedAt: string;
-  }>>([
-    {
-      id: "1",
-      name: "John Smith",
-      licensePlate: "ABC-1234",
-      department: "Engineering",
-      role: "Staff", // Regular staff member
-      date: "2024-01-15",
-      exitTime: "17:30",
-      returnTime: "09:00",
-      reason: "Meeting with development team to discuss new project requirements and technical specifications.",
-      approval: "approved",
-      statusFromHR: "approved",
-      statusFromHeadDept: "approved",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-15, 08:45:00"
-    },
-    {
-      id: "2",
-      name: "Sarah Johnson",
-      licensePlate: "XYZ-5678",
-      department: "Marketing",
-      role: "Head Department", // Head Department
-      date: "2024-01-15",
-      exitTime: "09:30",
-      returnTime: "10:30",
-      reason: "Client presentation and product demo session.",
-      approval: "pending",
-      statusFromHR: "pending",
-      statusFromHeadDept: "approved", // Auto-approved (self)
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-15, 10:15:00"
-    },
-    {
-      id: "3",
-      name: "Michael Chen",
-      licensePlate: "DEF-9012",
-      department: "Finance",
-      role: "Staff",
-      date: "2024-01-14",
-      exitTime: "16:00",
-      returnTime: "08:30",
-      reason: "Quarterly budget review and financial analysis meeting.",
-      approval: "rejected",
-      statusFromHR: "rejected",
-      statusFromHeadDept: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-14, 08:20:00"
-    },
-    {
-      id: "4",
-      name: "Emily Davis",
-      licensePlate: "GHI-3456",
-      department: "Operations",
-      role: "Head Department",
-      date: "2024-01-14",
-      exitTime: "18:00",
-      returnTime: "09:15",
-      reason: "Interview sessions for new candidates and team building workshop.",
-      approval: "approved",
-      statusFromHR: "approved",
-      statusFromHeadDept: "approved", // Auto-approved (self)
-      statusFromDirector: "approved",
-      submittedAt: "2024-01-14, 09:00:00"
-    },
-    {
-      id: "5",
-      name: "David Wilson",
-      licensePlate: "JKL-7890",
-      department: "IT Support",
-      role: "Staff",
-      date: "2024-01-13",
-      exitTime: "17:00",
-      returnTime: "08:00",
-      reason: "Server maintenance and network infrastructure upgrade.",
-      approval: "pending",
-      statusFromHR: "approved",
-      statusFromHeadDept: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-13, 07:45:00"
-    },
-  ]);
-  
+  const leavePermissions = useDashboardStore(state => state.leavePermissions);
+  const fetchLeavePermission = useDashboardStore(state => state.fetchLeavePermission);
+  const addLeavePermission = useDashboardStore(state => state.addLeavePermission);
+  const loading = useDashboardStore(state => state.loading);
+  const error = useDashboardStore(state => state.error);
+  const updateLeavePermission = useDashboardStore(state => state.updateLeavePermission);
+
+  useEffect(() => {
+    fetchLeavePermission();
+  }, [fetchLeavePermission]);
   const [formData, setFormData] = useState({
     name: "",
     licensePlate: "",
@@ -147,6 +56,8 @@ export default function HR() {
     exitTime: "",
     returnTime: "",
     reason: "",
+    reasonType: "", 
+    outsideReason: "", 
   });
 
   // Helper function to determine required approvals based on role
@@ -163,7 +74,7 @@ export default function HR() {
     const requiredApprovals = getRequiredApprovals(entry.role);
     
     if (requiredApprovals.includes("HR") && entry.statusFromHR !== "approved") return false;
-    if (requiredApprovals.includes("Head Department") && entry.statusFromHeadDept !== "approved") return false;
+    if (requiredApprovals.includes("Head Department") && entry.statusFromDepartment!== "approved") return false;
     if (requiredApprovals.includes("Director") && entry.statusFromDirector !== "approved") return false;
     
     return true;
@@ -174,7 +85,7 @@ export default function HR() {
     const requiredApprovals = getRequiredApprovals(entry.role);
     
     if (requiredApprovals.includes("HR") && entry.statusFromHR === "rejected") return true;
-    if (requiredApprovals.includes("Head Department") && entry.statusFromHeadDept === "rejected") return true;
+    if (requiredApprovals.includes("Head Department") && entry.statusFromDepartment=== "rejected") return true;
     if (requiredApprovals.includes("Director") && entry.statusFromDirector === "rejected") return true;
     
     return false;
@@ -187,18 +98,22 @@ export default function HR() {
     return "pending";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let reasonValue = formData.reasonType === "Outside" ? formData.outsideReason : formData.reasonType;
     const newEntry = {
-      id: Date.now().toString(),
       ...formData,
+      reason: reasonValue,
       approval: "pending",
+      statusFromDepartment: "pending",
       statusFromHR: "pending",
-      statusFromHeadDept: formData.role === "Head Department" ? "approved" : "pending", // Auto-approve for Head Department
+      statusFromHeadDept: formData.role === "Head Department" ? "approved" : "pending",
       statusFromDirector: "pending",
       submittedAt: new Date().toLocaleString(),
     };
-    setEntries(prev => [newEntry, ...prev]);
+    await addLeavePermission(newEntry);
+    // Fetch updated data after adding new entry
+    await fetchLeavePermission();
     setIsOpen(false);
     setFormData({
       name: "",
@@ -209,11 +124,18 @@ export default function HR() {
       exitTime: "",
       returnTime: "",
       reason: "",
+      reasonType: "",
+      outsideReason: "",
     });
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // If reasonType is changed to 'Sick', clear returnTime
+    if (field === "reasonType" && value === "Sick") {
+      setFormData(prev => ({ ...prev, [field]: value, returnTime: "" }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleViewDetails = (entry: any) => {
@@ -221,26 +143,33 @@ export default function HR() {
     setIsDetailsOpen(true);
   };
 
-  const handleApprovalAction = (entryId: string, action: 'approved' | 'rejected') => {
-    setEntries(prev => prev.map(entry => {
-      if (entry.id === entryId) {
-        const updatedEntry = { ...entry, statusFromHR: action };
-        updatedEntry.approval = getOverallStatus(updatedEntry);
-        return updatedEntry;
-      }
-      return entry;
-    }));
+  const handleApprovalAction = async (entryId: string, action: 'approved' | 'rejected') => {
+    // Find the entry to get the latest data
+    const entry = leavePermissions.find(e => e.id === entryId);
+    if (!entry) return;
+    // Compute new approval status
+    const updatedEntry = { ...entry, statusFromHR: action };
+    updatedEntry.approval = getOverallStatus(updatedEntry);
+    await updateLeavePermission(entryId, {
+      statusFromHR: action,
+      approval: updatedEntry.approval
+    });
     setIsDetailsOpen(false);
   };
 
   // Get entries that need HR approval (pending from HR perspective)
   const getPendingHREntries = () => {
-    return entries.filter(e => e.statusFromHR === 'pending');
+    // Filter entries where HR status is pending and overall status is pending
+    return leavePermissions.filter(e => {
+      const overallStatus = getOverallStatus(e);
+      return e.statusFromHR === 'pending' && overallStatus === 'pending';
+    });
   };
 
   // Get entries for the main table (processed entries only)
   const getProcessedEntries = () => {
-    return entries.filter(e => e.statusFromHR !== 'pending');
+    // Show entries where HR has made a decision (approved/rejected)
+    return leavePermissions.filter(e => e.statusFromHR === 'approved' || e.statusFromHR === 'rejected');
   };
 
   return (
@@ -381,21 +310,45 @@ export default function HR() {
                       value={formData.returnTime}
                       onChange={(e) => handleInputChange("returnTime", e.target.value)}
                       className="h-10 border-border/50 focus:border-primary"
-                      required
+                      required={formData.reasonType !== "Sick"}
+                      disabled={formData.reasonType === "Sick"}
+                      placeholder={formData.reasonType === "Sick" ? "Not required for Sick" : undefined}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reason" className="text-sm font-medium">
-                      Reason for Visit
+                    <Label htmlFor="reasonType" className="text-sm font-medium">
+                      Reason to Leave
                     </Label>
-                    <textarea
-                      id="reason"
-                      placeholder="Enter reason for visit..."
-                      value={formData.reason}
-                      onChange={(e) => handleInputChange("reason", e.target.value)}
-                      className="flex min-h-[80px] w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 resize-none transition-all duration-200"
+                    <select
+                      id="reasonType"
+                      title="Reason"
+                      value={formData.reasonType}
+                      onChange={e => handleInputChange("reasonType", e.target.value)}
+                      className="h-10 border border-border/50 rounded-md px-3 py-2 bg-background text-gray-500 text-sm focus:border-primary"
                       required
-                    />
+                    >
+                      <option value="">Select reason</option>
+                      <option value="PT">Plant 1</option>
+                      <option value="Outside">Outside</option>
+                      <option value="Sick">Sick</option>
+                    </select>
+                    {formData.reasonType === "Outside" && (
+                      <div className="mt-2">
+                        <Label htmlFor="outsideReason" className="text-sm font-medium">Explain Reason (Outside)</Label>
+                        <textarea
+                          id="outsideReason"
+                          placeholder="Enter reason for leaving (Outside)..."
+                          value={formData.outsideReason}
+                          onChange={e => handleInputChange("outsideReason", e.target.value)}
+                          className="flex min-h-[80px] w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 resize-none transition-all duration-200"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">Please explain the reason for leaving if you select Outside.</p>
+                      </div>
+                    )}
+                    {formData.reasonType && formData.reasonType !== "Outside" && (
+                      <p className="text-xs text-muted-foreground mt-2">Reason will be set as <span className="font-semibold">{formData.reasonType}</span>.</p>
+                    )}
                   </div>
                   
                   {/* Approval Flow Information */}
@@ -536,8 +489,8 @@ export default function HR() {
 
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent className="sm:max-w-2xl bg-card/95 border-border/50">
-                <DialogHeader className="space-y-3">
+              <DialogContent className="sm:max-w-2xl bg-card/95 border-border/50 h-[95vh] overflow-auto scrollbar-hide">
+                <DialogHeader className="space-y-1">
                   <DialogTitle className="text-2xl font-bold text-center">
                     Permission Detail
                   </DialogTitle>
@@ -547,7 +500,7 @@ export default function HR() {
                 </DialogHeader>
 
                 {selectedEntry && (
-                  <div className="py-1 space-y-4">
+                  <div className="py-1 space-y-1">
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="text-xl font-semibold flex items-center">
@@ -594,7 +547,7 @@ export default function HR() {
                           </p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-muted-foreground">Visit Date</label>
+                          <label className="text-sm font-medium text-muted-foreground">Date</label>
                           <p className="text-lg mt-1">{selectedEntry.date}</p>
                         </div>
                       </div>
@@ -604,7 +557,7 @@ export default function HR() {
                           <label className="text-sm font-medium text-muted-foreground">Return Time</label>
                           <p className="text-lg mt-1 flex items-center">
                             <Clock className="w-4 h-4 mr-2" />
-                            {selectedEntry.returnTime}
+                            {selectedEntry.returnTime || 'Not set'}
                           </p>
                         </div>
                         <div>
@@ -623,11 +576,11 @@ export default function HR() {
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-border/30">
-                      <label className="text-sm font-medium text-muted-foreground mb-3 block">Approval Status</label>
+                    <div className="pt-1 border-t border-border/30">
+                      <label className="text-sm font-medium text-muted-foreground mb-1 block">Approval Status</label>
                       <div className="grid grid-cols-1 gap-4">
                         {getRequiredApprovals(selectedEntry.role).map((approval) => (
-                          <div key={approval} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                          <div key={approval} className="flex justify-between items-center p-2 bg-muted/30 rounded-lg">
                             <div className="flex items-center">
                               {approval === "HR" && <Shield className="w-4 h-4 mr-2 text-blue-600" />}
                               {approval === "Head Department" && <User className="w-4 h-4 mr-2 text-green-600" />}
@@ -635,28 +588,29 @@ export default function HR() {
                               <label className="text-sm font-medium">{approval}</label>
                             </div>
                             <div className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                              (approval === "HR" ? selectedEntry.statusFromHR :
-                              approval === "Head Department" ? selectedEntry.statusFromHeadDept :
-                              selectedEntry.statusFromDirector) === 'approved' ? 'bg-green-100 text-green-800' :
-                              (approval === "HR" ? selectedEntry.statusFromHR :
-                              approval === "Head Department" ? selectedEntry.statusFromHeadDept :
-                              selectedEntry.statusFromDirector) === 'rejected' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
+                              (() => {
+                                const status = (approval === "HR" ? selectedEntry.statusFromHR :
+                                  approval === "Head Department" ? selectedEntry.statusFromDepartment :
+                                  selectedEntry.statusFromDirector) || 'pending';
+                                if (status === 'approved') return 'bg-green-100 text-green-800';
+                                if (status === 'rejected') return 'bg-red-100 text-red-800';
+                                return 'bg-yellow-100 text-yellow-800';
+                              })()
                             }`}>
-                              {(approval === "HR" ? selectedEntry.statusFromHR :
-                                approval === "Head Department" ? selectedEntry.statusFromHeadDept :
-                                selectedEntry.statusFromDirector).charAt(0).toUpperCase() +
-                              (approval === "HR" ? selectedEntry.statusFromHR :
-                                approval === "Head Department" ? selectedEntry.statusFromHeadDept :
-                                selectedEntry.statusFromDirector).slice(1)}
+                              {(() => {
+                                const status = (approval === "HR" ? selectedEntry.statusFromHR :
+                                  approval === "Head Department" ? selectedEntry.statusFromDepartment :
+                                  selectedEntry.statusFromDirector) || 'pending';
+                                return status.charAt(0).toUpperCase() + status.slice(1);
+                              })()}
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-border/30">
-                      <label className="text-sm font-medium text-muted-foreground">Reason for Visit</label>
+                    <div className="pt-1 border-t border-border/30">
+                      <label className="text-sm font-medium text-muted-foreground">Reason for Leave</label>
                       <p className="mt-2 text-sm leading-relaxed bg-muted/30 p-4 rounded-lg">
                         {selectedEntry.reason}
                       </p>
@@ -695,8 +649,8 @@ export default function HR() {
             <div className="max-w-6xl mx-auto">
               <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
                 <h3 className="text-lg font-semibold mb-4">Processed Leave Requests</h3>
-                <div className="overflow-auto h-[60vh] scrollbar-hide">
-                  <Table className="min-w-full">
+                <div className="block w-screen max-w-full overflow-x-auto overflow-y-auto h-[60vh] scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <Table className="min-w-max">
                     <TableHeader>
                       <TableRow className="sticky top-0 bg-white z-10">
                         <TableHead>Name</TableHead>
@@ -751,7 +705,7 @@ export default function HR() {
                             <div className="flex items-center space-x-1">
                               {getRequiredApprovals(entry.role).map((approval, index) => {
                                 const status = approval === "HR" ? entry.statusFromHR :
-                                            approval === "Head Department" ? entry.statusFromHeadDept :
+                                            approval === "Head Department" ? entry.statusFromDepartment :
                                             entry.statusFromDirector;
                                 return (
                                   <div key={approval} className="flex items-center">
@@ -770,7 +724,7 @@ export default function HR() {
                             <div className="text-xs text-muted-foreground mt-1">
                               {getRequiredApprovals(entry.role).map((approval, index) => {
                                 const status = approval === "HR" ? entry.statusFromHR :
-                                            approval === "Head Department" ? entry.statusFromHeadDept :
+                                            approval === "Head Department" ? entry.statusFromDepartment :
                                             entry.statusFromDirector;
                                 return (
                                   <span key={approval} className={`${

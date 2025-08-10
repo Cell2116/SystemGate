@@ -1,0 +1,57 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: esp32_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: espuser
+      POSTGRES_PASSWORD: esp123
+      POSTGRES_DB: esp32db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mqtt:
+    image: eclipse-mosquitto
+    container_name: esp32_mqtt
+    ports: 
+      - "1884:1884"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+
+  backend:
+    build: ./backend
+    container_name: esp32_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mqtt
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: espuser
+      DB_PASSWORD: esp123
+      DB_NAME: esp32db
+      MQTT_BROKER_URL : mqtt://mqtt:1884
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: esp32_frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+
+
+
+
+volumes:
+  pgdata:

@@ -19,39 +19,19 @@ import LeavePermission from "./pages/LeavePermission";
 import Login from "./pages/Login";
 import ProtectedRoute from "./authentication/protectedRoute";
 import { UserProvider } from "./authentication/userContext";
-
+// App.tsx
+import { useEffect } from "react";
+import { initWebSocket } from "@/lib/ws";
 
 const queryClient = new QueryClient();
 
-// const App = () => (
-//   <QueryClientProvider client={queryClient}>
-//     <BrowserRouter>
-//     <UserProvider>
-//         <Routes>
-//           <Route path="/login" element = {<Login/>}/>
-//           <Route path="/" element={
-//             <ProtectedRoute>
-//               <Layout/>
-//             </ProtectedRoute>
-//           }>
-//             <Route index element = {<Dashboard />}/>
-//             <Route path="/dashboard" element={<Dashboard />} />
-//             <Route path="/employee" element={<EmployeeDashboard />} />
-//             <Route path="/trucks" element={<InOutTrucks />} />
-//             <Route path="/leave" element={<LeavePermission />} />
-//             <Route path="/asd" element={<Products />} />
-//           </Route>
-//           <Route path="*" element={<NotFound />} />
-//         </Routes>
-//       </UserProvider>
-//     </BrowserRouter>
-//   </QueryClientProvider>
-// );
+const App = () => {
+  useEffect(()=>{
+    initWebSocket();
+  }, []);
+  return (
 
-
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <UserProvider> 
         <Routes>
@@ -75,5 +55,5 @@ const App = () => (
       </UserProvider>
     </BrowserRouter>
   </QueryClientProvider>
-);
+)}
 createRoot(document.getElementById("root")!).render(<App />);

@@ -212,7 +212,7 @@ export default function LoginPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="User">Staff</SelectItem>
-                      <SelectItem value="Department Head">Department Head</SelectItem>
+                      <SelectItem value="Head Department">Head Department</SelectItem>
                       <SelectItem value="HR">HR</SelectItem>
                     </SelectContent>
                   </Select>

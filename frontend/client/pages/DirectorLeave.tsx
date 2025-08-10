@@ -114,13 +114,13 @@ export default function DirectorLeavePage() {
       statusFromDirector: "pending",
       submittedAt: "2024-01-12, 08:45:00"
     },
-    // Add Department Head's own request - auto-approved at department level
+    // Add Head Department's own request - auto-approved at department level
     {
       id: "5",
-      name: "Sarah Johnson", // Current user (Department Head)
+      name: "Sarah Johnson", // Current user (Head Department)
       licensePlate: "SAR-1234",
       department: "IT",
-      role: "Department Head",
+      role: "Head Department",
       date: "2024-01-11",
       exitTime: "15:30",
       returnTime: "08:00",
@@ -153,7 +153,7 @@ export default function DirectorLeavePage() {
       name: "Smith",
       licensePlate: "GHI-7890",
       department: "Engineering",
-      role: "Department Head",
+      role: "Head Department",
       date: "2024-01-11",
       exitTime: "16:00",
       returnTime: "08:00",
@@ -169,7 +169,7 @@ export default function DirectorLeavePage() {
       name: "Smith2",
       licensePlate: "GHI-7890",
       department: "Engineering",
-      role: "Department Head",
+      role: "Head Department",
       date: "2024-01-11",
       exitTime: "16:00",
       returnTime: "08:00",
@@ -269,7 +269,7 @@ export default function DirectorLeavePage() {
                   className="group relative px-2 py-2 text-sm font-semibold border-2 hover:bg-primary hover:text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                 >
                   <Eye className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                  View Pending ({entries.filter(e => (e.statusFromDirector === 'pending' && (e.role === 'Department Head'))).length})
+                  View Pending ({entries.filter(e => (e.statusFromDirector === 'pending' && (e.role === 'Head Department'))).length})
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
@@ -282,7 +282,7 @@ export default function DirectorLeavePage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
-                  {entries.filter(e => (e.statusFromDirector === 'pending') && (e.role == 'Department Head')).length === 0 ? (
+                  {entries.filter(e => (e.statusFromDirector === 'pending') && (e.role == 'Head Department')).length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p className="text-lg">No pending entries</p>
@@ -304,7 +304,7 @@ export default function DirectorLeavePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {entries.filter(e => (e.statusFromDirector === 'pending') && (e.role === 'Department Head')).map((entry) => (
+                        {entries.filter(e => (e.statusFromDirector === 'pending') && (e.role === 'Head Department')).map((entry) => (
                           <TableRow key={entry.id}>
                             <TableCell className="font-medium">{entry.name}</TableCell>
                             <TableCell className="font-mono">{entry.licensePlate}</TableCell>
@@ -354,8 +354,9 @@ export default function DirectorLeavePage() {
 
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent className="sm:max-w-xl lg:max-w-lg bg-card/95 border-border/50">
-                <DialogHeader className="space-y-3">
+              <DialogContent className="sm:max-w-xl bg-card/95 border-border/50 h-[95vh] overflow-auto scrollbar-hide">
+              {/* lg:max-w-lg */}
+                <DialogHeader className="space-y-1">
                   <DialogTitle className="text-2xl font-bold text-center">
                     Permission Detail
                   </DialogTitle>
@@ -394,7 +395,7 @@ export default function DirectorLeavePage() {
                           <p className="text-lg mt-1">{selectedEntry.department}</p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-muted-foreground">Visit Date</label>
+                          <label className="text-sm font-medium text-muted-foreground">Date</label>
                           <p className="text-lg mt-1">{selectedEntry.date}</p>
                         </div>
                       </div>
@@ -444,7 +445,7 @@ export default function DirectorLeavePage() {
                     </div>
 
                     <div className="pt-4 border-t border-border/30">
-                      <label className="text-sm font-medium text-muted-foreground">Reason for Visit</label>
+                      <label className="text-sm font-medium text-muted-foreground">Reason for Leave</label>
                       <p className="mt-2 text-sm leading-relaxed bg-muted/30 p-4 rounded-lg">
                         {selectedEntry.reason}
                       </p>
@@ -479,7 +480,7 @@ export default function DirectorLeavePage() {
           </div>
 
           {/* Recent Processed Entries Table */}
-          {entries.filter(e => (e.statusFromDirector !== 'pending') && (e.role === 'Department Head')).length > 0 && (
+          {entries.filter(e => (e.statusFromDirector !== 'pending') && (e.role === 'Head Department')).length > 0 && (
             // Table Section List
             <div className="max-w-6xl mx-auto">
               <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
@@ -500,7 +501,7 @@ export default function DirectorLeavePage() {
                   </TableHeader>
                   <TableBody>
                     {entries
-                      .filter(e => (e.statusFromDirector !== 'pending') && (e.role === 'Department Head'))
+                      .filter(e => (e.statusFromDirector !== 'pending') && (e.role === 'Head Department'))
                       .map((entry) => (
                         <TableRow key={entry.id}>
                           <TableCell className="font-medium">{entry.name}</TableCell>
