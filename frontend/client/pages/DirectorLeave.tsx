@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,159 +29,93 @@ import {
 } from "@/components/ui/table";
 import Clock2 from "../components/dashboard/clock"
 import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Crown } from "lucide-react";
+import { useDashboardStore } from "@/store/dashboardStore";
+import { onConnectionChange, onDataChange } from "@/lib/ws";
+
+interface User {
+  name: string;
+  department: string;
+  role: string;
+}
 
 export default function DirectorLeavePage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
-  const [entries, setEntries] = useState<Array<{
-    id: string;
-    name: string;
-    licensePlate: string;
-    department: string;
-    role: string;
-    date: string;
-    exitTime: string;
-    returnTime: string;
-    reason: string;
-    approval: string;
-    statusFromDirector: string;
-    statusFromDepartment: string;
-    statusFromHR: string;
-    submittedAt: string;
-  }>>([
-    {
-      id: "1",
-      name: "David Wilson",
-      licensePlate: "JKL-7890",
-      department: "IT",
-      role: "Staff",
-      date: "2024-01-15",
-      exitTime: "17:00",
-      returnTime: "08:00",
-      reason: "Server maintenance and network infrastructure upgrade for the new office building.",
-      approval: "pending",
-      statusFromDepartment: "pending",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-15, 07:45:00"
-    },
-    {
-      id: "2",
-      name: "Alice Cooper",
-      licensePlate: "ABC-5678",
-      department: "IT",
-      role: "Staff",
-      date: "2024-01-14",
-      exitTime: "16:30",
-      returnTime: "09:00",
-      reason: "Client site visit for system installation and user training session.",
-      approval: "approved",
-      statusFromDepartment: "approved",
-      statusFromHR: "approved",
-      statusFromDirector: "approved",
-      submittedAt: "2024-01-14, 08:30:00"
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      licensePlate: "XYZ-9012",
-      department: "IT",
-      role: "Staff",
-      date: "2024-01-13",
-      exitTime: "18:00",
-      returnTime: "08:30",
-      reason: "Emergency database recovery at client location downtown.",
-      approval: "rejected",
-      statusFromDepartment: "rejected",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-13, 09:15:00"
-    },
-    {
-      id: "4",
-      name: "Emma Davis",
-      licensePlate: "DEF-3456",
-      department: "IT",
-      role: "Staff",
-      date: "2024-01-12",
-      exitTime: "17:30",
-      returnTime: "09:15",
-      reason: "Hardware procurement meeting with vendors and technical evaluation.",
-      approval: "pending",
-      statusFromDepartment: "approved",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-12, 08:45:00"
-    },
-    // Add Head Department's own request - auto-approved at department level
-    {
-      id: "5",
-      name: "Sarah Johnson", // Current user (Head Department)
-      licensePlate: "SAR-1234",
-      department: "IT",
-      role: "Head Department",
-      date: "2024-01-11",
-      exitTime: "15:30",
-      returnTime: "08:00",
-      reason: "Strategic planning meeting with board of directors and quarterly review session.",
-      approval: "pending",
-      statusFromDepartment: "approved", // Auto-approved (self)
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-11, 07:30:00"
-    },
-    // Add some entries from other departments to show they're filtered out
-    {
-      id: "6",
-      name: "John Smith",
-      licensePlate: "GHI-7890",
-      department: "Engineering",
-      role: "Staff",
-      date: "2024-01-11",
-      exitTime: "16:00",
-      returnTime: "08:00",
-      reason: "Project meeting with external partners.",
-      approval: "pending",
-      statusFromDepartment: "pending",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-11, 07:30:00"
-    },
-    {
-      id: "7",
-      name: "Smith",
-      licensePlate: "GHI-7890",
-      department: "Engineering",
-      role: "Head Department",
-      date: "2024-01-11",
-      exitTime: "16:00",
-      returnTime: "08:00",
-      reason: "Project meeting with external partners.",
-      approval: "pending",
-      statusFromDepartment: "pending",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-11, 07:30:00"
-    },
-    {
-      id: "8",
-      name: "Smith2",
-      licensePlate: "GHI-7890",
-      department: "Engineering",
-      role: "Head Department",
-      date: "2024-01-11",
-      exitTime: "16:00",
-      returnTime: "08:00",
-      reason: "Project meeting with external partners.",
-      approval: "pending",
-      statusFromDepartment: "pending",
-      statusFromHR: "pending",
-      statusFromDirector: "approved",
-      submittedAt: "2024-01-11, 07:30:00"
-    }
-  ]);
+  const leavePermissions = useDashboardStore(state => state.leavePermissions);
+  const fetchLeavePermission = useDashboardStore(state => state.fetchLeavePermission);
+  const addLeavePermission = useDashboardStore(state => state.addLeavePermission);
+  const loading = useDashboardStore(state => state.loading);
+  const error = useDashboardStore(state => state.error);
+  const updateLeavePermission = useDashboardStore(state => state.updateLeavePermission);
+
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribeDataChange: (() => void) | null = null;
+    let unsubscribeLeaveChange: (() => void) | null = null;
+
+    unsubscribeDataChange = onDataChange('attendance', (data) => {
+      if (!mounted) return;
+      setTimeout(() => {
+        if (mounted) fetchLeavePermission();
+      }, 100);
+    });
+    unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
+      if (!mounted) return;
+      setTimeout(() => {
+        if (mounted) fetchLeavePermission();
+      }, 100);
+    });
+
+    fetchLeavePermission();
+
+    return () => {
+      mounted = false;
+      if (unsubscribeDataChange) unsubscribeDataChange();
+      if (unsubscribeLeaveChange) unsubscribeLeaveChange();
+      // Do NOT call closeWebSocket here!
+    };
+  }, [fetchLeavePermission]);
+
+  useEffect(() => {
+    const loadUserFromStorage = () => {
+      try {
+        const storedUser = localStorage.getItem("user");
+        const storedRole = localStorage.getItem("userRole");
+        const isLoggedIn = localStorage.getItem("isLoggedIn");
+
+        if (!isLoggedIn || isLoggedIn !== "true") {
+          console.error("User not logged in");
+          return;
+        }
+
+        if (storedUser && storedRole) {
+          const parsedUser = JSON.parse(storedUser);
+
+          if (storedRole === "Director" || parsedUser.role === "Director") {
+            setCurrentUser({
+              name: parsedUser.name,
+              department: parsedUser.department,
+              role: "Director",
+            });
+          } else {
+            console.error("User is not a Head Department. Current role:", storedRole);
+          }
+        } else {
+          console.error("No user data found in localStorage");
+        }
+      } catch (error) {
+        console.error("Error loading user from localStorage:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadUserFromStorage();
+  }, []);
+
   const [formData, setFormData] = useState({
     name: "",
     licensePlate: "",
@@ -195,45 +130,73 @@ export default function DirectorLeavePage() {
     statusFromHR: "",
   });
 
-  // const handleSubmit = (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   const newEntry = {
-  //     id: Date.now().toString(),
-  //     ...formData,
-  //     approval: "pending",
-  //     submittedAt: new Date().toLocaleString(),
-  //   };
-  //   setEntries(prev => [newEntry, ...prev]);
-  //   setIsOpen(false);
-  //   setFormData({
-  //     name: "",
-  //     licensePlate: "",
-  //     department: "",
-  //     date: "",
-  //     exitTime: "",
-  //     returnTime: "",
-  //     reason: "",
-  //     approval: "",
-  //     statusFromDirector: "",
-  //     statusFromHR: ""
-  //   });
-  // };
+  useEffect(() => {
+    if (currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        department: currentUser.department,
+        role: currentUser.role,
+        name: currentUser.name,
+      }));
+    }
+  }, [currentUser]);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const getPendingDirectorEntries = () => {
+    if (!currentUser) return [];
+    return leavePermissions.filter(entry => 
+      entry.role === "Head Department" && 
+      entry.statusFromDirector?.toLowerCase() === "pending"
+    );
   };
 
+  const getProcessedDirectorEntries = () => {
+    if (!currentUser) return [];
+    return leavePermissions.filter(entry => 
+      entry.role === "Head Department" && 
+      entry.statusFromDirector !== "pending"
+    );
+  };
+  const getOverallStatus = (entry: any) => {
+    if (entry.role === "Head Department") {
+      if (entry.statusFromHR === "rejected" || entry.statusFromDirector === "rejected") return "rejected";
+      if (entry.statusFromHR === "approved" && entry.statusFromDirector === "approved") return "approved";
+      return "pending";
+    } else {
+      if (entry.statusFromDepartment === "rejected" || entry.statusFromHR === "rejected") return "rejected";
+      if (entry.statusFromDepartment === "approved" && entry.statusFromHR === "approved") return "approved";
+      return "pending";
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    if (field === "reasonType") {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+        returnTime: value === "Sick" ? "" : prev.returnTime,
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  // View details modal
   const handleViewDetails = (entry: any) => {
     setSelectedEntry(entry);
     setIsDetailsOpen(true);
   };
 
-  const handleApprovalAction = (entryId: string, action: 'approved' | 'rejected') => {
-    setEntries(prev => prev.map(entry =>
-      entry.id === entryId
-        ? { ...entry, approval: action, statusFromDirector: action }
-        : entry
-    ));
+
+  const handleApprovalAction = async (entryId: string, action: 'approved' | 'rejected') => {
+    const entry = leavePermissions.find(e => e.id === entryId);
+    if (!entry) return;
+    // Compute new approval status
+    const updatedEntry = { ...entry, statusFromDirector: action };
+    updatedEntry.approval = getOverallStatus(updatedEntry);
+    await updateLeavePermission(entryId, {
+      statusFromDirector: action,
+      approval: updatedEntry.approval
+    });
     setIsDetailsOpen(false);
   };
 
@@ -269,7 +232,7 @@ export default function DirectorLeavePage() {
                   className="group relative px-2 py-2 text-sm font-semibold border-2 hover:bg-primary hover:text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                 >
                   <Eye className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                  View Pending ({entries.filter(e => (e.statusFromDirector === 'pending' && (e.role === 'Head Department'))).length})
+                  View Pending ({getPendingDirectorEntries().length})
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
@@ -282,7 +245,7 @@ export default function DirectorLeavePage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
-                  {entries.filter(e => (e.statusFromDirector === 'pending') && (e.role == 'Head Department')).length === 0 ? (
+                  {getPendingDirectorEntries().length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p className="text-lg">No pending entries</p>
@@ -304,7 +267,7 @@ export default function DirectorLeavePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {entries.filter(e => (e.statusFromDirector === 'pending') && (e.role === 'Head Department')).map((entry) => (
+                        {getPendingDirectorEntries().map((entry) => (
                           <TableRow key={entry.id}>
                             <TableCell className="font-medium">{entry.name}</TableCell>
                             <TableCell className="font-mono">{entry.licensePlate}</TableCell>
@@ -354,7 +317,7 @@ export default function DirectorLeavePage() {
 
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent className="sm:max-w-xl bg-card/95 border-border/50 h-[95vh] overflow-auto scrollbar-hide">
+              <DialogContent className="sm:max-w-xl bg-card/95 border-border/50 sm:h-full lg:h-max overflow-auto scrollbar-hide">
               {/* lg:max-w-lg */}
                 <DialogHeader className="space-y-1">
                   <DialogTitle className="text-2xl font-bold text-center">
@@ -480,7 +443,7 @@ export default function DirectorLeavePage() {
           </div>
 
           {/* Recent Processed Entries Table */}
-          {entries.filter(e => (e.statusFromDirector !== 'pending') && (e.role === 'Head Department')).length > 0 && (
+          {getProcessedDirectorEntries().length > 0 && (
             // Table Section List
             <div className="max-w-6xl mx-auto">
               <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
@@ -500,9 +463,7 @@ export default function DirectorLeavePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {entries
-                      .filter(e => (e.statusFromDirector !== 'pending') && (e.role === 'Head Department'))
-                      .map((entry) => (
+                    {getProcessedDirectorEntries().map((entry) => (
                         <TableRow key={entry.id}>
                           <TableCell className="font-medium">{entry.name}</TableCell>
                           <TableCell className="font-mono">{entry.licensePlate}</TableCell>

@@ -19,41 +19,45 @@ import LeavePermission from "./pages/LeavePermission";
 import Login from "./pages/Login";
 import ProtectedRoute from "./authentication/protectedRoute";
 import { UserProvider } from "./authentication/userContext";
-// App.tsx
 import { useEffect } from "react";
 import { initWebSocket } from "@/lib/ws";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  useEffect(()=>{
+  useEffect(() => {
+    console.log("🚀 Initiating global WebSocket connection...");
     initWebSocket();
+    console.log("✅ WebSocket initialization completed");
+    // Only initialize once, never close here!
   }, []);
-  return (
 
+  return (
     <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <UserProvider> 
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout /> {/* ⬅ ini seharusnya render */}
-              </ProtectedRoute>
-            }
+      <BrowserRouter>
+        <UserProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
             >
-            <Route index element={<Dashboard />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="employee" element={<EmployeeDashboard />} />
-            <Route path="trucks" element={<InOutTrucks />} />
-            <Route path="leave" element={<LeavePermission />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </UserProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
-)}
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="employee" element={<EmployeeDashboard />} />
+              <Route path="trucks" element={<InOutTrucks />} />
+              <Route path="leave" element={<LeavePermission />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </UserProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+};
 createRoot(document.getElementById("root")!).render(<App />);
+

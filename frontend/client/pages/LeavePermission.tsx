@@ -13,8 +13,8 @@ export default function LeavePermission(){
   switch (role) {
     case "HR":
       return <HRLeavePage/>
-    case "User":
-      return <UserLeavePage/>
+    // case "User":
+    //   return <UserLeavePage/>
     case "Director":
       return <DirectorLeavePage/>
     case "Head Department":

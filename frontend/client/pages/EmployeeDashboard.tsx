@@ -1,8 +1,6 @@
-
-
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
-import { initWebSocket, onMessage, closeWebSocket, getConnectionStatus } from "@/lib/ws";
+import { initWebSocket, onMessage, closeWebSocket, getConnectionStatus, onConnectionChange, onDataChange } from "@/lib/ws";
 import Clock2 from "../components/dashboard/clock"
 
 import { ReactNode, CSSProperties } from "react";
@@ -30,59 +28,205 @@ const CardContent = ({ children, className = "" }: CardContentProps) => (
   </div>
 );
 
+// Extended Attendance type to include leave permission fields
+interface ExtendedAttendance {
+  id: number;
+  uid: string;
+  name: string;
+  department: string;
+  licenseplate: string;
+  image_path?: string;
+  image_path_out?: string;
+  datein: string;
+  dateout?: string | null;
+  status?: string;
+  // Leave permission fields
+  leave_permission_id?: number | null;
+  leave_reason?: string | null;
+  planned_exit_time?: string | null;
+  planned_return_time?: string | null;
+  actual_exittime?: string | null;
+  actual_returntime?: string | null;
+}
 
 export default function EmployeeDashboard() {
-  const { 
-    records, 
-    loading, 
-    error, 
+  const {
+    records,
+    loading,
+    error,
     connectionStatus,
-    fetchRecords, 
-    addRecord, 
+    fetchRecords,
+    addRecord,
     updateRecord,
     updateRecordByUid,
     setConnectionStatus,
-    setError
+    setError,
+    leavePermissions,
+    fetchLeavePermission,
+    addLeavePermission,
   } = useDashboardStore();
+
+  // Add ref to track current records count without stale closure
+  const recordsCountRef = useRef(0);
+  
+  // Update ref whenever records change
+  useEffect(() => {
+    recordsCountRef.current = records.length;
+  }, [records]);
+
+  // const formatLocalDateTime = (dateString: string | null) => {
+  //   if (!dateString) return null;
+    
+  //   // Create a date object from the string
+  //   const date = new Date(dateString);
+    
+  //   // Check if the date is valid
+  //   if (isNaN(date.getTime())) return null;
+    
+  //   // Format in Indonesian timezone (WIB - UTC+7)
+  //   return date.toLocaleString("id-ID", {
+  //     timeZone: "Asia/Jakarta", 
+  //     year: 'numeric',
+  //     month: '2-digit',
+  //     day: '2-digit',
+  //     hour: '2-digit',
+  //     minute: '2-digit',
+  //     second: '2-digit',
+  //     hour12: false
+  //   });
+  // };
+  const formatLocalDateTime = (dateString: string | null | undefined) => {
+  if (!dateString) return null;
+  
+  
+  // Create a date object from the string
+  const date = new Date(dateString);
+  
+  // Check if the date is valid
+  if (isNaN(date.getTime())) return null;
+  
+  
+  // Format in Indonesian timezone (WIB - UTC+7)
+  const formatted = date.toLocaleString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  // Debug: Log the formatted result
+  
+  return formatted;
+};
 
   useEffect(() => {
     let mounted = true;
-    let statusCheckInterval: NodeJS.Timeout;
+    let unsubscribeDataChange: (() => void) | null = null;
+    let unsubscribeLeaveChange: (() => void) | null = null;
 
     const setupRealTimeConnection = async () => {
       try {
-        console.log("🚀 Setting up real-time dashboard connection...");
-        
-        // 1. Set initial connection status
+        console.log("🚀 Setting up real-time connection...");
         setConnectionStatus('connecting');
+        
+        // Listen to connection status changes
+        onConnectionChange((status) => {
+          if (!mounted) return;
+          console.log("🔗 WebSocket connection status changed:", status);
+          
+          switch (status) {
+            case 'open':
+              setConnectionStatus('connected');
+              setError(null);
+              break;
+            case 'connecting':
+              setConnectionStatus('connecting');
+              break;
+            case 'closed':
+            case 'closing':
+              setConnectionStatus('error');
+              break;
+          }
+        });
+        
+        // Subscribe to global attendance data changes
+        unsubscribeDataChange = onDataChange('attendance', (data) => {
+          if (!mounted) return;
+          
+          console.log("🔄 Global attendance data change received:", data);
+          console.log("🔄 About to call fetchRecords...");
+          
+          // Log leave permission data if present
+          if (data.leaveInfo || data.leave_permission_id) {
+            console.log("🟣 Leave permission data in global change:", {
+              leaveInfo: data.leaveInfo,
+              leave_permission_id: data.leave_permission_id,
+              leave_reason: data.leave_reason,
+              planned_exit_time: data.planned_exit_time,
+              planned_return_time: data.planned_return_time,
+              actual_exittime: data.actual_exittime,
+              actual_returntime: data.actual_returntime
+            });
+          }
+          
+          // Force refresh records when any attendance data changes
+          console.log("🔄 Force refreshing records due to global data change");
+          setTimeout(() => {
+            if (mounted) {
+              console.log("🔄 Calling fetchRecords NOW...");
+              fetchRecords();
+            }
+          }, 100);
+        });
+        
+        // Also subscribe to leave permission changes specifically
+        unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
+          if (!mounted) return;
+          
+          console.log("🟣 Global leave permission data change received:", data);
+          console.log("🟣 About to call fetchRecords and fetchLeavePermission...");
+          
+          // Force refresh both records and leave permissions
+          setTimeout(() => {
+            if (mounted) {
+              console.log("🟣 Calling fetchRecords and fetchLeavePermission NOW...");
+              fetchRecords();
+              fetchLeavePermission();
+            }
+          }, 100);
+        });
 
-        // 2. Initialize WebSocket
         initWebSocket();
+        await fetchLeavePermission();
 
-        // 3. Setup WebSocket message handler
         onMessage((data) => {
           if (!mounted) return;
           
-          console.log("📨 WebSocket message received:", data);
-
-          // Skip info/system messages
+          console.log("📨 WebSocket message received in dashboard:", data);
+          console.log("📊 Current records count before processing:", recordsCountRef.current);
+          
           if (data.type === 'info') {
-            console.log("ℹ️ System message:", data.message);
+            console.log("ℹ️ Received info message, updating connection status");
             setConnectionStatus('connected');
+            setError(null);
             return;
           }
-
-          // Validate required fields
+          
           if (!data.licenseplate || !data.name || !data.department) {
-            console.warn("⚠️ Invalid WebSocket data (missing required fields):", data);
+            console.warn("⚠️ Invalid WebSocket data:", data);
             return;
           }
-
-          // Handle different types of real-time updates
+          
+          console.log("🔄 Processing message type:", data.type, "for UID:", data.uid);
+          
           switch (data.type) {
             case 'entry':
               console.log("🚪 Processing entry record:", data.uid);
-              addRecord({
+              const entryRecord = {
                 id: data.id || Date.now(),
                 uid: data.uid,
                 name: data.name,
@@ -91,44 +235,30 @@ export default function EmployeeDashboard() {
                 image_path: data.image_path,
                 datein: data.datein || new Date().toISOString(),
                 dateout: null,
-                status: 'entry'
-              });
+                status: 'entry',
+                leave_permission_id: data.leaveInfo?.permissionId || null,
+                leave_reason: data.leaveInfo?.reason || null,
+                planned_exit_time: data.leaveInfo?.plannedExitTime || null,
+                planned_return_time: data.leaveInfo?.plannedReturnTime || null,
+                actual_exittime: data.leaveInfo?.actualExitTime || null,
+                actual_returntime: data.leaveInfo?.actualReturnTime || null,
+              } as ExtendedAttendance;
+              console.log("✅ Adding entry record:", entryRecord);
+              addRecord(entryRecord);
               break;
 
             case 'exit':
-              console.log("🚪 Processing exit record:", data.uid);
-              const exitUpdates: any = {
-                dateout: data.dateout || new Date().toISOString(),
-                status: 'exit'
-              };
-              if (data.image_path_out) {
-                exitUpdates.image_path_out = data.image_path_out;
-              }
-              if (data.id) {
-                updateRecord(data.id, exitUpdates);
-              } else {
-                // Fallback: update by UID if no ID provided
-                updateRecordByUid(data.uid, exitUpdates);
-              }
-              break;
-
+            case 'leave_exit':
+            case 'leave_return':
             case 'image_update':
-              console.log("📸 Processing image update:", data.uid);
-              if (data.id) {
-                updateRecord(data.id, {
-                  image_path: data.image_path
-                });
-              } else {
-                updateRecordByUid(data.uid, {
-                  image_path: data.image_path
-                });
-              }
+              console.log(`🔄 Processing ${data.type} - will be handled by global data change`);
+              // Don't process these here - let the global data change system handle them
+              // The global broadcast will trigger a fetchRecords() which will get fresh data
               break;
 
             default:
-              // Handle legacy format or unknown types as new entries
-              console.log("📝 Processing unknown/legacy format as new entry");
-              addRecord({
+              console.log("📝 Processing unknown format as new entry");
+              const defaultRecord = {
                 id: data.id || Date.now(),
                 uid: data.uid,
                 name: data.name,
@@ -137,58 +267,54 @@ export default function EmployeeDashboard() {
                 image_path: data.image_path,
                 datein: data.datein || new Date().toISOString(),
                 dateout: data.dateout,
-                status: data.status || 'entry'
-              });
+                status: data.status || 'entry',
+                leave_permission_id: data.leave_permission_id || null,
+                leave_reason: data.leave_reason || null,
+                planned_exit_time: data.planned_exit_time || null,
+                planned_return_time: data.planned_return_time || null,
+                actual_exittime: data.actual_exittime || null,
+                actual_returntime: data.actual_returntime || null,
+              } as ExtendedAttendance;
+              console.log("✅ Adding default record:", defaultRecord);
+              addRecord(defaultRecord);
           }
-
-          // Update connection status on successful message processing
+          
+          // console.log("✅ Message processed successfully");
+          // console.log("📊 Final records count:", recordsCountRef.current);
           setConnectionStatus('connected');
           setError(null);
         });
-
-        // 4. Fetch initial data
+// 
+        // console.log("📊 Fetching initial records...");
         await fetchRecords();
-        console.log("📥 Initial data loaded successfully");
-
-        // 5. Setup periodic connection status check
-        statusCheckInterval = setInterval(() => {
-          if (!mounted) return;
-          
-          const wsStatus = getConnectionStatus();
-          if (wsStatus === 'open') {
-            setConnectionStatus('connected');
-          } else if (wsStatus === 'connecting') {
-            setConnectionStatus('connecting');
-          } else {
-            setConnectionStatus('error');
-          }
-        }, 5000); // Check every 5 seconds
-
-        console.log("✅ Real-time dashboard setup complete");
+        // console.log("✅ Initial setup complete");
 
       } catch (error) {
-        console.error("❌ Failed to setup real-time connection:", error);
+        console.error("❌ Error in setupRealTimeConnection:", error);
         setConnectionStatus('error');
         setError(error instanceof Error ? error.message : 'Connection failed');
       }
     };
 
-    // Initialize the connection
     setupRealTimeConnection();
 
-    // Cleanup function
     return () => {
+      // console.log("🧹 Cleaning up dashboard connection...");
       mounted = false;
-      console.log("🧹 Cleaning up dashboard connections...");
       
-      if (statusCheckInterval) {
-        clearInterval(statusCheckInterval);
+      // Unsubscribe from global data changes
+      if (unsubscribeDataChange) {
+        unsubscribeDataChange();
+      }
+      
+      if (unsubscribeLeaveChange) {
+        unsubscribeLeaveChange();
       }
       
       closeWebSocket();
       setConnectionStatus('disconnected');
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   const getStatusIndicator = () => {
     switch (connectionStatus) {
@@ -203,184 +329,322 @@ export default function EmployeeDashboard() {
     }
   };
 
+  // State for image modal
+  const [modalImage, setModalImage] = useState<string | null>(null);
+
   const status = getStatusIndicator();
 
   return (
-    <div className="h-screen flex flex-col space-y-4 overflow-hidden bg-gray-50 p-4">
-      {/* Header */}
-      <div className="z-10 sticky top-0 pb-2 bg-gray-50">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Employee Gate Record</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Real-time employee data recorded at the gate
-            </p>
-          </div>
-          <div className="mt-4 sm:mt-0 flex items-center gap-4">
-            <div className={`text-sm font-medium ${status.color} flex items-center gap-1`}>
-              <span>{status.icon}</span>
-              <span>{status.text}</span>
+    <>
+      <div className="h-screen flex flex-col space-y-4 overflow-hidden bg-gray-50 p-4">
+        {/* Header */}
+        <div className="z-10 sticky top-0 pb-2 bg-gray-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Employee Gate Record</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Real-time employee data recorded at the gate
+              </p>
             </div>
-            <div className="text-xs text-gray-500">
-              {records.length} records
+            <div className="mt-4 sm:mt-0 flex items-center gap-4">
+              <div className={`text-sm font-medium ${status.color} flex items-center gap-1`}>
+                <span>{status.icon}</span>
+                <span>{status.text}</span>
+              </div>
+              <div className="text-xs text-gray-500">
+                {records.length} records
+              </div>
+              <Clock2 />
             </div>
-            <Clock2 />
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <Card 
-        style={{ 
-          transform: "scale(0.70)", 
-          transformOrigin: "top left", 
-          width: "142.8%", 
-          height: "142.8%" 
-        }} 
-        className="flex-1 overflow-hidden"
-      >
-        <CardContent className="h-full overflow-y-auto space-y-4 p-4">
-          {/* Loading State */}
-          {loading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                <p className="text-gray-500">Loading employee records...</p>
+        {/* Main Content */}
+        <Card 
+          style={{ 
+            transform: "scale(0.70)", 
+            transformOrigin: "top left", 
+            width: "142.8%", 
+            height: "142.8%" 
+          }} 
+          className="flex-1 overflow-hidden"
+        >
+          <CardContent className="h-full overflow-y-auto space-y-4 p-4">
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <p className="text-gray-500">Loading employee records...</p>
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="flex items-center justify-center py-8">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-600 flex items-center gap-2">
-                  <span>❌</span>
-                  <span>{error}</span>
-                </p>
+            )}
+            
+            {/* Error State */}
+            {error && (
+              <div className="flex items-center justify-center py-8">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-600 flex items-center gap-2">
+                    <span>❌</span>
+                    <span>{error}</span>
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!loading && !error && records.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="text-6xl mb-4">🚪</div>
-                <p className="text-gray-500 text-lg">No attendance records yet</p>
-                <p className="text-gray-400 text-sm">Records will appear here when employees scan their RFID cards</p>
+            )}
+            
+            {/* Empty State */}
+            {!loading && !error && records.length === 0 && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">🚪</div>
+                  <p className="text-gray-500 text-lg">No attendance records yet</p>
+                  <p className="text-gray-400 text-sm">Records will appear here when employees scan their RFID cards</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            
+            {/* Records List */}
+            {records.map((record: ExtendedAttendance, index) => (
+              <Card 
+                key={`${record.uid}-${record.id}-${index}`}
+                className={`w-full transition-all duration-500 hover:shadow-md ${
+                  index === 0 ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                }`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex flex-col lg:flex-row justify-between lg:text-2xl sm:text-sm gap-4 w-full">
+              
+                    {/* SECTION 1: Vehicle/Person Images */}
+                    <div className="w-full lg:w-1/4 flex flex-col gap-4">
+                    <div className="w-full flex flex-row gap-4 justify-center">
+                      {/* Entry Image */}
+                      <div className="flex flex-col items-center">
+                        <h3 className="text-center pb-1 lg:text-xl sm:text-sm font-semibold text-green-600">
+                          Entry Photo
+                        </h3>
+                        <img
+                          src={record.image_path 
+                            ? `http://localhost:3000/uploads/${record.image_path}` 
+                            : "https://via.placeholder.com/150x150?text=No+Photo"
+                          }
+                          alt="entry"
+                          className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
+                          onClick={() => {
+                            if (record.image_path)
+                              setModalImage(`http://localhost:3000/uploads/${record.image_path}`);
+                          }}
+                        />
+                      </div>
+                      
+                      {/* Exit/Leave Image */}
+                      <div className="flex flex-col items-center">
+                        <h3 className="text-center pb-1 lg:text-xl sm:text-sm font-semibold text-red-600">
+                          Exit Photo
+                        </h3>
+                        <img
+                          src={record.image_path_out
+                            ? `http://localhost:3000/uploads/${record.image_path_out}`
+                            : "https://via.placeholder.com/150x150?text=No+Photo"
+                          }
+                          alt="exit"
+                          className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
+                          onClick={() => {
+                            if (record.image_path_out)
+                              setModalImage(`http://localhost:3000/uploads/${record.image_path_out}`);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="w-full flex flex-row gap-4 justify-center">
+                      {/* Leave Exit IMage */}
+                      <div className="flex flex-col items-center">
+                        <h3 className="text-center pb-1 lg:text-xl sm:text-sm font-semibold text-green-600">
+                          Leave Exit Photo
+                        </h3>
+                        <img
+                          src={record.image_path_out
+                            ? `http://localhost:3000/uploads/${record.image_path_out}`
+                            : "https://via.placeholder.com/150x150?text=No+Photo"
+                          }
+                          alt="leave_exit"
+                          className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
+                          onClick={() => {
+                            if (record.image_path_out)
+                              setModalImage(`http://localhost:3000/uploads/${record.image_path_out}`);
+                          }}
+                        />
+                      </div>
+                      {/* Leave Return Imagee */}
+                      <div className="flex flex-col items-center">
+                        <h3 className="text-center pb-1 lg:text-xl sm:text-sm font-semibold text-red-600">
+                          Leave Return Photo
+                        </h3>
+                        <img
+                          src={record.image_path_out
+                            ? `http://localhost:3000/uploads/${record.image_path_out}`
+                            : "https://via.placeholder.com/150x150?text=No+Photo"
+                          }
+                          alt="leave_return"
+                          className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
+                          onClick={() => {
+                            if (record.image_path_out)
+                              setModalImage(`http://localhost:3000/uploads/${record.image_path_out}`);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    </div>
 
-          {/* Records List */}
-          {records.map((record, index) => (
-            <Card 
-              key={`${record.uid}-${record.id}-${index}`}
-              className={`w-full transition-all duration-500 hover:shadow-md ${
-                index === 0 ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-              }`}
-            >
-              <CardContent className="p-4">
-                <div className="flex flex-col lg:flex-row lg:text-2xl sm:text-sm gap-4 w-full">
-                  {/* Vehicle Image */}
-                  <div className="w-full lg:w-1/4 flex justify-center">
-                    <div className="relative">
-                      <h1 className="text-center pb-1 lg:text-xl sm:text-sm font-semibold">Tap In</h1>
-                      <img
-                        src={record.image_path 
-                          ? `http://localhost:3000/uploads/${record.image_path}` 
-                          : "https://via.placeholder.com/150x150?text=Vehicle"
-                        }
-                        alt="vehicle"
-                        className="h-32 w-32 object-cover text-gray-300 text-center rounded-lg border shadow-sm"
-                        // onError={(e) => {
-                        //   e.currentTarget.src = "https://via.placeholder.com/150x150?text=No+Image";
-                        // }}
-                      />
-                      {index === 0 && (
-                        <div className="absolute -top-2 -right-4 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                          Latest
+                    {/* SECTION 2: Basic Attendance Info (License Plate, Name, Department, Entry, Exit) */}
+                    <div className="w-full lg:w-1/4 flex flex-col text-left space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="font-bold lg:text-2xl sm:text-sm text-blue-600">
+                          {record.licenseplate}
+                        </p>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          record.status === 'entry' ? 'bg-green-100 text-green-800' :
+                          record.status === 'exit' ? 'bg-red-100 text-red-800' :
+                          record.status === 'leave_exit' ? 'bg-orange-100 text-orange-800' :
+                          record.status === 'leave_return' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {record.status === 'leave_exit' ? 'LEAVE EXIT' :
+                          record.status === 'leave_return' ? 'LEAVE RETURN' :
+                          record.status?.toUpperCase() || 'UNKNOWN'}
+                        </span>
+                        {index === 0 && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            LATEST
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Name:</span>
+                        <span className="ml-2 text-gray-900 lg:text-xl sm:text-sm">{record.name}</span>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Department:</span>
+                        <span className="ml-2 text-gray-900 lg:text-xl sm:text-sm">{record.department}</span>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Entry:</span>
+                        <span className="ml-2 text-green-700 font-mono lg:text-xl sm:text-sm">
+                          {formatLocalDateTime(record.datein)}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Exit:</span>
+                        <span className={`ml-2 font-mono lg:text-xl sm:text-sm ${
+                          record.dateout ? 'text-red-700' : 'text-gray-400'
+                        }`}>
+                          {record.dateout ? formatLocalDateTime(record.dateout) : "Still inside"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* SECTION 3: Leave Permission Details */}
+                    <div className="w-full lg:w-1/4 flex flex-col text-left space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="font-bold lg:text-xl sm:text-sm text-purple-600">Leave Permission</p>
+                        {record.leave_permission_id && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            APPROVED
+                          </span>
+                        )}
+                      </div>
+                      
+                      {record.leave_permission_id ? (
+                        <>
+                          <div>
+                            <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Reason:</span>
+                            <span className="ml-2 text-gray-700 lg:text-xl sm:text-sm">
+                              {record.leave_reason || "N/A"}
+                            </span>
+                          </div>
+                          
+                          <div>
+                            <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Planned Exit:</span>
+                            <span className="ml-2 text-blue-700 font-mono lg:text-xl sm:text-sm">
+                              {formatLocalDateTime(record.planned_exit_time) || "N/A"}
+                            </span>
+                          </div>
+                                              
+                          <div>
+                            <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Planned Return:</span>
+                            <span className="ml-2 text-blue-700 font-mono lg:text-xl sm:text-sm">
+                              {formatLocalDateTime(record.planned_return_time) || "N/A"}
+                            </span>
+                          </div>
+                                              
+                          <div>
+                            <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Actual Exit:</span>
+                            <span className={`ml-2 font-mono lg:text-xl sm:text-sm ${
+                              record.actual_exittime ? 'text-green-700' : 'text-gray-400'
+                            }`}>
+                              {formatLocalDateTime(record.actual_exittime) || "Not used yet"}
+                            </span>
+                          </div>
+                          
+                          <div>
+                            <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Actual Return:</span>
+                            <span className={`ml-2 font-mono lg:text-xl sm:text-sm ${
+                              record.actual_returntime ? 'text-green-700' : 'text-gray-400'
+                            }`}>
+                              {formatLocalDateTime(record.actual_returntime) || "Not returned yet"}
+                            </span>
+                          </div>
+                          
+                          {/* Leave Status */}
+                          <div className="mt-2">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              record.actual_returntime ? 'bg-green-100 text-green-800' :
+                              record.actual_exittime ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {record.actual_returntime ? 'Leave Completed' :
+                              record.actual_exittime ? 'Currently On Leave' :
+                              'Leave Approved (Not Used)'}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-gray-500 lg:text-xl sm:text-sm">
+                          No leave permission for this record
                         </div>
                       )}
                     </div>
                   </div>
-                  
-                  {/* Person Image (image_path_out) */}
-                  <div className="w-full lg:w-1/4 flex justify-center">
-                    <div className="relative">
-                    <h1 className="text-center pb-1 lg:text-xl sm:text-sm font-semibold">Tap Out</h1>
-                    <img
-                      src={record.image_path_out
-                        ? `http://localhost:3000/uploads/${record.image_path_out}`
-                        : "https://via.placeholder.com/150x150?text=Person"
-                      }
-                      alt="person"
-                      className="h-32 w-32 object-cover text-gray-300 text-center rounded-lg border shadow-sm"
-                      />
-                      </div>
-                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
 
-                  {/* Main Data */}
-                  <div className="w-full lg:w-1/4 flex flex-col text-left space-y-2 ">
-                    <div className="flex items-center gap-2 mb-2">
-                      <p className="font-bold lg:text-2xl sm:text-sm text-blue-600">
-                        {record.licenseplate}
-                      </p>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        record.status === 'entry' ? 'bg-green-100 text-green-800' :
-                        record.status === 'exit' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {record.status?.toUpperCase() || 'UNKNOWN'}
-                      </span>
-                    </div>
-                    
-                    <p className="lg:text-xl sm:text-sm">
-                      <span className="font-medium text-gray-600">Name:</span>
-                      <span className="ml-2 text-gray-900">{record.name}</span>
-                    </p>
-                    
-                    <p className="lg:text-xl sm:text-sm">
-                      <span className="font-medium text-gray-600">Department:</span>
-                      <span className="ml-2 text-gray-900">{record.department}</span>
-                    </p>
-                    
-                    <p className="lg:text-xl sm:text-sm">
-                      <span className="font-medium text-gray-600">Entry:</span>
-                      <span className="ml-2 text-green-700 font-mono">
-                        {new Date(record.datein).toLocaleString("id-ID")}
-                      </span>
-                    </p>
-                    
-                    <p className="lg:text-xl sm:text-sm">
-                      <span className="font-medium text-gray-600">Exit:</span>
-                      <span className={`ml-2 font-mono ${
-                        record.dateout ? 'text-red-700' : 'text-gray-400'
-                      }`}>
-                        {record.dateout ? new Date(record.dateout).toLocaleString("id-ID") : "Still inside"}
-                      </span>
-                    </p>
-                  </div>
-
-                  {/* Leave Permission Section */}
-                  <div className="w-full lg:w-1/4 flex flex-col text-left space-y-2">
-                    <p className="font-bold lg:text-xl sm:text-sm text-purple-600 mb-2">Leave Permission</p>
-                    <p className="lg:text-xl sm:text-sm">
-                      <span className="font-medium text-gray-600">Exit Time:</span>
-                      <span className="ml-2 text-gray-700">13:34 | 26 Juli 2025</span>
-                    </p>
-                    <p className="lg:text-xl sm:text-sm">
-                      <span className="font-medium text-gray-600">Return Time:</span>
-                      <span className="ml-2 text-gray-700">14:34 | 26 Juli 2025</span>
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+      {modalImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+          onClick={() => setModalImage(null)}
+        >
+          <img
+            src={modalImage}
+            alt="Full Preview"
+            className="max-h-[100vh] max-w-[100vw] rounded-lg shadow-2xl border-4 border-white"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-50 rounded-full px-3 py-1"
+            onClick={() => setModalImage(null)}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </>
   );
 }

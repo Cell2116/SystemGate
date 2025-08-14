@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDashboardStore } from "../store/dashboardStore";
+import { onConnectionChange, onDataChange } from "@/lib/ws";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,13 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -27,6 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Autocomplete } from "@/components/ui/autocomplete";
+import { EmployeeAutocomplete } from "@/components/ui/employee-autocomplete";
 import Clock2 from "../components/dashboard/clock"
 import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Shield, Crown } from "lucide-react";
 
@@ -38,15 +34,108 @@ export default function HR() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
   const leavePermissions = useDashboardStore(state => state.leavePermissions);
+  const records = useDashboardStore(state => state.records);
+  const users = useDashboardStore(state => state.users);
   const fetchLeavePermission = useDashboardStore(state => state.fetchLeavePermission);
+  const fetchRecords = useDashboardStore(state => state.fetchRecords);
+  const fetchUsers = useDashboardStore(state => state.fetchUsers);
   const addLeavePermission = useDashboardStore(state => state.addLeavePermission);
   const loading = useDashboardStore(state => state.loading);
   const error = useDashboardStore(state => state.error);
   const updateLeavePermission = useDashboardStore(state => state.updateLeavePermission);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredEmployees, setFilteredEmployees] = useState<any[]>([]);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchLeavePermission();
-  }, [fetchLeavePermission]);
+    let mounted = true;
+    let unsubscribeDataChange: (() => void) | null = null;
+    let unsubscribeLeaveChange: (() => void) | null = null;
+
+    const setupRealTimeConnection = async () => {
+      try {
+        console.log("🚀 Setting up real-time connection for HR Leave...");
+        
+        // Listen to connection status changes
+        onConnectionChange((status) => {
+          if (!mounted) return;
+          console.log("🔗 WebSocket connection status changed:", status);
+        });
+        
+        // Subscribe to global attendance data changes
+        unsubscribeDataChange = onDataChange('attendance', (data) => {
+          if (!mounted) return;
+          console.log("🔄 Global attendance data change received in HR:", data);
+          
+          // Force refresh when any attendance data changes
+          setTimeout(() => {
+            if (mounted) {
+              fetchLeavePermission();
+            }
+          }, 100);
+        });
+        
+        // Subscribe to leave permission changes specifically
+        unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
+          if (!mounted) return;
+          console.log("🟣 Global leave permission data change received in HR:", data);
+          
+          // Force refresh leave permissions
+          setTimeout(() => {
+            if (mounted) {
+              fetchLeavePermission();
+            }
+          }, 100);
+        });
+
+        // Initial fetch
+        await fetchLeavePermission();
+        await fetchRecords();
+        await fetchUsers();
+
+      } catch (error) {
+        console.error("❌ Error in HR Leave real-time setup:", error);
+      }
+    };
+
+    setupRealTimeConnection();
+
+    return () => {
+      console.log("🧹 Cleaning up HR Leave connection...");
+      mounted = false;
+      
+      if (unsubscribeDataChange) {
+        unsubscribeDataChange();
+      }
+      
+      if (unsubscribeLeaveChange) {
+        unsubscribeLeaveChange();
+      }
+    };
+  }, [fetchLeavePermission, fetchRecords, fetchUsers]);
+
+  // Use users from database for employee suggestions
+  useEffect(() => {
+    const employeeSuggestions = users.map(user => ({
+      name: user.name,
+      department: user.department,
+      licensePlate: user.licenseplate,
+      uid: user.uid,
+      role: user.role
+    }));
+    
+    setEmployees(employeeSuggestions);
+  }, [users]);
+
+  // Get unique departments for suggestions from users table
+  const departmentSuggestions = [...new Set([
+    ...users.map(user => user.department),
+    ...records.map(record => record.department),
+    ...leavePermissions.map(permission => permission.department)
+  ])].filter(Boolean);
+
+
   const [formData, setFormData] = useState({
     name: "",
     licensePlate: "",
@@ -100,16 +189,70 @@ export default function HR() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all required fields
+    if (!formData.name.trim()) {
+      alert("Please enter a name");
+      return;
+    }
+    if (!formData.licensePlate.trim()) {
+      alert("Please enter a license plate");
+      return;
+    }
+    if (!formData.department.trim()) {
+      alert("Please enter a department");
+      return;
+    }
+    if (!formData.role.trim()) {
+      alert("Please select a role");
+      return;
+    }
+    if (!formData.date) {
+      alert("Please select a date");
+      return;
+    }
+    if (!formData.exitTime) {
+      alert("Please enter an exit time");
+      return;
+    }
+    if (!formData.reasonType) {
+      alert("Please select a reason type");
+      return;
+    }
+    if (formData.reasonType === "Outside" && !formData.outsideReason.trim()) {
+      alert("Please explain the reason for leaving (Outside)");
+      return;
+    }
+    if (formData.reasonType !== "Sick" && !formData.returnTime) {
+      alert("Please enter a return time");
+      return;
+    }
+
     let reasonValue = formData.reasonType === "Outside" ? formData.outsideReason : formData.reasonType;
+      const now = new Date();
+      const formatted = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0') + ' ' +
+      String(now.getHours()).padStart(2, '0') + ':' +
+      String(now.getMinutes()).padStart(2, '0') + ':' +
+      String(now.getSeconds()).padStart(2, '0');
+      
     const newEntry = {
-      ...formData,
+      name: formData.name,
+      licensePlate: formData.licensePlate,
+      department: formData.department,
+      role: formData.role,
+      date: formData.date,
+      exitTime: formData.exitTime,
+      returnTime: formData.returnTime,
       reason: reasonValue,
       approval: "pending",
       statusFromDepartment: "pending",
       statusFromHR: "pending",
-      statusFromHeadDept: formData.role === "Head Department" ? "approved" : "pending",
       statusFromDirector: "pending",
-      submittedAt: new Date().toLocaleString(),
+      submittedAt: formatted,
+      actual_exittime: null,
+      actual_returntime: null
     };
     await addLeavePermission(newEntry);
     // Fetch updated data after adding new entry
@@ -136,6 +279,16 @@ export default function HR() {
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
+  };
+
+  const handleEmployeeSelect = (name: string, employee?: any) => {
+    setFormData(prev => ({
+      ...prev,
+      name: name,
+      // Auto-fill other fields if employee data is available from users table
+      department: employee?.department || prev.department,
+      licensePlate: employee?.licensePlate || prev.licensePlate
+    }));
   };
 
   const handleViewDetails = (entry: any) => {
@@ -218,19 +371,18 @@ export default function HR() {
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-sm font-medium">
-                        Name
-                      </Label>
-                      <Input
+                      <EmployeeAutocomplete
                         id="name"
-                        placeholder="Enter name"
+                        label="Name"
+                        placeholder="Enter or search employee name"
                         value={formData.name}
-                        onChange={(e) => handleInputChange("name", e.target.value)}
+                        onChange={handleEmployeeSelect}
+                        employees={employees}
                         className="h-10 border-border/50 focus:border-primary"
                         required
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div>
                       <Label htmlFor="licensePlate" className="text-sm font-medium">
                         License Plate
                       </Label>
@@ -246,31 +398,34 @@ export default function HR() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="department" className="text-sm font-medium">
-                        Department
-                      </Label>
-                      <Input
+                      <Autocomplete
                         id="department"
-                        placeholder="Enter department"
+                        label="Department"
+                        placeholder="Enter or search department"
                         value={formData.department}
-                        onChange={(e) => handleInputChange("department", e.target.value)}
+                        onChange={(value) => handleInputChange("department", value)}
+                        suggestions={departmentSuggestions}
                         className="h-10 border-border/50 focus:border-primary"
+                        autoShowOnValueChange={false}
                         required
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1 flex flex-col">
                       <Label htmlFor="role" className="text-sm font-medium">
                         Role
                       </Label>
-                      <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
-                        <SelectTrigger className="h-10 border-border/50 focus:border-primary">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Staff">Staff</SelectItem>
-                          <SelectItem value="Head Department">Head Department</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <select
+                        id="role"
+                        title="Role"
+                        value={formData.role}
+                        onChange={(e) => handleInputChange("role", e.target.value)}
+                        className="h-10 border border-border/50 rounded-md px-1 bg-background text-gray-500 text-sm focus:border-primary"
+                        required
+                      >
+                        <option value="">Select role</option>
+                        <option value="Staff">Staff</option>
+                        <option value="Head Department">Head Department</option>
+                      </select>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -289,7 +444,7 @@ export default function HR() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="exitTime" className="text-sm font-medium">
-                        Exit Time
+                        Exit Time <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="exitTime"
@@ -297,6 +452,7 @@ export default function HR() {
                         value={formData.exitTime}
                         onChange={(e) => handleInputChange("exitTime", e.target.value)}
                         className="h-10 border-border/50 focus:border-primary"
+                        required
                       />
                     </div>
                   </div>
@@ -489,7 +645,7 @@ export default function HR() {
 
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent className="sm:max-w-2xl bg-card/95 border-border/50 h-[95vh] overflow-auto scrollbar-hide">
+              <DialogContent className="sm:max-w-2xl bg-card/95 border-border/50 lg:h-[90vh] overflow-auto scrollbar-hide">
                 <DialogHeader className="space-y-1">
                   <DialogTitle className="text-2xl font-bold text-center">
                     Permission Detail

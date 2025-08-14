@@ -73,16 +73,156 @@ mqttClient.on('connect', () => {
     });
 });
 
+// Enhanced function to handle employee exit with leave permission validation
+async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
+    console.log("🔍 Checking leave permission for exit:", licensePlate);
+
+    // Only match leave permission for today (or the date of the attendance record)
+    const attendanceDate = attendanceRecord.datein ? new Date(attendanceRecord.datein).toISOString().split('T')[0] : null;
+
+    // Debug: Print the values being used for the query
+    console.log("🔎 Query params:", { licensePlate, attendanceDate });
+
+    // Check for any approved leave permission for today that is not yet used
+    const leavePermission = await db.query(
+        `SELECT * FROM leave_permission 
+        WHERE licenseplate = $1 
+        AND date = $2
+        AND statusfromhr = 'approved' 
+        AND statusfromdept = 'approved' 
+        AND (
+            role != 'Staff'
+            OR statusfromdirector = 'approved'
+            OR statusfromdirector IS NULL
+            OR statusfromdirector = ''
+        )
+        AND actual_exittime IS NULL
+        ORDER BY date DESC
+        LIMIT 1`,
+        [licensePlate, attendanceDate]
+    );
+
+    // Debug: Print what was returned
+    console.log("🔎 leavePermission.rows:", leavePermission.rows);
+
+    if (leavePermission.rows.length > 0) {
+        const permission = leavePermission.rows[0];
+        console.log(permission);
+        const now = new Date();
+        const plannedExitTime = new Date(permission.exittime);
+        
+        console.log("✅ Found approved leave permission for:", licensePlate);
+        console.log("⏰ Planned exit time:", plannedExitTime);
+        console.log("⏰ Actual exit time:", now);
+        
+        // Update attendance_logs with actual_exittime (leave permission exit)
+        await db.query(
+            `UPDATE attendance_logs 
+            SET actual_exittime = CURRENT_TIMESTAMP, 
+                status = 'leave_exit'
+            WHERE id = $1`,
+            [attendanceRecord.id]
+        );
+        
+        // Update leave_permission with actual_exittime
+        await db.query(
+            `UPDATE leave_permission 
+            SET actual_exittime = CURRENT_TIMESTAMP 
+            WHERE id = $1`,
+            [permission.id]
+        );
+        
+        console.log("✅ Leave exit recorded - actual_exittime set in both attendance_logs and leave_permission");
+        
+        return {
+            type: 'leave_exit',
+            permission: permission,
+            isEarly: now < plannedExitTime,
+            isLate: now > plannedExitTime
+        };
+    } else {
+        console.log("📋 No approved leave permission found, treating as regular exit");
+        
+        // Regular end-of-day exit
+        await db.query(
+            `UPDATE attendance_logs 
+            SET dateout = CURRENT_TIMESTAMP, 
+                status = 'exit'
+            WHERE id = $1`,
+            [attendanceRecord.id]
+        );
+        
+        return {
+            type: 'regular_exit'
+        };
+    }
+}
+
+// Enhanced function to handle employee return with leave permission validation
+async function handleEmployeeReturn(uid, licensePlate) {
+    console.log("🔍 Checking for active leave permission return:", licensePlate);
+    
+    // Check for leave permission that has actual_exittime but not actual_returntime
+    const activeLeavePermission = await db.query(
+        `SELECT * FROM leave_permission 
+        WHERE licenseplate = $1 
+        AND date = CURRENT_DATE 
+        AND actual_exittime IS NOT NULL 
+        AND actual_returntime IS NULL`,
+        [licensePlate]
+    );
+    
+    if (activeLeavePermission.rows.length > 0) {
+        const permission = activeLeavePermission.rows[0];
+        const now = new Date();
+        const plannedReturnTime = new Date(permission.returntime);
+        
+        console.log("✅ Found active leave permission for return:", licensePlate);
+        console.log("⏰ Planned return time:", plannedReturnTime);
+        console.log("⏰ Actual return time:", now);
+        
+        // Update the attendance record for today with actual_returntime
+        await db.query(
+            `UPDATE attendance_logs 
+            SET actual_returntime = CURRENT_TIMESTAMP,
+                status = 'leave_return'
+            WHERE licenseplate = $1 
+            AND DATE(datein) = CURRENT_DATE`,
+            [licensePlate]
+        );
+        
+        // Update leave_permission with actual_returntime
+        await db.query(
+            `UPDATE leave_permission 
+            SET actual_returntime = CURRENT_TIMESTAMP 
+            WHERE id = $1`,
+            [permission.id]
+        );
+        
+        return {
+            type: 'leave_return',
+            permission: permission,
+            isEarly: now < plannedReturnTime,
+            isLate: now > plannedReturnTime
+        };
+    } else {
+        console.log("📋 No active leave permission found, treating as new entry");
+        return {
+            type: 'new_entry'
+        };
+    }
+}
+
 mqttClient.on('error', (error) => {
     console.error('🚨 MQTT Client Error:', error);
 });
 
-// Handle MQTT messages
+
 mqttClient.on('message', async (topic, message) => {
     if (topic === 'rfid/entry') {
         try {
             const payload = JSON.parse(message.toString());
-            console.log('📄 Node-RED payload:', payload);
+            console.log('📄 RFID payload:', payload);
 
             const { uid, timestamp } = payload;
 
@@ -95,17 +235,18 @@ mqttClient.on('message', async (topic, message) => {
 
             if (user.rows.length === 0) {
                 console.log("❌ UID not found:", uid);
+                
+                // OPTIMIZED: Minimal rejection response for ESP32
                 mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
                     status: 'rejected',
-                    reason: 'UID not found',
-                    timestamp: new Date().toISOString()
+                    reason: 'Unknown Card'  // Short reason for LCD
                 }));
                 return;
             }
 
             const userInfo = user.rows[0];
             const licensePlate = userInfo.licenseplate;
-            console.log("✅ Valid UID received:", uid, "License Plate:", licensePlate);
+            console.log("✅ Valid UID:", uid, "User:", userInfo.name);
 
             const today = new Date().toISOString().split('T')[0];
             const existingEntry = await db.query(
@@ -114,63 +255,255 @@ mqttClient.on('message', async (topic, message) => {
             );
 
             if (existingEntry.rows.length > 0) {
-                // This is an EXIT
-                // Capture and save exit image
-                const imagePathOut = await captureSnapshot(uid);
+                // =================== EXIT/LEAVE LOGIC ===================
+                const attendance = existingEntry.rows[0];
 
-                // Update attendance_logs with dateout, status, and image_path_out
-                const updateResult = await db.query(
-                    'UPDATE attendance_logs SET dateout = CURRENT_TIMESTAMP, status = $1, image_path_out = $2 WHERE id = $3 RETURNING *',
-                    ['exit', imagePathOut, existingEntry.rows[0].id]
+                // Check for leave permission for today
+                const leavePermission = await db.query(
+                    `SELECT * FROM leave_permission 
+                    WHERE licenseplate = $1 
+                    AND date = $2
+                    AND (
+                        (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
+                        OR
+                        (statusfromhr = 'approved' AND statusfromdirector = 'approved' AND role = 'Head Department')
+                    )
+                    ORDER BY date DESC
+                    LIMIT 1`,
+                    [licensePlate, today]
                 );
+                const leave = leavePermission.rows[0];
 
-                const exitData = {
-                    id: updateResult.rows[0].id,
-                    uid: uid,
-                    licenseplate: licensePlate,
-                    name: userInfo.name,
-                    department: userInfo.department,
-                    image_path_in: existingEntry.rows[0].image_path, // entry image
-                    image_path_out: imagePathOut, // exit image
-                    datein: existingEntry.rows[0].datein,
-                    dateout: new Date().toISOString(),
-                    status: 'exit',
+                // 1. If leave permission exists and actual_exittime is not set, do leave_exit
+                if (leave && !leave.actual_exittime) {
+                    // LEAVE EXIT
+                    const imagePathOut = await captureSnapshot(uid);
+                    await db.query(
+                        'UPDATE attendance_logs SET image_path_out = $1, actual_exittime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
+                        [imagePathOut, 'leave_exit', leave.id, attendance.id]
+                    );
+                    await db.query(
+                        'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP WHERE id = $1',
+                        [leave.id]
+                    );
+                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
+                    const exitDataFull = {
+                        ...updatedRecord.rows[0],
+                        type: 'leave_exit',
+                        leaveInfo: {
+                            permissionId: leave.id,
+                            plannedTime: leave.exittime,
+                            isEarly: new Date() < new Date(leave.exittime),
+                            isLate: new Date() > new Date(leave.exittime),
+                            reason: leave.reason
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+                    broadcast(exitDataFull);
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                        status: 'approved',
+                        name: userInfo.name.substring(0, 16),
+                        department: userInfo.department.substring(0, 8),
+                        action: 'Leave Exit'
+                    }));
+                    return;
+                }
+
+                // 2. If leave permission exists and actual_exittime is set but actual_returntime is not, do leave_return
+                if (leave && leave.actual_exittime && !leave.actual_returntime) {
+                    // LEAVE RETURN
+                    const imagePathOut = await captureSnapshot(uid);
+                    await db.query(
+                        'UPDATE attendance_logs SET image_path_out = $1, actual_returntime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
+                        [imagePathOut, 'leave_return', leave.id, attendance.id]
+                    );
+                    await db.query(
+                        'UPDATE leave_permission SET actual_returntime = CURRENT_TIMESTAMP WHERE id = $1',
+                        [leave.id]
+                    );
+                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
+                    const returnDataFull = {
+                        ...updatedRecord.rows[0],
+                        type: 'leave_return',
+                        leaveInfo: {
+                            permissionId: leave.id,
+                            plannedTime: leave.returntime,
+                            isEarly: new Date() < new Date(leave.returntime),
+                            isLate: new Date() > new Date(leave.returntime),
+                            reason: leave.reason
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+                    broadcast(returnDataFull);
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                        status: 'approved',
+                        name: userInfo.name.substring(0, 16),
+                        department: userInfo.department.substring(0, 8),
+                        action: 'Leave Return'
+                    }));
+                    return;
+                }
+
+                // 3. If leave permission exists and both actual_exittime and actual_returntime are set, do regular exit (dateout)
+                if (leave && leave.actual_exittime && leave.actual_returntime && !attendance.dateout) {
+                    // FINAL EXIT
+                    const imagePathOut = await captureSnapshot(uid);
+                    await db.query(
+                        'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
+                        [imagePathOut, 'exit', attendance.id]
+                    );
+                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
+                    const exitDataFull = {
+                        ...updatedRecord.rows[0],
+                        type: 'exit',
+                        leaveInfo: null,
+                        timestamp: new Date().toISOString()
+                    };
+                    broadcast(exitDataFull);
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                        status: 'approved',
+                        name: userInfo.name.substring(0, 16),
+                        department: userInfo.department.substring(0, 8),
+                        action: 'Exit'
+                    }));
+                    return;
+                }
+
+                // 4. If no leave permission, do regular exit
+                const imagePathOut = await captureSnapshot(uid);
+                await db.query(
+                    'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
+                    [imagePathOut, 'exit', attendance.id]
+                );
+                const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
+                const exitDataFull = {
+                    ...updatedRecord.rows[0],
                     type: 'exit',
+                    leaveInfo: null,
                     timestamp: new Date().toISOString()
                 };
-
-                broadcast(exitData);
-                console.log("🚪 EXIT logged and broadcasted for UID:", uid);
-
+                broadcast(exitDataFull);
                 mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
                     status: 'approved',
-                    action: 'exit',
-                    message: imagePathOut ? 'Exit recorded with image' : 'Exit recorded without image',
-                    name: userInfo.name,
-                    department: userInfo.department,
-                    licenseplate: userInfo.licenseplate,
-                    image_path: existingEntry.rows[0].image_path,
-                    image_path_out: imagePathOut,
-                    timestamp: new Date().toISOString()
+                    name: userInfo.name.substring(0, 16),
+                    department: userInfo.department.substring(0, 8),
+                    action: 'Exit'
                 }));
-
+                return;
             } else {
-                // This is an ENTRY
-                const insertResult = await db.query(
-                    'INSERT INTO attendance_logs (uid, licenseplate, status) VALUES ($1, $2, $3) RETURNING *',
-                    [uid, licensePlate, 'entry']
-                );
+                // =================== ENTRY LOGIC ===================
+                console.log("🚪 Processing ENTRY for:", userInfo.name);
 
-                // Capture and save image
-                const imagePath = await captureSnapshot(uid);
-
-                if (imagePath) {
+                // Check if this is a return from leave or new entry
+                const returnResult = await handleEmployeeReturn(uid, licensePlate);
+                
+                if (returnResult.type === 'leave_return') {
+                    // This is a return from approved leave
+                    console.log("🔄 Processing LEAVE RETURN for:", userInfo.name);
+                    
+                    // Capture return image
+                    const imagePath = await captureSnapshot(uid);
+                    
+                    // Update the existing attendance record with return image
                     await db.query(
-                        'UPDATE attendance_logs SET image_path = $1 WHERE id = $2 RETURNING *',
-                        [imagePath, insertResult.rows[0].id]
+                        'UPDATE attendance_logs SET image_path_out = $1 WHERE licenseplate = $2 AND DATE(datein) = CURRENT_DATE',
+                        [imagePath, licensePlate]
+                    );
+                    
+                    // Get the updated record
+                    const updatedRecord = await db.query(
+                        'SELECT * FROM attendance_logs WHERE licenseplate = $1 AND DATE(datein) = CURRENT_DATE',
+                        [licensePlate]
+                    );
+                    
+                    // Prepare response message
+                    let actionMessage = 'Return';
+                    let statusMessage = 'Welcome back!';
+                    
+                    if (returnResult.isEarly) {
+                        statusMessage = 'Early return';
+                    } else if (returnResult.isLate) {
+                        statusMessage = 'Late return';
+                    }
+
+                    // Full data for WebSocket broadcast (dashboard)
+                    const returnDataFull = {
+                        id: updatedRecord.rows[0].id,
+                        uid: uid,
+                        licenseplate: licensePlate,
+                        name: userInfo.name,
+                        department: userInfo.department,
+                        image_path: updatedRecord.rows[0].image_path,
+                        image_path_out: imagePath,
+                        datein: updatedRecord.rows[0].datein,
+                        exittime: updatedRecord.rows[0].exittime,
+                        returntime: updatedRecord.rows[0].returntime,
+                        status: updatedRecord.rows[0].status,
+                        type: 'leave_return',
+                        leaveInfo: {
+                            permissionId: returnResult.permission.id,
+                            plannedTime: returnResult.permission.returntime,
+                            isEarly: returnResult.isEarly,
+                            isLate: returnResult.isLate
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+
+                    broadcast(returnDataFull);
+                    console.log("🔄 LEAVE RETURN broadcasted to dashboard");
+
+                    // OPTIMIZED: Response for ESP32 LCD
+                    const esp32Response = {
+                        status: 'approved',
+                        name: userInfo.name.substring(0, 16),        
+                        department: userInfo.department.substring(0, 8),  
+                        action: actionMessage                             
+                    };
+
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
+                    console.log("📤 Sent LEAVE RETURN approval to ESP32:", esp32Response);
+                    
+                } else {
+                    // Regular new entry
+                    console.log("🚪 Processing NEW ENTRY for:", userInfo.name);
+
+                    // Check for approved leave permission for today
+                    const today = new Date().toISOString().split('T')[0];
+                    const leavePermissionToday = await db.query(
+                        `SELECT * FROM leave_permission 
+                        WHERE uid = $1 AND date = $2 
+                        AND statusfromhr = 'approved' 
+                        AND statusfromdept = 'approved' 
+                        AND (statusfromdirector = 'approved' OR role != 'Staff')
+                        ORDER BY submittedat DESC LIMIT 1`,
+                        [uid, today]
+                    );
+                    let plannedExitTime = null;
+                    let plannedReturnTime = null;
+                    if (leavePermissionToday.rows.length > 0) {
+                        plannedExitTime = leavePermissionToday.rows[0].exittime;
+                        plannedReturnTime = leavePermissionToday.rows[0].returntime;
+                    }
+
+                    // Insert entry record, including planned leave times if any
+                    const insertResult = await db.query(
+                        'INSERT INTO attendance_logs (uid, licenseplate, status, exittime, returntime) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+                        [uid, licensePlate, 'entry', plannedExitTime, plannedReturnTime]
                     );
 
-                    const entryData = {
+                    // Capture entry image (background process)
+                    const imagePath = await captureSnapshot(uid);
+
+                    // Update with image path if captured
+                    if (imagePath) {
+                        await db.query(
+                            'UPDATE attendance_logs SET image_path = $1 WHERE id = $2',
+                            [imagePath, insertResult.rows[0].id]
+                        );
+                    }
+
+                    // Full data for WebSocket broadcast (dashboard)
+                    const entryDataFull = {
                         id: insertResult.rows[0].id,
                         uid: uid,
                         licenseplate: licensePlate,
@@ -181,58 +514,243 @@ mqttClient.on('message', async (topic, message) => {
                         dateout: null,
                         status: 'entry',
                         type: 'entry',
+                        // Optionally include planned leave info for dashboard
+                        leaveInfo: leavePermissionToday.rows.length > 0 ? {
+                            permissionId: leavePermissionToday.rows[0].id,
+                            plannedExitTime: leavePermissionToday.rows[0].exittime,
+                            plannedReturnTime: leavePermissionToday.rows[0].returntime,
+                            reason: leavePermissionToday.rows[0].reason
+                        } : null,
                         timestamp: new Date().toISOString()
                     };
 
-                    broadcast(entryData);
-                    console.log("🚪 ENTRY logged and broadcasted for UID:", uid);
+                    broadcast(entryDataFull);
+                    console.log("🚪 ENTRY broadcasted to dashboard");
 
-                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                    // OPTIMIZED: Minimal response for ESP32 LCD
+                    const esp32Response = {
                         status: 'approved',
-                        action: 'Entry',
-                        message: 'Entry recorded with image',
-                        name: userInfo.name,
-                        department: userInfo.department,
-                        licenseplate: userInfo.licenseplate,
-                        image_path: imagePath,
-                        timestamp: new Date().toISOString()
-                    }));
-                } else {
-                    console.log("❌ Failed to capture image for UID:", uid);
-                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
-                        status: 'approved',
-                        action: 'Entry',
-                        message: 'Entry recorded without image',
-                        name: userInfo.name,
-                        department: userInfo.department,
-                        licenseplate: userInfo.licenseplate,
-                        timestamp: new Date().toISOString()
-                    }));
+                        name: userInfo.name.substring(0, 16),        
+                        department: userInfo.department.substring(0, 8),  
+                        action: 'Entry'                             
+                    };
+
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
+                    console.log("📤 Sent ENTRY approval to ESP32:", esp32Response);
                 }
             }
+
         } catch (error) {
             console.error('❌ Error processing MQTT message:', error);
+            
+            // Send error response to ESP32
+            if (payload && payload.uid) {
+                mqttClient.publish(`rfid/approval/${payload.uid}`, JSON.stringify({
+                    status: 'rejected',
+                    reason: 'Server Error'
+                }));
+            }
         }
     }
 });
 
-// Enhanced logs endpoint
+// Additional helper function for testing ESP32 responses
+function testESP32Response(uid) {
+    // Test function untuk mengirim response ke ESP32 secara manual
+    const testResponse = {
+        status: 'approved',
+        name: 'Test User',
+        department: 'IT',
+        action: 'Entry'
+    };
+    
+    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(testResponse));
+    console.log("🧪 Test response sent to ESP32 for UID:", uid);
+}
+
+app.post('/test-esp32', async (req, res) => {
+    try {
+        const { uid } = req.body;
+        
+        if (!uid) {
+            return res.status(400).json({ message: 'UID is required' });
+        }
+
+        testESP32Response(uid);
+        res.json({ 
+            message: `Test response sent to ESP32 for UID: ${uid}`,
+            topic: `rfid/approval/${uid}`
+        });
+    } catch (error) {
+        console.error('❌ Error in test endpoint:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Debug endpoint to check MQTT connection
+app.get('/mqtt-status', (req, res) => {
+    res.json({
+        connected: mqttClient.connected,
+        subscribed_topics: ['rfid/entry'],
+        last_message_time: mqttClient.lastMessageTime || 'Never',
+        broker_url: process.env.MQTT_BROKER_URL || 'mqtt://mqtt:1884'
+    });
+});
+
+// Helper function to convert database timestamp to Jakarta timezone ISO string
+function convertToJakartaISO(dbTimestamp) {
+    if (!dbTimestamp) return null;
+    
+    // If it's already a JavaScript Date object
+    if (dbTimestamp instanceof Date) {
+        // Create a new date with Jakarta timezone offset
+        const jakartaTime = new Date(dbTimestamp.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours
+        return jakartaTime.toISOString().replace('Z', '+07:00'); // Mark as Jakarta time
+    }
+    
+    // If it's a string timestamp from database (YYYY-MM-DD HH:mm:ss format)
+    if (typeof dbTimestamp === 'string') {
+        // Assume database timestamp is already in Jakarta time
+        // Convert format to ISO with Jakarta timezone
+        const isoString = dbTimestamp.replace(' ', 'T') + '+07:00';
+        return isoString;
+    }
+    
+    return dbTimestamp;
+}
+
+// Enhanced logs endpoint with leave permission data
 app.get('/logs', async (req, res) => {
     try {
         const result = await db.query(`
             SELECT
-                attendance_logs.*,
-                users.name,
-                users.department
-            FROM attendance_logs
-            JOIN users ON attendance_logs.uid = users.uid
-            ORDER BY attendance_logs.datein DESC
+                al.*,
+                u.name,
+                u.department,
+                lp.id as leave_permission_id,
+                lp.reason as leave_reason,
+                lp.exittime as planned_exit_time,
+                lp.returntime as planned_return_time,
+                lp.actual_exittime,
+                lp.actual_returntime
+            FROM attendance_logs al
+            JOIN users u ON al.uid = u.uid
+            LEFT JOIN leave_permission lp ON al.leave_permission_id = lp.id
+            ORDER BY al.datein DESC
         `);
 
-        console.log(`📋 Fetched ${result.rows.length} log records`);
-        res.json(result.rows);
+        // Convert all timestamp fields to proper Jakarta timezone
+        const formattedRows = result.rows.map(row => ({
+            ...row,
+            datein: convertToJakartaISO(row.datein),
+            dateout: convertToJakartaISO(row.dateout),
+            planned_exit_time: convertToJakartaISO(row.planned_exit_time),
+            planned_return_time: convertToJakartaISO(row.planned_return_time),
+            actual_exittime: convertToJakartaISO(row.actual_exittime),
+            actual_returntime: convertToJakartaISO(row.actual_returntime)
+        }));
+
+        console.log(`📋 Fetched ${formattedRows.length} log records with proper Jakarta timezone`);
+        res.json(formattedRows);
     } catch (e) {
         console.error("❌ Error fetching logs:", e);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Get all users
+app.get('/users', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT 
+                id,
+                name,
+                uid,
+                licenseplate,
+                department,
+                role
+            FROM users 
+            ORDER BY name ASC
+        `);
+        console.log(`👥 Fetched ${result.rows.length} users`);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('❌ Error fetching users:', error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+// Get users by department
+app.get('/users/department/:department', async (req, res) => {
+    try {
+        const { department } = req.params;
+        const result = await db.query(`
+            SELECT 
+                id,
+                name,
+                uid,
+                licenseplate,
+                department,
+                role
+            FROM users 
+            WHERE department = $1
+            ORDER BY name ASC
+        `, [department]);
+        console.log(`👥 Fetched ${result.rows.length} users for department: ${department}`);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('❌ Error fetching users by department:', error);
+        res.status(500).json({ error: 'Failed to fetch users by department' });
+    }
+});
+
+// Get leave permission status for a specific employee
+app.get('/employee/:uid/leave-status', async (req, res) => {
+    try {
+        const { uid } = req.params;
+        
+        // Get user info
+        const user = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
+        if (user.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const userInfo = user.rows[0];
+        
+        // Get today's attendance
+        const attendance = await db.query(
+            'SELECT * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = CURRENT_DATE ORDER BY datein DESC LIMIT 1',
+            [uid]
+        );
+        
+        // Get today's leave permissions
+        const leavePermissions = await db.query(
+            `SELECT * FROM leave_permission 
+            WHERE uid = $1 AND date = CURRENT_DATE 
+            ORDER BY submittedat DESC`,
+            [uid]
+        );
+        
+        // Get approved leave permission for today
+        const approvedLeave = await db.query(
+            `SELECT * FROM leave_permission 
+            WHERE uid = $1 AND date = CURRENT_DATE 
+            AND statusfromhr = 'approved' 
+            AND statusfromdept = 'approved' 
+            AND (statusfromdirector = 'approved' OR role != 'Staff')`,
+            [uid]
+        );
+        
+        res.json({
+            user: userInfo,
+            todayAttendance: attendance.rows[0] || null,
+            leavePermissions: leavePermissions.rows,
+            approvedLeave: approvedLeave.rows[0] || null,
+            canUseLeave: approvedLeave.rows.length > 0,
+            isInBuilding: attendance.rows.length > 0 && !attendance.rows[0].dateout && !attendance.rows[0].exittime
+        });
+    } catch (e) {
+        console.error("❌ Error fetching employee leave status:", e);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
@@ -286,7 +804,7 @@ app.post('/leave-permission', async (req, res) => {
                 statusFromDepartment,
                 statusFromHR,
                 statusFromDirector,
-                submittedAt || new Date()
+                submittedAt
             ]
         );
         res.status(201).json(result.rows[0]);

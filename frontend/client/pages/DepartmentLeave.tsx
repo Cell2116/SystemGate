@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,13 +12,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -27,11 +19,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Autocomplete } from "@/components/ui/autocomplete";
+import { EmployeeAutocomplete } from "@/components/ui/employee-autocomplete";
 import Clock2 from "../components/dashboard/clock"
 import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Shield, Crown, Building, BookUser } from "lucide-react";
 
 import { useEffect } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
+import { initWebSocket, onMessage, closeWebSocket, onConnectionChange, onDataChange } from "@/lib/ws";
 
 interface User {
   name: string;
@@ -40,209 +35,99 @@ interface User {
 }
 
 export default function DepartmentHead() {
-
+  
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
-  const {
-    leavePermissions,
-    fetchLeavePermission,
-    addLeavePermission,
-    loading,
-    error,
-  } = useDashboardStore();
-  const [entries, setEntries] = useState<Array<{
-    id: string;
-    name: string;
-    licensePlate: string;
-    department: string;
-    role: string;
-    date: string;
-    exitTime: string;
-    returnTime: string;
-    reason: string;
-    approval: string;
-    statusFromDepartment: string; // Department approval
-    statusFromHR: string; // HR approval
-    statusFromDirector: string; // Director approval
-    submittedAt: string;
-  }>>([
-    {
-      id: "1",
-      name: "David Wilson",
-      licensePlate: "JKL-7890",
-      department: "IT",
-      role: "Staff",
-      date: "2024-01-15",
-      exitTime: "17:00",
-      returnTime: "08:00",
-      reason: "Server maintenance and network infrastructure upgrade for the new office building.",
-      approval: "pending",
-      statusFromDepartment: "pending",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-15, 07:45:00"
-    },
-    {
-      id: "2",
-      name: "Alice Cooper",
-      licensePlate: "ABC-5678",
-      department: "Engineering",
-      role: "Staff",
-      date: "2024-01-14",
-      exitTime: "16:30",
-      returnTime: "09:00",
-      reason: "Client site visit for system installation and user training session.",
-      approval: "approved",
-      statusFromDepartment: "approved",
-      statusFromHR: "approved",
-      statusFromDirector: "approved",
-      submittedAt: "2024-01-14, 08:30:00"
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      licensePlate: "XYZ-9012",
-      department: "IT",
-      role: "Staff",
-      date: "2024-01-13",
-      exitTime: "18:00",
-      returnTime: "08:30",
-      reason: "Emergency database recovery at client location downtown.",
-      approval: "rejected",
-      statusFromDepartment: "rejected",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-13, 09:15:00"
-    },
-    {
-      id: "4",
-      name: "Emma Davis",
-      licensePlate: "DEF-3456",
-      department: "IT",
-      role: "Staff",
-      date: "2024-01-12",
-      exitTime: "17:30",
-      returnTime: "09:15",
-      reason: "Hardware procurement meeting with vendors and technical evaluation.",
-      approval: "pending",
-      statusFromDepartment: "approved",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-12, 08:45:00"
-    },
-    // Add Head Department's own request - auto-approved at department level
-    {
-      id: "5",
-      name: "Sarah Johnson", // Current user (Head Department)
-      licensePlate: "SAR-1234",
-      department: "IT",
-      role: "Head Department",
-      date: "2024-01-11",
-      exitTime: "15:30",
-      returnTime: "08:00",
-      reason: "Strategic planning meeting with board of directors and quarterly review session.",
-      approval: "pending",
-      statusFromDepartment: "approved", // Auto-approved (self)
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-11, 07:30:00"
-    },
-    // Add some entries from other departments to show they're filtered out
-    {
-      id: "6",
-      name: "John Smith",
-      licensePlate: "GHI-7890",
-      department: "Engineering",
-      role: "Staff",
-      date: "2024-01-11",
-      exitTime: "16:00",
-      returnTime: "08:00",
-      reason: "Project meeting with external partners.",
-      approval: "pending",
-      statusFromDepartment: "pending",
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: "2024-01-11, 07:30:00"
-    }
-  ]);
+  const leavePermissions = useDashboardStore(state => state.leavePermissions);
+  const records = useDashboardStore(state => state.records);
+  const users = useDashboardStore(state => state.users);
+  const fetchLeavePermission = useDashboardStore(state => state.fetchLeavePermission);
+  const fetchRecords = useDashboardStore(state => state.fetchRecords);
+  const fetchUsers = useDashboardStore(state => state.fetchUsers);
+  const fetchUsersByDepartment = useDashboardStore(state => state.fetchUsersByDepartment);
+  const addLeavePermission = useDashboardStore(state => state.addLeavePermission);
+  const loading = useDashboardStore(state => state.loading);
+  const error = useDashboardStore(state => state.error);
+  const updateLeavePermission = useDashboardStore(state => state.updateLeavePermission);
+  const [employees, setEmployees] = useState<any[]>([]);
 
-useEffect(() => {
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribeDataChange: (() => void) | null = null;
+    let unsubscribeLeaveChange: (() => void) | null = null;
+
+    unsubscribeDataChange = onDataChange('attendance', (data) => {
+      if (!mounted) return;
+      setTimeout(() => {
+        if (mounted) fetchLeavePermission();
+      }, 100);
+    });
+    unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
+      if (!mounted) return;
+      setTimeout(() => {
+        if (mounted) fetchLeavePermission();
+      }, 100);
+    });
+
+    fetchLeavePermission();
+    fetchRecords();
+    fetchUsers();
+
+    return () => {
+      mounted = false;
+      if (unsubscribeDataChange) unsubscribeDataChange();
+      if (unsubscribeLeaveChange) unsubscribeLeaveChange();
+      // Do NOT call closeWebSocket here!
+    };
+  }, [fetchLeavePermission, fetchRecords, fetchUsers, fetchUsersByDepartment]);
+
+  // Load department-specific users when currentUser is available
+  useEffect(() => {
+    if (currentUser?.department) {
+      fetchUsersByDepartment(currentUser.department).then(departmentUsers => {
+        const employeeSuggestions = departmentUsers.map(user => ({
+          name: user.name,
+          department: user.department,
+          licensePlate: user.licenseplate,
+          uid: user.uid,
+          role: user.role
+        }));
+        setEmployees(employeeSuggestions);
+      });
+    }
+  }, [currentUser, fetchUsersByDepartment]);
+
+  // Load user data from localStorage (or simulated)
+  useEffect(() => {
     const loadUserFromStorage = () => {
       try {
-        // In a real environment, this would work:
-        // const storedUser = localStorage.getItem("user");
-        // const storedRole = localStorage.getItem("userRole");
-        // const isLoggedIn = localStorage.getItem("isLoggedIn");
-      
-        const simulatedStorageData = JSON.stringify({
-          id: 1,
-          name: "Sarah Johnson",
-          email: "dh@dh.com",
-          username: "sarahj",
-          department: "Engineering",
-          role: "Head Department"
-        });
-        const simulatedRole = "Head Department";
-        const simulatedLogin = "true";
-        
-        const storedUser = localStorage.getItem("user"); 
+        const storedUser = localStorage.getItem("user");
         const storedRole = localStorage.getItem("userRole");
         const isLoggedIn = localStorage.getItem("isLoggedIn");
-        
-        // Check if user is logged in
+
         if (!isLoggedIn || isLoggedIn !== "true") {
           console.error("User not logged in");
           return;
         }
-        
+
         if (storedUser && storedRole) {
           const parsedUser = JSON.parse(storedUser);
-          
-          // Validate that the user has Head Department role (matching your login system)
+
           if (storedRole === "Head Department" || parsedUser.role === "Head Department") {
             setCurrentUser({
               name: parsedUser.name,
               department: parsedUser.department,
-              role: "Head Department" // Normalize to match UI expectations
-            });
-            
-            // Add a sample entry for the logged-in Head Department
-            const departmentHeadEntry = {
-              id: "5",
-              name: parsedUser.name,
-              licensePlate: "SAR-1234",
-              department: parsedUser.department,
               role: "Head Department",
-              date: "2024-01-11",
-              exitTime: "15:30",
-              returnTime: "08:00",
-              reason: "Strategic planning meeting with board of directors and quarterly review session.",
-              approval: "pending",
-              statusFromDepartment: "approved", 
-              statusFromHR: "pending",
-              statusFromDirector: "pending",
-              submittedAt: "2024-01-11, 07:30:00"
-            };
-            
-            setEntries(prev => {
-              // Check if entry already exists
-              const exists = prev.some(entry => entry.id === "5");
-              if (!exists) {
-                return [...prev, departmentHeadEntry];
-              }
-              return prev;
             });
           } else {
             console.error("User is not a Head Department. Current role:", storedRole);
-            // In a real app, you might redirect to login or show an error
           }
         } else {
           console.error("No user data found in localStorage");
-          // In a real app, you might redirect to login
         }
       } catch (error) {
         console.error("Error loading user from localStorage:", error);
@@ -250,11 +135,11 @@ useEffect(() => {
         setIsLoading(false);
       }
     };
-
     loadUserFromStorage();
   }, []);
 
-  // Initialize form data when currentUser is loaded
+
+  // Form state
   const [formData, setFormData] = useState({
     name: "",
     licensePlate: "",
@@ -264,9 +149,10 @@ useEffect(() => {
     exitTime: "",
     returnTime: "",
     reason: "",
-    reasonType: "", // PT, Outside, Sick
-    outsideReason: "", // Only for Outside
+    reasonType: "",
+    outsideReason: "",
   });
+  // console.log(formData);
 
   // Update form data when currentUser changes
   useEffect(() => {
@@ -274,144 +160,133 @@ useEffect(() => {
       setFormData(prev => ({
         ...prev,
         department: currentUser.department,
+        role: currentUser.role,
+        name: currentUser.name,
       }));
     }
   }, [currentUser]);
 
-  useEffect(()=>{
-    fetchLeavePermission();
-  }, [fetchLeavePermission]);
 
-  // Show loading state while user data is being loaded
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-lg">Loading user data...</p>
-        </div>
-      </div>
-    );
-  }
 
-  // Show error state if no user data is found
-  if (!currentUser) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-red-500 mb-4">
-            <Shield className="w-16 h-16 mx-auto mb-2" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-4">
-            No user data found or insufficient permissions.
-          </p>
-          <Button onClick={() => window.location.reload()}>
-            Try Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
+const getPendingDepartmentEntries = () => {
+  if (!currentUser) return [];
+  return leavePermissions.filter(entry => 
+    entry.department === currentUser.department && 
+    entry.statusFromDepartment === "pending"
+  );
+};
 
-  // Verify user has Head Department role
-  if (currentUser.role !== "Head Department") {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-yellow-500 mb-4">
-            <Crown className="w-16 h-16 mx-auto mb-2" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Insufficient Permissions</h2>
-          <p className="text-gray-600 mb-4">
-            This page is only accessible to Head Departments.
-          </p>
-          <p className="text-sm text-gray-500 mb-4">
-            Current role: {currentUser.role}
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button onClick={() => window.history.back()}>
-              Go Back
-            </Button>
-            <Button variant="outline" onClick={() => {
-              // In real app: localStorage.clear(); navigate("/login");
-              window.location.reload();
-            }}>
-              Logout
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+const getProcessedDepartmentEntries = () => {
+  if (!currentUser) return [];
+  return leavePermissions.filter(entry => 
+    entry.department === currentUser.department && 
+    entry.statusFromDepartment !== "pending"
+  );
+};
 
-  // Filter entries to only show current department
-  const getDepartmentEntries = () => {
-    return leavePermissions.filter(entry => entry.department === currentUser.department);
-  };
-
-  // Get entries that need department approval
-  const getPendingDepartmentEntries = () => {
-    return getDepartmentEntries().filter(e => e.statusFromDepartment === 'pending');
-  };
-
-  // Get entries that have been processed by department
-  const getProcessedDepartmentEntries = () => {
-    return getDepartmentEntries().filter(e => e.statusFromDepartment !== 'pending');
-  };
-
-  // Helper function to get overall approval status for Head Department
+  // Determine overall approval status
   const getOverallStatus = (entry: any) => {
     if (entry.role === "Head Department") {
-      // For Head Department: needs HR and Director approval
       if (entry.statusFromHR === "rejected" || entry.statusFromDirector === "rejected") return "rejected";
       if (entry.statusFromHR === "approved" && entry.statusFromDirector === "approved") return "approved";
       return "pending";
     } else {
-      // For Staff: needs Department and HR approval
       if (entry.statusFromDepartment === "rejected" || entry.statusFromHR === "rejected") return "rejected";
       if (entry.statusFromDepartment === "approved" && entry.statusFromHR === "approved") return "approved";
       return "pending";
     }
   };
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!currentUser) return;
+
+  // Validate all required fields
+  if (!formData.name.trim()) {
+    alert("Please enter a staff name");
+    return;
+  }
+  if (!formData.licensePlate.trim()) {
+    alert("Please enter a license plate");
+    return;
+  }
+  if (!formData.role.trim()) {
+    alert("Please select a role");
+    return;
+  }
+  if (!formData.date) {
+    alert("Please select a date");
+    return;
+  }
+  if (!formData.exitTime) {
+    alert("Please enter an exit time");
+    return;
+  }
+  if (!formData.reasonType) {
+    alert("Please select a reason type");
+    return;
+  }
+  if (formData.reasonType === "Outside" && !formData.outsideReason.trim()) {
+    alert("Please explain the reason for leaving (Outside)");
+    return;
+  }
+  if (formData.reasonType !== "Sick" && !formData.returnTime) {
+    alert("Please enter a return time");
+    return;
+  }
+
+  let reasonValue = formData.reasonType === "Outside" ? formData.outsideReason : formData.reasonType;
   
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    let reasonValue = formData.reasonType === "Outside" ? formData.outsideReason : formData.reasonType;
-    const newEntry = {
-      id: Date.now().toString(),
-      ...formData,
-      reason: reasonValue,
-      approval: "pending",
-      statusFromDepartment: formData.role === "Head Department" ? "approved" : "pending", // Auto-approve for Head Department
-      statusFromHR: "pending",
-      statusFromDirector: "pending",
-      submittedAt: new Date().toLocaleString(),
-    };
-    try {
-      await addLeavePermission(newEntry);
-      setIsOpen(false);
-      setFormData({
-        name: currentUser.name,
-        licensePlate: "",
-        department: currentUser.department,
-        role: currentUser.role,
-        date: "",
-        exitTime: "",
-        returnTime: "",
-        reason: "",
-        reasonType: "",
-        outsideReason: "",
-      });
-    } catch (err) {
-      alert("Failed to submit leave request.");
-      console.error(err);
-    }
+  const now = new Date();
+  const formatted = now.getFullYear() + '-' +
+  String(now.getMonth() + 1).padStart(2, '0') + '-' +
+  String(now.getDate()).padStart(2, '0') + ' ' +
+  String(now.getHours()).padStart(2, '0') + ':' +
+  String(now.getMinutes()).padStart(2, '0') + ':' +
+  String(now.getSeconds()).padStart(2, '0');
+  
+  const newEntry = {
+    ...formData, // Use the form name, not currentUser.name
+    department: currentUser.department, // Ensure department is set correctly
+    reason: reasonValue,
+    approval: "pending",
+    statusFromDepartment: formData.role === "Head Department" ? "approved" : "pending",
+    statusFromHR: "pending",
+    statusFromDirector: "pending",
+    submittedAt: formatted,
+    actual_exittime: null,
+    actual_returntime: null
   };
+    
+  console.log("=== DEBUG NEW ENTRY ===");
+  console.log("newEntry:", newEntry);
 
+  try {
+    await addLeavePermission(newEntry);
+    await fetchLeavePermission();
+    setIsOpen(false);
+    
+    // Reset form but keep user context
+    setFormData({
+      name: "",
+      licensePlate: "",
+      department: currentUser.department, // Keep the current user's department
+      role: "",
+      date: "",
+      exitTime: "",
+      returnTime: "",
+      reason: "",
+      reasonType: "",
+      outsideReason: "",
+    });
+  } catch (error) {
+    console.error("Error adding leave permission:", error);
+    alert("Failed to submit leave request. Please try again.");
+  }
+};
+
+  // Handle input change
   const handleInputChange = (field: string, value: string) => {
-    // If reasonType is changed to 'Sick', clear returnTime
     if (field === "reasonType") {
       setFormData(prev => ({
         ...prev,
@@ -423,23 +298,96 @@ useEffect(() => {
     }
   };
 
+  const handleEmployeeSelect = (name: string, employee?: any) => {
+    setFormData(prev => ({
+      ...prev,
+      name: name,
+      // Auto-fill license plate if employee data is available from users table
+      licensePlate: employee?.licensePlate || prev.licensePlate
+    }));
+  };
+
+  // View details modal
   const handleViewDetails = (entry: any) => {
     setSelectedEntry(entry);
     setIsDetailsOpen(true);
   };
 
-  const handleDepartmentApprovalAction = (entryId: string, action: 'approved' | 'rejected') => {
-    setEntries(prev => prev.map(entry => {
-      if (entry.id === entryId) {
-        const updatedEntry = { ...entry, statusFromDepartment: action };
-        updatedEntry.approval = getOverallStatus(updatedEntry);
-        return updatedEntry;
-      }
-      return entry;
-    }));
+  // Approve or reject leave permission
+  const handleDepartmentApprovalAction = async (entryId: string, action: "approved" | "rejected") => {
+    // try {
+    //   await updateLeavePermission(entryId, { statusFromDepartment: action });
+    //   setIsDetailsOpen(false);
+    // } catch (err) {
+    //   alert("Failed to update approval status.");
+    //   console.error(err);
+    // }
+    const entry = leavePermissions.find(e => e.id === entryId);
+    if (!entry) return;
+    // Compute new approval status
+    const updatedEntry = { ...entry, statusFromDepartment: action };
+    updatedEntry.approval = getOverallStatus(updatedEntry);
+    await updateLeavePermission(entryId, {
+      statusFromDepartment: action,
+      approval: updatedEntry.approval
+    });
     setIsDetailsOpen(false);
   };
 
+  // Loading user data
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg">Loading user data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No currentUser or no permissions
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <Shield className="w-16 h-16 mx-auto mb-2" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">No user data found or insufficient permissions.</p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check role permission
+  if (currentUser.role !== "Head Department") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-yellow-500 mb-4">
+            <Crown className="w-16 h-16 mx-auto mb-2" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Insufficient Permissions</h2>
+          <p className="text-gray-600 mb-4">This page is only accessible to Head Departments.</p>
+          <p className="text-sm text-gray-500 mb-4">Current role: {currentUser.role}</p>
+          <div className="flex gap-4 justify-center">
+            <Button onClick={() => window.history.back()}>Go Back</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                window.location.reload();
+              }}
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="max-h-screen from-primary/5 via-background to-accent/20">
       <div className="z-10 sticky top-0 pb-2">
@@ -486,21 +434,20 @@ useEffect(() => {
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-sm font-medium">
-                        Staff Name
-                      </Label>
-                      <Input
+                      <EmployeeAutocomplete
                         id="name"
-                        placeholder="Enter staff name"
+                        label="Name"
+                        placeholder="Enter or search staff name"
                         value={formData.name}
-                        onChange={(e) => handleInputChange("name", e.target.value)}
+                        onChange={handleEmployeeSelect}
+                        employees={employees}
                         className="h-10 border-border/50 focus:border-primary"
                         required
                       />
                       <p className="text-xs text-blue-600">You can request for any staff in your department</p>
                     </div>
                     <div className="space-y-2 flex flex-col">
-                      <Label htmlFor="role" className="text-sm font-medium   ">
+                      <Label htmlFor="role" className="text-sm font-medium">
                         Role
                       </Label>
                       <select
@@ -515,7 +462,7 @@ useEffect(() => {
                         <option value="Staff">Staff</option>
                         <option value="Head Department">Head Department</option>
                       </select>
-                      <p className="text-xs text-muted-foreground">Select the role for this request</p>
+                      <p className="text-xs text-muteds-foreground">Select the role for this request</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -569,6 +516,7 @@ useEffect(() => {
                         value={formData.exitTime}
                         onChange={(e) => handleInputChange("exitTime", e.target.value)}
                         className="h-10 border-border/50 focus:border-primary"
+                        required
                       />
                     </div>
                   </div>
@@ -707,7 +655,11 @@ useEffect(() => {
                             <TableRow key={entry.id}>
                               <TableCell className="font-medium">
                                 <div className="flex items-center">
-                                  <User className="w-4 h-4 mr-2 text-blue-600" />
+                                  {entry.role === "Head Department" ? (
+                                    <Crown className="w-4 h-4 mr-1 text-yellow-600" />
+                                  ) : (
+                                    <User className="w-4 h-4 mr-1 text-blue-600" />
+                                  )}
                                   {entry.name}
                                 </div>
                               </TableCell>

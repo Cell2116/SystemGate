@@ -8,18 +8,6 @@ CREATE TABLE IF NOT EXISTS users (
   role VARCHAR(50) NOT NULL
 );
 
--- Table log absensi
-CREATE TABLE IF NOT EXISTS attendance_logs (
-  id SERIAL PRIMARY KEY,
-  uid VARCHAR(50),
-  licenseplate VARCHAR(50),
-  image_path TEXT,
-  image_path_out TEXT,
-  datein TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  dateout TIMESTAMP,
-  status TEXT
-);
-
 -- Table Leave Permission
 CREATE TABLE IF NOT EXISTS leave_permission (
   id SERIAL PRIMARY KEY,
@@ -31,12 +19,33 @@ CREATE TABLE IF NOT EXISTS leave_permission (
   date DATE,
   exittime TIMESTAMP,
   returntime TIMESTAMP,
+  actual_exittime TIMESTAMP,
+  actual_returntime TIMESTAMP,
   reason VARCHAR(255),
   approval VARCHAR(50),
   statusfromhr VARCHAR(50),
   statusfromdept VARCHAR(50),
   statusfromdirector VARCHAR(50),
-  submittedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  submittedat TIMESTAMP  
+);
+
+-- Table log absensi
+CREATE TABLE IF NOT EXISTS attendance_logs (
+  id SERIAL PRIMARY KEY,
+  uid VARCHAR(50),
+  licenseplate VARCHAR(50),
+  image_path TEXT,
+  image_path_out TEXT,
+  image_path_leave VARCHAR(255),
+  image_path_return VARCHAR(255),
+  datein TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  dateout TIMESTAMP,
+  exitTime TIMESTAMP,
+  returnTime TIMESTAMP,
+  actual_exittime TIMESTAMP,
+  actual_returntime TIMESTAMP,
+  status TEXT,
+  leave_permission_id INTEGER REFERENCES leave_permission(id)
 );
 
 -- Dummy users
