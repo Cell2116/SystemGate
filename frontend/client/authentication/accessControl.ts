@@ -1,13 +1,11 @@
 // src/constants/accessControl.ts
 
-// Semua role yang tersedia
-export type Role = "Security" | "HR" | "User" | "Head Department" | "Director";
+export type Role = "Security" | "HR" | "User" | "Head Department" | "Director" | "Super User";
 
 console.log("accessControl mounted")
 
-// Akses masing-masing role ke menu sidebar
 export const roleAccess: Record<string, Role[]> = {
-  Dashboard: ["Security", "HR"], // Menu A
-  "History Management": ["Security", "HR", "Head Department"], // Menu B
-  "Leave Permission": ["HR", "User", "Head Department", "Director"], // Menu C
+  Dashboard: ["Security", "HR", "Super User"], // Menu A
+  "History Management": ["Security", "HR", "Head Department", "Super User"], // Menu B
+  "Leave Permission": ["HR", "User", "Head Department", "Director", "Super User"], // Menu C
 };

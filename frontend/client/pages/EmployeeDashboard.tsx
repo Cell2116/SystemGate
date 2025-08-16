@@ -37,6 +37,8 @@ interface ExtendedAttendance {
   licenseplate: string;
   image_path?: string;
   image_path_out?: string;
+  image_path_leave_exit?: string;
+  image_path_leave_return?: string;
   datein: string;
   dateout?: string | null;
   status?: string;
@@ -74,27 +76,35 @@ export default function EmployeeDashboard() {
     recordsCountRef.current = records.length;
   }, [records]);
 
-  // const formatLocalDateTime = (dateString: string | null) => {
-  //   if (!dateString) return null;
+
+  const formatCustomDateTime = (dateString: string | null | undefined) => {
+    if (!dateString) return null;
     
-  //   // Create a date object from the string
-  //   const date = new Date(dateString);
-    
-  //   // Check if the date is valid
-  //   if (isNaN(date.getTime())) return null;
-    
-  //   // Format in Indonesian timezone (WIB - UTC+7)
-  //   return date.toLocaleString("id-ID", {
-  //     timeZone: "Asia/Jakarta", 
-  //     year: 'numeric',
-  //     month: '2-digit',
-  //     day: '2-digit',
-  //     hour: '2-digit',
-  //     minute: '2-digit',
-  //     second: '2-digit',
-  //     hour12: false
-  //   });
-  // };
+    let date: Date;
+    if (dateString.includes('T')) {
+      const [datePart, timePart] = dateString.split('T');
+      const timeOnly = timePart.split('.')[0];
+      const cleanDateString = `${datePart} ${timeOnly}`;
+      date = new Date(cleanDateString);
+    } else if (dateString.includes(' ')) {
+      date = new Date(dateString);
+    } else {
+      date = new Date(dateString);
+    }
+
+    if (isNaN(date.getTime())) return dateString;
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+    return `${day}/${month}/${year}, ${hours}.${minutes}.${seconds}`;
+  };
+
   const formatLocalDateTime = (dateString: string | null | undefined) => {
   if (!dateString) return null;
   
@@ -424,14 +434,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path 
-                            ? `http://localhost:3000/uploads/${record.image_path}` 
+                            ? `http://192.168.4.62:3000/uploads/${record.image_path}` 
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="entry"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
                           onClick={() => {
                             if (record.image_path)
-                              setModalImage(`http://localhost:3000/uploads/${record.image_path}`);
+                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path}`);
                           }}
                         />
                       </div>
@@ -443,14 +453,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_out
-                            ? `http://localhost:3000/uploads/${record.image_path_out}`
+                            ? `http://192.168.4.62:3000/uploads/${record.image_path_out}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="exit"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_out)
-                              setModalImage(`http://localhost:3000/uploads/${record.image_path_out}`);
+                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_out}`);
                           }}
                         />
                       </div>
@@ -462,15 +472,15 @@ export default function EmployeeDashboard() {
                           Leave Exit Photo
                         </h3>
                         <img
-                          src={record.image_path_out
-                            ? `http://localhost:3000/uploads/${record.image_path_out}`
+                          src={record.image_path_leave_exit
+                            ? `http://192.168.4.62:3000/uploads/${record.image_path_leave_exit}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_exit"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
-                            if (record.image_path_out)
-                              setModalImage(`http://localhost:3000/uploads/${record.image_path_out}`);
+                            if (record.image_path_leave_exit)
+                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_leave_exit}`);
                           }}
                         />
                       </div>
@@ -480,15 +490,15 @@ export default function EmployeeDashboard() {
                           Leave Return Photo
                         </h3>
                         <img
-                          src={record.image_path_out
-                            ? `http://localhost:3000/uploads/${record.image_path_out}`
+                          src={record.image_path_leave_return
+                            ? `http://192.168.4.62:3000/uploads/${record.image_path_leave_return}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_return"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
-                            if (record.image_path_out)
-                              setModalImage(`http://localhost:3000/uploads/${record.image_path_out}`);
+                            if (record.image_path_leave_return)
+                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_leave_return}`);
                           }}
                         />
                       </div>
@@ -569,14 +579,14 @@ export default function EmployeeDashboard() {
                           <div>
                             <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Planned Exit:</span>
                             <span className="ml-2 text-blue-700 font-mono lg:text-xl sm:text-sm">
-                              {formatLocalDateTime(record.planned_exit_time) || "N/A"}
+                              {formatCustomDateTime(record.planned_exit_time) || "N/A"}
                             </span>
                           </div>
                                               
                           <div>
                             <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Planned Return:</span>
                             <span className="ml-2 text-blue-700 font-mono lg:text-xl sm:text-sm">
-                              {formatLocalDateTime(record.planned_return_time) || "N/A"}
+                              {formatCustomDateTime(record.planned_return_time) || "N/A"}
                             </span>
                           </div>
                                               

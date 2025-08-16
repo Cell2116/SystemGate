@@ -4,7 +4,8 @@
   "main": "db.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -12,13 +13,19 @@
   "description": "",
   "type": "module",
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "digest": "^0.0.5",
     "digest-fetch": "^3.1.1",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "mqtt": "^5.14.0",
     "pg": "^8.16.3",
+    "sharp": "^0.34.3",
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }

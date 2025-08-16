@@ -1,7 +1,7 @@
 // src/context/UserContext.tsx
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
-type Role = "Security" | "HR" | "User" | "Head Department" | "Director";
+type Role = "Security" | "HR" | "User" | "Head Department" | "Director" | "Super User";
 
 interface UserContextType {
   role: Role;
@@ -32,7 +32,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       normalized === "HR" ||
       normalized === "User" ||
       normalized === "Head Department" ||
-      normalized === "Director"
+      normalized === "Director" ||
+      normalized === "Super User"
     ) {
       setRoleState(normalized);
     }

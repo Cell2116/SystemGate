@@ -3,6 +3,7 @@ import create from "zustand";
 import axios from "axios";
 
 type leavePermissionStatus = 'pending' | ' approved' | 'rejected';
+
 interface Attendance {
   id: number;
   uid: string;
@@ -11,6 +12,8 @@ interface Attendance {
   licenseplate: string;
   image_path?: string;
   image_path_out?: string;
+  image_path_leave_exit?: string;
+  image_path_leave_return?: string;
   datein: string;
   dateout?: string | null;
   status?: string;
@@ -22,6 +25,8 @@ interface Attendance {
   actual_exittime?: string | null;
   actual_returntime?: string | null;
 }
+
+
 
 interface LeavePermission {
   id: string;
@@ -73,6 +78,15 @@ interface DashboardStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearRecords: () => void;
+
+  // Add new action for history records
+  fetchHistoryRecords: (filters?: {
+    searchTerm?: string;
+    department?: string;
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => Promise<Attendance[]>;
 }
 function formatToDateTime(date = new Date()) {
   return date.toISOString().slice(0, 19).replace('T', ' ');
@@ -91,7 +105,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchLeavePermission: async() =>{
     set({ loading: true, error: null });
     try {
-      const res = await axios.get("http://localhost:3000/leave-permission");
+      const res = await axios.get("http://192.168.4.62:3000/leave-permission");
       // Map backend snake_case to frontend camelCase
       const mapped = res.data.map((item: any) => {
         // Format date to YYYY-MM-DD
@@ -165,7 +179,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         submittedAt: formatted,
       };
       console.log(mappedEntry);
-      const res = await axios.post("http://localhost:3000/leave-permission", mappedEntry);
+      const res = await axios.post("http://192.168.4.62:3000/leave-permission", mappedEntry);
       console.log(res.data);
       set((state) => ({
         leavePermissions: [res.data, ...state.leavePermissions],
@@ -207,7 +221,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         return result;
       };
       const mappedUpdates = mapToSnake(updates);
-      const res = await axios.put(`http://localhost:3000/leave-permission/${id}`, mappedUpdates);
+      const res = await axios.put(`http://192.168.4.62:3000/leave-permission/${id}`, mappedUpdates);
       set((state) => ({
         leavePermissions: state.leavePermissions.map(lp => lp.id === id ? { ...lp, ...updates } : lp),
         loading: false,
@@ -223,9 +237,10 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     console.log("🚀 fetchRecords called - starting fetch...");
     set({ loading: true, error: null });
     try {
-      console.log("📡 Making API call to http://localhost:3000/logs");
-      const res = await axios.get("http://localhost:3000/logs");
+      console.log("📡 Making API call to http://192.168.4.62:3000/logs");
+      const res = await axios.get("http://192.168.4.62:3000/logs");
       console.log("📡 API response received:", res.data.length, "records");
+      console.log(res);
       
       const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
         new Date(b.datein).getTime() - new Date(a.datein).getTime()
@@ -255,7 +270,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchUsers: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.get("http://localhost:3000/users");
+      const res = await axios.get("http://192.168.4.62:3000/users");
       set({ 
         users: res.data, 
         loading: false,
@@ -278,7 +293,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchUsersByDepartment: async (department: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.get(`http://localhost:3000/users/department/${encodeURIComponent(department)}`);
+      const res = await axios.get(`http://192.168.4.62:3000/users/department/${encodeURIComponent(department)}`);
       // Don't overwrite the main users array, just return the filtered results
       set({ 
         loading: false,
@@ -392,5 +407,45 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   clearRecords: () => {
     set({ records: [], error: null });
     console.log("🧹 Cleared all records");
-  }
+  },
+
+  fetchHistoryRecords: async (filters = {}) => {
+    console.log("🚀 fetchHistoryRecords called with filters:", filters);
+    set({ loading: true, error: null });
+    try {
+      // Build query parameters for filtering
+      const queryParams = new URLSearchParams();
+      if (filters.searchTerm) queryParams.append('search', filters.searchTerm);
+      if (filters.department && filters.department !== 'all') queryParams.append('department', filters.department);
+      if (filters.status && filters.status !== 'all') queryParams.append('status', filters.status);
+      if (filters.dateFrom) queryParams.append('dateFrom', filters.dateFrom);
+      if (filters.dateTo) queryParams.append('dateTo', filters.dateTo);
+
+      const url = `http://192.168.4.62:3000/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      console.log("📡 Making API call to:", url);
+      
+      const res = await axios.get(url);
+      console.log("📡 API response received:", res.data.length, "history records");
+      
+      const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
+        new Date(b.datein).getTime() - new Date(a.datein).getTime()
+      );
+      
+      set({ 
+        loading: false,
+        error: null 
+      });
+      
+      console.log(`📥 Fetched ${sortedRecords.length} history records from API`);
+      return sortedRecords;
+    } catch (error: any) {
+      console.error("❌ fetchHistoryRecords failed:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to fetch history data";
+      set({
+        error: errorMessage,
+        loading: false,
+      });
+      throw error;
+    }
+  },
 }));

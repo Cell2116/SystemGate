@@ -1,3 +1,12 @@
+-- Table daftar login
+CREATE TABLE IF NOT EXISTS userlogin (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  username TEXT NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  department VARCHAR(50) NOT NULL,
+  role VARCHAR(50) NOT NULL
+);
 -- Table daftar pengguna RFID
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
@@ -36,8 +45,8 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
   licenseplate VARCHAR(50),
   image_path TEXT,
   image_path_out TEXT,
-  image_path_leave VARCHAR(255),
-  image_path_return VARCHAR(255),
+  image_path_leave_exit VARCHAR(255),
+  image_path_leave_return VARCHAR(255),
   datein TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   dateout TIMESTAMP,
   exitTime TIMESTAMP,
@@ -57,6 +66,14 @@ INSERT INTO users (name, uid, licenseplate, department, role) VALUES
 ('Eko Prasetyo',    'UID005', 'H4455LMN', 'General',     'Director'),
 ('Marcello',        'CD131D06', 'D1235AD', 'IT',     'Staff'),
 ('Test 2',          '9B023306', 'D1234AD', 'IT',     'Head Department');
+
+INSERT INTO userlogin (name, username, password, department, role) VALUES
+('Marcello',     'marcello', 'cello123456', 'IT', 'Staff'),
+('Head Department Test',     'headdept', 'hd123456', 'IT', 'Head Department'),
+('Director Test',     'dr', 'dr123456', 'Director', 'Director'),
+('HR Test',     'hr', 'hr123456', 'HR', 'Staff'),
+('Super User',     'superuser', 'su123456', 'IT', 'Super User');
+
 
 -- ATTENDANCE_LOGS
 INSERT INTO attendance_logs (uid, licenseplate, image_path, datein, dateout, status) VALUES

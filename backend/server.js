@@ -9,6 +9,8 @@ import cors from 'cors';
 import http from "http";
 import { WebSocketServer } from "ws";
 import { captureSnapshot } from './cctv.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -276,16 +278,16 @@ mqttClient.on('message', async (topic, message) => {
 
                 // 1. If leave permission exists and actual_exittime is not set, do leave_exit
                 if (leave && !leave.actual_exittime) {
-                    // LEAVE EXIT
-                    const imagePathOut = await captureSnapshot(uid);
+                    const imagePathLeaveExit = await captureSnapshot(uid);
                     await db.query(
-                        'UPDATE attendance_logs SET image_path_out = $1, actual_exittime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
-                        [imagePathOut, 'leave_exit', leave.id, attendance.id]
+                        'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
+                        [imagePathLeaveExit, 'leave_exit', leave.id, attendance.id]
                     );
                     await db.query(
                         'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP WHERE id = $1',
                         [leave.id]
                     );
+                    
                     const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
                     const exitDataFull = {
                         ...updatedRecord.rows[0],
@@ -309,18 +311,18 @@ mqttClient.on('message', async (topic, message) => {
                     return;
                 }
 
-                // 2. If leave permission exists and actual_exittime is set but actual_returntime is not, do leave_return
+                // 2. LEAVE RETURN - capture image specifically for leave return
                 if (leave && leave.actual_exittime && !leave.actual_returntime) {
-                    // LEAVE RETURN
-                    const imagePathOut = await captureSnapshot(uid);
+                    const imagePathLeaveReturn = await captureSnapshot(uid);
                     await db.query(
-                        'UPDATE attendance_logs SET image_path_out = $1, actual_returntime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
-                        [imagePathOut, 'leave_return', leave.id, attendance.id]
+                        'UPDATE attendance_logs SET image_path_leave_return = $1, actual_returntime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
+                        [imagePathLeaveReturn, 'leave_return', leave.id, attendance.id]
                     );
                     await db.query(
                         'UPDATE leave_permission SET actual_returntime = CURRENT_TIMESTAMP WHERE id = $1',
                         [leave.id]
                     );
+                    
                     const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
                     const returnDataFull = {
                         ...updatedRecord.rows[0],
@@ -344,37 +346,13 @@ mqttClient.on('message', async (topic, message) => {
                     return;
                 }
 
-                // 3. If leave permission exists and both actual_exittime and actual_returntime are set, do regular exit (dateout)
-                if (leave && leave.actual_exittime && leave.actual_returntime && !attendance.dateout) {
-                    // FINAL EXIT
-                    const imagePathOut = await captureSnapshot(uid);
-                    await db.query(
-                        'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
-                        [imagePathOut, 'exit', attendance.id]
-                    );
-                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
-                    const exitDataFull = {
-                        ...updatedRecord.rows[0],
-                        type: 'exit',
-                        leaveInfo: null,
-                        timestamp: new Date().toISOString()
-                    };
-                    broadcast(exitDataFull);
-                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
-                        status: 'approved',
-                        name: userInfo.name.substring(0, 16),
-                        department: userInfo.department.substring(0, 8),
-                        action: 'Exit'
-                    }));
-                    return;
-                }
-
-                // 4. If no leave permission, do regular exit
+                // 3. REGULAR EXIT - capture image for regular exit
                 const imagePathOut = await captureSnapshot(uid);
                 await db.query(
                     'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
                     [imagePathOut, 'exit', attendance.id]
                 );
+                
                 const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
                 const exitDataFull = {
                     ...updatedRecord.rows[0],
@@ -390,6 +368,7 @@ mqttClient.on('message', async (topic, message) => {
                     action: 'Exit'
                 }));
                 return;
+            
             } else {
                 // =================== ENTRY LOGIC ===================
                 console.log("🚪 Processing ENTRY for:", userInfo.name);
@@ -644,8 +623,8 @@ app.get('/logs', async (req, res) => {
             ...row,
             datein: convertToJakartaISO(row.datein),
             dateout: convertToJakartaISO(row.dateout),
-            planned_exit_time: convertToJakartaISO(row.planned_exit_time),
-            planned_return_time: convertToJakartaISO(row.planned_return_time),
+            planned_exit_time: row.planned_exit_time,
+            planned_return_time: row.planned_return_time,
             actual_exittime: convertToJakartaISO(row.actual_exittime),
             actual_returntime: convertToJakartaISO(row.actual_returntime)
         }));
@@ -875,8 +854,190 @@ app.get('/leave-permission', async (req, res) => {
     }
 });
 
+// Authentication routes
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Access token required' });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ success: false, message: 'Invalid or expired token' });
+        }
+        req.user = user;
+        next();
+    });
+};
+
+app.post('/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Username and password are required'
+            });
+        }
+
+        // Find user by username
+        const result = await db.query(
+            'SELECT * FROM userlogin WHERE username = $1',
+            [username]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid username or password'
+            });
+        }
+
+        const user = result.rows[0];
+
+        // For now, we'll do plain text comparison since existing data is not hashed
+        // In production, you should hash passwords and use bcrypt.compare()
+        const isValidPassword = password === user.password;
+
+        if (!isValidPassword) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid username or password'
+            });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                id: user.id, 
+                username: user.username,
+                name: user.name,
+                department: user.department,
+                role: user.role 
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        // Remove password from response
+        const { password: _, ...userWithoutPassword } = user;
+
+        console.log(`✅ User logged in: ${user.name} (${user.role})`);
+
+        res.json({
+            success: true,
+            message: 'Login successful',
+            user: userWithoutPassword,
+            token: token
+        });
+
+    } catch (error) {
+        console.error('❌ Login error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+});
+
+// Get current user info (protected route)
+app.get('/auth/me', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query(
+            'SELECT id, name, username, department, role FROM userlogin WHERE id = $1',
+            [req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            user: result.rows[0]
+        });
+    } catch (error) {
+        console.error('❌ Get user error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+});
+
+// Logout endpoint (optional - mainly for token blacklisting if implemented)
+app.post('/auth/logout', authenticateToken, (req, res) => {
+    // In a real implementation, you might want to blacklist the token
+    console.log(`👋 User logged out: ${req.user.name}`);
+    res.json({
+        success: true,
+        message: 'Logged out successfully'
+    });
+});
+
+// Register endpoint (optional - for creating new users)
+app.post('/auth/register', async (req, res) => {
+    try {
+        const { name, username, password, department, role } = req.body;
+
+        if (!name || !username || !password || !department || !role) {
+            return res.status(400).json({
+                success: false,
+                message: 'All fields are required'
+            });
+        }
+
+        // Check if username already exists
+        const existingUser = await db.query(
+            'SELECT id FROM userlogin WHERE username = $1',
+            [username]
+        );
+
+        if (existingUser.rows.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Username already exists'
+            });
+        }
+
+        // Hash password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Insert new user
+        const result = await db.query(
+            'INSERT INTO userlogin (name, username, password, department, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, username, department, role',
+            [name, username, hashedPassword, department, role]
+        );
+
+        console.log(`✅ New user registered: ${name} (${role})`);
+
+        res.status(201).json({
+            success: true,
+            message: 'User registered successfully',
+            user: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Registration error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+});
+
 server.listen(port, () => {
-    console.log(`🚀 Server + WebSocket listening on http://localhost:${port}`);
-    console.log(`📡 WebSocket endpoint: ws://localhost:${port}`);
-    console.log(`🖼️ Image uploads: http://localhost:${port}/uploads/`);
+    console.log(`🚀 Server + WebSocket listening on http://192.168.4.62:${port}`);
+    console.log(`📡 WebSocket endpoint: ws://192.168.4.62:${port}`);
+    console.log(`🖼️ Image uploads: http://192.168.4.62:${port}/uploads/`);
 });

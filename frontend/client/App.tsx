@@ -13,6 +13,7 @@ import Articles from "./pages/Articles";
 import Clients from "./pages/Clients";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import EmployeeHistory  from "./pages/EmployeeHistory";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import InOutTrucks from "./pages/InOutTrucks";
 import LeavePermission from "./pages/LeavePermission";
@@ -51,6 +52,8 @@ const App = () => {
               <Route path="employee" element={<EmployeeDashboard />} />
               <Route path="trucks" element={<InOutTrucks />} />
               <Route path="leave" element={<LeavePermission />} />
+              <Route path="history" element={<EmployeeHistory />} />
+              <Route path="/employeehistory" element={<EmployeeHistory />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
