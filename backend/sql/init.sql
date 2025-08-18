@@ -71,7 +71,7 @@ INSERT INTO userlogin (name, username, password, department, role) VALUES
 ('Marcello',     'marcello', 'cello123456', 'IT', 'Staff'),
 ('Head Department Test',     'headdept', 'hd123456', 'IT', 'Head Department'),
 ('Director Test',     'dr', 'dr123456', 'Director', 'Director'),
-('HR Test',     'hr', 'hr123456', 'HR', 'Staff'),
+('HR Test',     'hr', 'hr123456', 'HR', 'HR'),
 ('Super User',     'superuser', 'su123456', 'IT', 'Super User');
 
 

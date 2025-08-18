@@ -126,10 +126,7 @@ export default function EmployeeDashboard() {
     minute: '2-digit',
     second: '2-digit',
     hour12: false
-  });
-  
-  // Debug: Log the formatted result
-  
+  });  
   return formatted;
 };
 

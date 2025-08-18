@@ -39,6 +39,8 @@ services:
       DB_PASSWORD: esp123
       DB_NAME: esp32db
       MQTT_BROKER_URL : mqtt://mqtt:1884
+    volumes:
+      - ./backend/uploads:/usr/src/app/uploads
 
   frontend:
     build:

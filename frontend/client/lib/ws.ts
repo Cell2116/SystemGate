@@ -42,11 +42,11 @@ let reconnectTimeout: NodeJS.Timeout | null = null;
 
 // Add global data change listeners for different data types
 const dataChangeListeners: {
-  [key: string]: ((data: any) => void)[]
+    [key: string]: ((data: any) => void)[]
 } = {
-  attendance: [],
-  leave_permission: [],
-  trucks: [],
+    attendance: [],
+    leave_permission: [],
+    trucks: [],
 };
 
 export function initWebSocket() {

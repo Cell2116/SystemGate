@@ -47,9 +47,10 @@ export default function LoginPage() {
         // Navigate based on role
         switch (normalizedRole) {
           case "HR":
-          case "User":
+          // case "User":
           case "Head Department":
           case "Super User":
+            navigate("/leave");
           case "Director":
             navigate("/leave");
             break;
@@ -70,7 +71,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <DebugAuth />
+      {/* <DebugAuth /> */}
       <div className="flex w-full max-w-5xl h-[90vh] shadow-xl rounded-2xl overflow-hidden bg-white">
         {/* Left Side */}
         <div
