@@ -40,8 +40,6 @@ export default function LoginPage() {
       
       if (result.success && result.user) {
         const normalizedRole = result.user.role === "Staff" ? "User" : result.user.role;
-
-        // Update user context
         setRole(normalizedRole as Role);
 
         // Navigate based on role

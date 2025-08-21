@@ -21,10 +21,10 @@ export default  function clock(){
     weekday: 'long'
   });
   return(
-    <div className="bg-gray-600 bg-opacity-5 shadow-md rounded-xl p-3 w-full max-w-sm ">
+    <div className="bg-gray-600 bg-opacity-5 shadow-md rounded-xl p-2 w-full max-w-sm ">
       <span>
-      <span className="text-l font-semibold text-gray-500 mb-2">{formattedDate} | </span>
-      <span className="text-; font-semibold text-black-600 mb-2">{formattedTime}</span>
+      <span className="text-sm font-semibold text-gray-500 mb-2">{formattedDate} | </span>
+      <span className="text-sm font-semibold text-black-600 mb-2">{formattedTime}</span>
       </span>
     </div>
   )

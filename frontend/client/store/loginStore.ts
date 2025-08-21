@@ -36,7 +36,7 @@ interface LoginStore{
 }
 
 // Configure axios base URL
-const API_BASE_URL = "http://192.168.4.62:3000";
+const API_BASE_URL = "http://192.168.4.224:3000";
 axios.defaults.baseURL = API_BASE_URL;
 
 export const useLoginStore = create <LoginStore>((set, get) => ({
@@ -67,7 +67,7 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
           loading: false,
           error: null
         });
-        console.log(`✅ Login Successful for user: ${user.name}`);
+        console.log(`Login Successful for user: ${user.name}`);
         return { success: true, message: "Login Successful", user, token };
       }
       else{
@@ -103,7 +103,7 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
       error: null
     });
     
-    console.log("👋 User logged out");
+    console.log("User logged out");
   },
 
   checkAuth: async () => {

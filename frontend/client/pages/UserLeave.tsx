@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FilePlus, DoorOpen, Plus, Send, Sparkles, Zap, Calendar, Clock, User, CircleCheck, XCircle } from "lucide-react";
 import Clock2 from "../components/dashboard/clock"
-// Clock component placeholder
+
 
 export default function UserLeavePage(){
   const [isOpen, setIsOpen] = useState(false);
@@ -156,25 +156,18 @@ export default function UserLeavePage(){
     }
   ]);
 
-  // Function to calculate overall approval status
   const calculateOverallApproval = (entry: typeof entries[0]) => {
     const requiredApprovals = ["statusFromDepartment", "statusFromHR"];
-    
-    // Add director approval for Head Departments
+
     if (entry.role === "Head Department") {
       requiredApprovals.push("statusFromDirector");
     }
-
-    // Check if any required approval is rejected
     const hasRejection = requiredApprovals.some(approval => 
       entry[approval as keyof typeof entry] === "rejected"
     );
-
     if (hasRejection) {
       return "rejected";
     }
-
-    // Check if all required approvals are approved
     const allApproved = requiredApprovals.every(approval => 
       entry[approval as keyof typeof entry] === "approved"
     );
@@ -186,7 +179,6 @@ export default function UserLeavePage(){
     return "pending";
   };
 
-  // Update overall approval status whenever entries change
   useEffect(() => {
     setEntries(prevEntries => 
       prevEntries.map(entry => ({
@@ -195,8 +187,6 @@ export default function UserLeavePage(){
       }))
     );
   }, []);
-
-  // Function to simulate approval updates (for demonstration)
   const updateApprovalStatus = (entryId: string, approvalType: string, status: string) => {
     setEntries(prevEntries => 
       prevEntries.map(entry => {
@@ -205,7 +195,6 @@ export default function UserLeavePage(){
             ...entry,
             [approvalType]: status
           };
-          // Recalculate overall approval
           updatedEntry.approval = calculateOverallApproval(updatedEntry);
           return updatedEntry;
         }
@@ -225,8 +214,6 @@ export default function UserLeavePage(){
       statusFromDirector: "pending",
       submittedAt: new Date().toLocaleString()
     };
-    
-    // Calculate initial approval status
     const entryWithApproval = {
       ...newEntry,
       approval: calculateOverallApproval(newEntry)

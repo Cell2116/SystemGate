@@ -1,4 +1,3 @@
-// src/hooks/useResponsiveScale.ts
 import { useEffect } from 'react';
 
 interface ScaleConfig {
@@ -8,12 +7,12 @@ interface ScaleConfig {
 }
 
 const scaleConfigs: ScaleConfig[] = [
-  { width: 1366, height: 768, scale: 0.75 },  // Your exact requirement
-  { width: 1366, height: 626, scale: 0.1 },  // Your exact requirement
-  { width: 1366, scale: 0.8 },                // 1366 width but taller
-  { width: 1821, height: 834 ,scale: 0.8 },                // 1366 width but taller
-  { width: 1440, scale: 0.85 },               // Medium screens
-  { width: 1600, scale: 0.9 },                // Larger screens
+  { width: 1366, height: 768, scale: 0.75 }, 
+  { width: 1366, height: 626, scale: 0.1 },  
+  { width: 1366, scale: 0.8 },                
+  { width: 1821, height: 834 ,scale: 0.8 },   
+  { width: 1440, scale: 0.85 },               
+  { width: 1600, scale: 0.9 },               
 ];
 
 export const useResponsiveScale = (): void => {

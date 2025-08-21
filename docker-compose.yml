@@ -18,6 +18,7 @@ services:
   mqtt:
     image: eclipse-mosquitto
     container_name: esp32_mqtt
+    restart: always
     ports: 
       - "1884:1884"
     volumes:
@@ -40,20 +41,21 @@ services:
       DB_NAME: esp32db
       MQTT_BROKER_URL : mqtt://mqtt:1884
     volumes:
-      - ./backend/uploads:/usr/src/app/uploads
+      # - C:/Users/iotal/Documents/SystemGate/backend/uploads:/usr/src/app/uploads
+      # - uploads_data:/usr/src/app/uploads
+      - C:/Users/iotal/Documents/SystemGate/backend/uploads:/app/uploads
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: esp32_frontend
+    restart: always
     ports:
       - "8080:8080"
     depends_on:
       - backend
 
-
-
-
 volumes:
   pgdata:
+  uploads_data:

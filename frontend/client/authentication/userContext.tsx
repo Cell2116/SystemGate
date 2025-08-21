@@ -1,4 +1,3 @@
-// src/context/UserContext.tsx
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
 type Role = "Security" | "HR" | "User" | "Head Department" | "Director" | "Super User";
@@ -8,17 +7,8 @@ interface UserContextType {
   setRole: (role: Role) => void;
 }
 
-const defaultRole: Role = "User"; // default
-
-// const UserContext = createContext<UserContextType>({
-//   role: defaultRole,
-//   setRole: () => {},
-// });
+const defaultRole: Role = "User"; 
 const UserContext = createContext<UserContextType | undefined>(undefined);
-
-
-// export const useUser = () => useContext(UserContext);
-
 console.log("userContext Mounted");
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRoleState] = useState<Role>(defaultRole);

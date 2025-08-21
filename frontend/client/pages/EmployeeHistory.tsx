@@ -51,7 +51,6 @@ interface HistoryRecord {
 export default function EmployeeHistory() {
   // Store connection
   const { fetchHistoryRecords, loading, error } = useDashboardStore();
-
   // State management
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<HistoryRecord[]>([]);
@@ -75,8 +74,6 @@ export default function EmployeeHistory() {
   ];
   const dynamicDepartments = Array.from(new Set(records.map(record => record.department)));
   const allDepartments = Array.from(new Set([...predefinedDepartments, ...dynamicDepartments])).sort();
-
-  // Fetch records from database
   const fetchData = async () => {
     try {
       const filters = {
@@ -98,19 +95,16 @@ export default function EmployeeHistory() {
   useEffect(() => {
     fetchData();
   }, []);
-
   // Debounced search and filter effect
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       fetchData();
     }, 500); 
-
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, selectedDepartment, selectedStatus, dateFrom, dateTo]);
 
   useEffect(() => {
     let filtered = [...records];
-
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(record => 
@@ -225,33 +219,7 @@ export default function EmployeeHistory() {
 
     return `${day}/${month}/${year}, ${hours}.${minutes}.${seconds}`;
   };
-
-  // const exportToCSV = () => {
-  //   const headers = ["UID", "Name", "Department", "License Plate", "Entry Time", "Exit Time", "Status"];
-  //   const csvContent = [
-  //     headers.join(","),
-  //     ...filteredRecords.map(record => [
-  //       record.uid,
-  //       record.name,
-  //       record.department,
-  //       record.licenseplate,
-  //       record.datein,
-  //       record.dateout || "",
-  //       record.status || ""
-  //     ].join(","))
-  //   ].join("\n");
-
-  //   const blob = new Blob([csvContent], { type: "text/csv" });
-  //   const url = window.URL.createObjectURL(blob);
-  //   const a = document.createElement("a");
-  //   a.href = url;
-  //   a.download = `employee_history_${new Date().toISOString().split('T')[0]}.csv`;
-  //   a.click();
-  //   window.URL.revokeObjectURL(url);
-  // };
-  
   const exportToXLSX = () => {
-    // Prepare data for Excel export
     const exportData = filteredRecords.map(record => ({
       'UID': record.uid,
       'Name': record.name,
@@ -271,8 +239,6 @@ export default function EmployeeHistory() {
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(exportData);
-
-    // Set column widths for better readability
     const columnWidths = [
       { wch: 15 }, 
       { wch: 25 }, 
@@ -289,25 +255,18 @@ export default function EmployeeHistory() {
       { wch: 20 }  
     ];
     worksheet['!cols'] = columnWidths;
-
-    // Add worksheet to workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Employee History');
-
-    // Generate filename with current date
     const fileName = `employee_history_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-    // Write and download file
     XLSX.writeFile(workbook, fileName);
   };
-
   return (
     <>
-      <div className="h-screen flex flex-col space-y-4 overflow-hidden bg-gray-50">
+      <div className="h-screen flex flex-col space-y-4 overflow-hidden p-3 bg-gray-50">
         {/* Header */}
         <div className="z-10 sticky top-0 pb-2 bg-gray-50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Employee History</h1>
+              <h1 className="text-xl font-bold text-gray-900">Employee History</h1>
               <p className="mt-1 text-sm text-gray-500">
                 View and manage historical employee attendance records
               </p>
@@ -342,7 +301,7 @@ export default function EmployeeHistory() {
 
         {/* Filters */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-1">
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               {/* Search */}
               <div className="md:col-span-2">
@@ -367,7 +326,7 @@ export default function EmployeeHistory() {
                   aria-label="Department"
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="all">All Departments</option>
                   {allDepartments.map(dept => (
@@ -385,7 +344,7 @@ export default function EmployeeHistory() {
                   id="status-filter"
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="all">All Status</option>
                   <option value="entry">Entry</option>
@@ -405,7 +364,7 @@ export default function EmployeeHistory() {
                   placeholder="datefrom"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -419,7 +378,7 @@ export default function EmployeeHistory() {
                   placeholder="dateto"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -564,7 +523,7 @@ export default function EmployeeHistory() {
         {/* Pagination */}
         {totalPages > 1 && (
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-1">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-700">
                   Showing {indexOfFirstRecord + 1} to {Math.min(indexOfLastRecord, filteredRecords.length)} of {filteredRecords.length} results
@@ -663,10 +622,10 @@ export default function EmployeeHistory() {
                     <div className="text-center">
                       <p className="text-sm font-medium mb-2">Entry</p>
                       <img
-                        src={`http://192.168.4.62:3000/uploads/${selectedRecord.image_path}`}
+                        src={`http://192.168.4.224:3000/uploads/${selectedRecord.image_path}`}
                         alt="Entry"
                         className="w-full h-24 object-cover rounded border cursor-pointer"
-                        onClick={() => setModalImage(`http://192.168.4.62:3000/uploads/${selectedRecord.image_path}`)}
+                        onClick={() => setModalImage(`http://192.168.4.224:3000/uploads/${selectedRecord.image_path}`)}
                       />
                     </div>
                   )}
@@ -674,10 +633,10 @@ export default function EmployeeHistory() {
                     <div className="text-center">
                       <p className="text-sm font-medium mb-2">Exit</p>
                       <img
-                        src={`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_out}`}
+                        src={`http://192.168.4.224:3000/uploads/${selectedRecord.image_path_out}`}
                         alt="Exit"
                         className="w-full h-24 object-cover rounded border cursor-pointer"
-                        onClick={() => setModalImage(`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_out}`)}
+                        onClick={() => setModalImage(`http://192.168.4.224:3000/uploads/${selectedRecord.image_path_out}`)}
                       />
                     </div>
                   )}
@@ -685,10 +644,10 @@ export default function EmployeeHistory() {
                     <div className="text-center">
                       <p className="text-sm font-medium mb-2">Leave Exit</p>
                       <img
-                        src={`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_leave_exit}`}
+                        src={`http://192.168.4.224:3000/uploads/${selectedRecord.image_path_leave_exit}`}
                         alt="Leave Exit"
                         className="w-full h-24 object-cover rounded border cursor-pointer"
-                        onClick={() => setModalImage(`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_leave_exit}`)}
+                        onClick={() => setModalImage(`http://192.168.4.224:3000/uploads/${selectedRecord.image_path_leave_exit}`)}
                       />
                     </div>
                   )}
@@ -696,10 +655,10 @@ export default function EmployeeHistory() {
                     <div className="text-center">
                       <p className="text-sm font-medium mb-2">Leave Return</p>
                       <img
-                        src={`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_leave_return}`}
+                        src={`http://192.168.4.224:3000/uploads/${selectedRecord.image_path_leave_return}`}
                         alt="Leave Return"
                         className="w-full h-24 object-cover rounded border cursor-pointer"
-                        onClick={() => setModalImage(`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_leave_return}`)}
+                        onClick={() => setModalImage(`http://192.168.4.224:3000/uploads/${selectedRecord.image_path_leave_return}`)}
                       />
                     </div>
                   )}

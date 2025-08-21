@@ -22,9 +22,9 @@ const wss = new WebSocketServer({ server });
 
 // WebSocket broadcast function
 function broadcast(data) {
-    console.log("📡 Broadcasting to", wss.clients.size, "clients:", data);
+    console.log("Broadcasting to", wss.clients.size, "clients:", data);
     wss.clients.forEach((client) => {
-        if (client.readyState === 1) { // 1 === OPEN
+        if (client.readyState === 1) {
             client.send(JSON.stringify(data));
         }
     });
@@ -32,7 +32,7 @@ function broadcast(data) {
 
 // WebSocket setup
 wss.on("connection", (ws) => {
-    console.log("🔌 WebSocket client connected. Total clients:", wss.clients.size);
+    console.log("WebSocket client connected. Total clients:", wss.clients.size);
 
     ws.send(JSON.stringify({
         type: "info",
@@ -41,15 +41,15 @@ wss.on("connection", (ws) => {
     }));
 
     ws.on("message", (message) => {
-        console.log("📨 Message from client:", message.toString());
+        console.log("Message from client:", message.toString());
     });
 
     ws.on("close", () => {
-        console.log("❌ WebSocket client disconnected. Remaining clients:", wss.clients.size);
+        console.log("WebSocket client disconnected. Remaining clients:", wss.clients.size);
     });
 
     ws.on("error", (error) => {
-        console.error("🚨 WebSocket error:", error);
+        console.error("WebSocket error:", error);
     });
 });
 
@@ -65,27 +65,20 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const mqttClient = mqtt.connect(process.env.MQTT_BROKER_URL || 'mqtt://mqtt:1884');
 
 mqttClient.on('connect', () => {
-    console.log('✅ Connected to MQTT broker');
+    console.log('Connected to MQTT broker');
     mqttClient.subscribe('rfid/entry', (err) => {
         if (err) {
-            console.error('❌ Failed to subscribe to rfid/entry topic:', err);
+            console.error('Failed to subscribe to rfid/entry topic:', err);
         } else {
-            console.log('✅ Subscribed to rfid/entry topic');
+            console.log('Subscribed to rfid/entry topic');
         }
     });
 });
 
-// Enhanced function to handle employee exit with leave permission validation
 async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
-    console.log("🔍 Checking leave permission for exit:", licensePlate);
-
-    // Only match leave permission for today (or the date of the attendance record)
+    console.log("Checking leave permission for exit:", licensePlate);
     const attendanceDate = attendanceRecord.datein ? new Date(attendanceRecord.datein).toISOString().split('T')[0] : null;
-
-    // Debug: Print the values being used for the query
-    console.log("🔎 Query params:", { licensePlate, attendanceDate });
-
-    // Check for any approved leave permission for today that is not yet used
+    console.log("Query params:", { licensePlate, attendanceDate });
     const leavePermission = await db.query(
         `SELECT * FROM leave_permission 
         WHERE licenseplate = $1 
@@ -104,8 +97,7 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
         [licensePlate, attendanceDate]
     );
 
-    // Debug: Print what was returned
-    console.log("🔎 leavePermission.rows:", leavePermission.rows);
+    console.log("leavePermission.rows:", leavePermission.rows);
 
     if (leavePermission.rows.length > 0) {
         const permission = leavePermission.rows[0];
@@ -113,11 +105,11 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
         const now = new Date();
         const plannedExitTime = new Date(permission.exittime);
         
-        console.log("✅ Found approved leave permission for:", licensePlate);
-        console.log("⏰ Planned exit time:", plannedExitTime);
-        console.log("⏰ Actual exit time:", now);
+        console.log("Found approved leave permission for:", licensePlate);
+        console.log("Planned exit time:", plannedExitTime);
+        console.log("Actual exit time:", now);
         
-        // Update attendance_logs with actual_exittime (leave permission exit)
+        // Update attendance_logs (leave permission exit)
         await db.query(
             `UPDATE attendance_logs 
             SET actual_exittime = CURRENT_TIMESTAMP, 
@@ -134,7 +126,7 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
             [permission.id]
         );
         
-        console.log("✅ Leave exit recorded - actual_exittime set in both attendance_logs and leave_permission");
+        console.log("Leave exit recorded - actual_exittime set in both attendance_logs and leave_permission");
         
         return {
             type: 'leave_exit',
@@ -143,9 +135,9 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
             isLate: now > plannedExitTime
         };
     } else {
-        console.log("📋 No approved leave permission found, treating as regular exit");
+        console.log("No approved leave permission found, treating as regular exit");
         
-        // Regular end-of-day exit
+        // Regular exit
         await db.query(
             `UPDATE attendance_logs 
             SET dateout = CURRENT_TIMESTAMP, 
@@ -160,11 +152,9 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
     }
 }
 
-// Enhanced function to handle employee return with leave permission validation
 async function handleEmployeeReturn(uid, licensePlate) {
-    console.log("🔍 Checking for active leave permission return:", licensePlate);
+    console.log("Checking for active leave permission return:", licensePlate);
     
-    // Check for leave permission that has actual_exittime but not actual_returntime
     const activeLeavePermission = await db.query(
         `SELECT * FROM leave_permission 
         WHERE licenseplate = $1 
@@ -179,9 +169,9 @@ async function handleEmployeeReturn(uid, licensePlate) {
         const now = new Date();
         const plannedReturnTime = new Date(permission.returntime);
         
-        console.log("✅ Found active leave permission for return:", licensePlate);
-        console.log("⏰ Planned return time:", plannedReturnTime);
-        console.log("⏰ Actual return time:", now);
+        console.log("Found active leave permission for return:", licensePlate);
+        console.log("Planned return time:", plannedReturnTime);
+        console.log("Actual return time:", now);
         
         // Update the attendance record for today with actual_returntime
         await db.query(
@@ -208,7 +198,7 @@ async function handleEmployeeReturn(uid, licensePlate) {
             isLate: now > plannedReturnTime
         };
     } else {
-        console.log("📋 No active leave permission found, treating as new entry");
+        console.log("No active leave permission found, treating as new entry");
         return {
             type: 'new_entry'
         };
@@ -216,7 +206,7 @@ async function handleEmployeeReturn(uid, licensePlate) {
 }
 
 mqttClient.on('error', (error) => {
-    console.error('🚨 MQTT Client Error:', error);
+    console.error('MQTT Client Error:', error);
 });
 
 
@@ -224,31 +214,30 @@ mqttClient.on('message', async (topic, message) => {
     if (topic === 'rfid/entry') {
         try {
             const payload = JSON.parse(message.toString());
-            console.log('📄 RFID payload:', payload);
+            console.log('RFID payload:', payload);
 
             const { uid, timestamp } = payload;
 
             if (!uid) {
-                console.log('❌ Missing UID in payload');
+                console.log('Missing UID in payload');
                 return;
             }
 
             const user = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
 
             if (user.rows.length === 0) {
-                console.log("❌ UID not found:", uid);
+                console.log("UID not found:", uid);
                 
-                // OPTIMIZED: Minimal rejection response for ESP32
                 mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
                     status: 'rejected',
-                    reason: 'Unknown Card'  // Short reason for LCD
+                    reason: 'Unknown Card'  
                 }));
                 return;
             }
 
             const userInfo = user.rows[0];
             const licensePlate = userInfo.licenseplate;
-            console.log("✅ Valid UID:", uid, "User:", userInfo.name);
+            console.log("Valid UID:", uid, "User:", userInfo.name);
 
             const today = new Date().toISOString().split('T')[0];
             const existingEntry = await db.query(
@@ -276,7 +265,7 @@ mqttClient.on('message', async (topic, message) => {
                 );
                 const leave = leavePermission.rows[0];
 
-                // 1. If leave permission exists and actual_exittime is not set, do leave_exit
+                //Leave Exit
                 if (leave && !leave.actual_exittime) {
                     const imagePathLeaveExit = await captureSnapshot(uid);
                     await db.query(
@@ -311,7 +300,7 @@ mqttClient.on('message', async (topic, message) => {
                     return;
                 }
 
-                // 2. LEAVE RETURN - capture image specifically for leave return
+                //Leave Return
                 if (leave && leave.actual_exittime && !leave.actual_returntime) {
                     const imagePathLeaveReturn = await captureSnapshot(uid);
                     await db.query(
@@ -346,7 +335,7 @@ mqttClient.on('message', async (topic, message) => {
                     return;
                 }
 
-                // 3. REGULAR EXIT - capture image for regular exit
+                //Exit Regular
                 const imagePathOut = await captureSnapshot(uid);
                 await db.query(
                     'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
@@ -371,31 +360,23 @@ mqttClient.on('message', async (topic, message) => {
             
             } else {
                 // =================== ENTRY LOGIC ===================
-                console.log("🚪 Processing ENTRY for:", userInfo.name);
-
-                // Check if this is a return from leave or new entry
+                console.log("Processing ENTRY for:", userInfo.name);
                 const returnResult = await handleEmployeeReturn(uid, licensePlate);
                 
                 if (returnResult.type === 'leave_return') {
-                    // This is a return from approved leave
-                    console.log("🔄 Processing LEAVE RETURN for:", userInfo.name);
-                    
-                    // Capture return image
+                    console.log("Processing LEAVE RETURN for:", userInfo.name);
                     const imagePath = await captureSnapshot(uid);
                     
-                    // Update the existing attendance record with return image
                     await db.query(
                         'UPDATE attendance_logs SET image_path_out = $1 WHERE licenseplate = $2 AND DATE(datein) = CURRENT_DATE',
                         [imagePath, licensePlate]
                     );
                     
-                    // Get the updated record
                     const updatedRecord = await db.query(
                         'SELECT * FROM attendance_logs WHERE licenseplate = $1 AND DATE(datein) = CURRENT_DATE',
                         [licensePlate]
                     );
                     
-                    // Prepare response message
                     let actionMessage = 'Return';
                     let statusMessage = 'Welcome back!';
                     
@@ -405,7 +386,6 @@ mqttClient.on('message', async (topic, message) => {
                         statusMessage = 'Late return';
                     }
 
-                    // Full data for WebSocket broadcast (dashboard)
                     const returnDataFull = {
                         id: updatedRecord.rows[0].id,
                         uid: uid,
@@ -429,9 +409,8 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     broadcast(returnDataFull);
-                    console.log("🔄 LEAVE RETURN broadcasted to dashboard");
+                    console.log("LEAVE RETURN broadcasted to dashboard");
 
-                    // OPTIMIZED: Response for ESP32 LCD
                     const esp32Response = {
                         status: 'approved',
                         name: userInfo.name.substring(0, 16),        
@@ -440,13 +419,11 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
-                    console.log("📤 Sent LEAVE RETURN approval to ESP32:", esp32Response);
+                    console.log("Sent LEAVE RETURN approval to ESP32:", esp32Response);
                     
                 } else {
-                    // Regular new entry
-                    console.log("🚪 Processing NEW ENTRY for:", userInfo.name);
+                    console.log("Processing NEW ENTRY for:", userInfo.name);
 
-                    // Check for approved leave permission for today
                     const today = new Date().toISOString().split('T')[0];
                     const leavePermissionToday = await db.query(
                         `SELECT * FROM leave_permission 
@@ -464,16 +441,12 @@ mqttClient.on('message', async (topic, message) => {
                         plannedReturnTime = leavePermissionToday.rows[0].returntime;
                     }
 
-                    // Insert entry record, including planned leave times if any
                     const insertResult = await db.query(
                         'INSERT INTO attendance_logs (uid, licenseplate, status, exittime, returntime) VALUES ($1, $2, $3, $4, $5) RETURNING *',
                         [uid, licensePlate, 'entry', plannedExitTime, plannedReturnTime]
                     );
 
-                    // Capture entry image (background process)
                     const imagePath = await captureSnapshot(uid);
-
-                    // Update with image path if captured
                     if (imagePath) {
                         await db.query(
                             'UPDATE attendance_logs SET image_path = $1 WHERE id = $2',
@@ -481,7 +454,6 @@ mqttClient.on('message', async (topic, message) => {
                         );
                     }
 
-                    // Full data for WebSocket broadcast (dashboard)
                     const entryDataFull = {
                         id: insertResult.rows[0].id,
                         uid: uid,
@@ -493,7 +465,6 @@ mqttClient.on('message', async (topic, message) => {
                         dateout: null,
                         status: 'entry',
                         type: 'entry',
-                        // Optionally include planned leave info for dashboard
                         leaveInfo: leavePermissionToday.rows.length > 0 ? {
                             permissionId: leavePermissionToday.rows[0].id,
                             plannedExitTime: leavePermissionToday.rows[0].exittime,
@@ -504,9 +475,8 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     broadcast(entryDataFull);
-                    console.log("🚪 ENTRY broadcasted to dashboard");
+                    console.log("ENTRY broadcasted to dashboard");
 
-                    // OPTIMIZED: Minimal response for ESP32 LCD
                     const esp32Response = {
                         status: 'approved',
                         name: userInfo.name.substring(0, 16),        
@@ -515,14 +485,13 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
-                    console.log("📤 Sent ENTRY approval to ESP32:", esp32Response);
+                    console.log("Sent ENTRY approval to ESP32:", esp32Response);
                 }
             }
 
         } catch (error) {
             console.error('❌ Error processing MQTT message:', error);
             
-            // Send error response to ESP32
             if (payload && payload.uid) {
                 mqttClient.publish(`rfid/approval/${payload.uid}`, JSON.stringify({
                     status: 'rejected',
@@ -533,9 +502,7 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-// Additional helper function for testing ESP32 responses
 function testESP32Response(uid) {
-    // Test function untuk mengirim response ke ESP32 secara manual
     const testResponse = {
         status: 'approved',
         name: 'Test User',
@@ -544,7 +511,7 @@ function testESP32Response(uid) {
     };
     
     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(testResponse));
-    console.log("🧪 Test response sent to ESP32 for UID:", uid);
+    console.log("Test response sent to ESP32 for UID:", uid);
 }
 
 app.post('/test-esp32', async (req, res) => {
@@ -566,7 +533,6 @@ app.post('/test-esp32', async (req, res) => {
     }
 });
 
-// Debug endpoint to check MQTT connection
 app.get('/mqtt-status', (req, res) => {
     res.json({
         connected: mqttClient.connected,
@@ -576,29 +542,21 @@ app.get('/mqtt-status', (req, res) => {
     });
 });
 
-// Helper function to convert database timestamp to Jakarta timezone ISO string
 function convertToJakartaISO(dbTimestamp) {
     if (!dbTimestamp) return null;
     
-    // If it's already a JavaScript Date object
     if (dbTimestamp instanceof Date) {
-        // Create a new date with Jakarta timezone offset
         const jakartaTime = new Date(dbTimestamp.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours
         return jakartaTime.toISOString().replace('Z', '+07:00'); // Mark as Jakarta time
     }
     
-    // If it's a string timestamp from database (YYYY-MM-DD HH:mm:ss format)
     if (typeof dbTimestamp === 'string') {
-        // Assume database timestamp is already in Jakarta time
-        // Convert format to ISO with Jakarta timezone
         const isoString = dbTimestamp.replace(' ', 'T') + '+07:00';
         return isoString;
     }
     
     return dbTimestamp;
 }
-
-// Enhanced logs endpoint with leave permission data
 app.get('/logs', async (req, res) => {
     try {
         const result = await db.query(`
@@ -618,7 +576,6 @@ app.get('/logs', async (req, res) => {
             ORDER BY al.datein DESC
         `);
 
-        // Convert all timestamp fields to proper Jakarta timezone
         const formattedRows = result.rows.map(row => ({
             ...row,
             datein: convertToJakartaISO(row.datein),
@@ -629,7 +586,7 @@ app.get('/logs', async (req, res) => {
             actual_returntime: convertToJakartaISO(row.actual_returntime)
         }));
 
-        console.log(`📋 Fetched ${formattedRows.length} log records with proper Jakarta timezone`);
+        console.log(`Fetched ${formattedRows.length} log records with proper Jakarta timezone`);
         res.json(formattedRows);
     } catch (e) {
         console.error("❌ Error fetching logs:", e);
@@ -637,7 +594,6 @@ app.get('/logs', async (req, res) => {
     }
 });
 
-// Get all users
 app.get('/users', async (req, res) => {
     try {
         const result = await db.query(`
@@ -651,7 +607,7 @@ app.get('/users', async (req, res) => {
             FROM users 
             ORDER BY name ASC
         `);
-        console.log(`👥 Fetched ${result.rows.length} users`);
+        console.log(`Fetched ${result.rows.length} users`);
         res.json(result.rows);
     } catch (error) {
         console.error('❌ Error fetching users:', error);
@@ -659,7 +615,6 @@ app.get('/users', async (req, res) => {
     }
 });
 
-// Get users by department
 app.get('/users/department/:department', async (req, res) => {
     try {
         const { department } = req.params;
@@ -675,20 +630,18 @@ app.get('/users/department/:department', async (req, res) => {
             WHERE department = $1
             ORDER BY name ASC
         `, [department]);
-        console.log(`👥 Fetched ${result.rows.length} users for department: ${department}`);
+        console.log(`Fetched ${result.rows.length} users for department: ${department}`);
         res.json(result.rows);
     } catch (error) {
-        console.error('❌ Error fetching users by department:', error);
+        console.error('Error fetching users by department:', error);
         res.status(500).json({ error: 'Failed to fetch users by department' });
     }
 });
 
-// Get leave permission status for a specific employee
 app.get('/employee/:uid/leave-status', async (req, res) => {
     try {
         const { uid } = req.params;
         
-        // Get user info
         const user = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
         if (user.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
@@ -696,21 +649,16 @@ app.get('/employee/:uid/leave-status', async (req, res) => {
         
         const userInfo = user.rows[0];
         
-        // Get today's attendance
         const attendance = await db.query(
             'SELECT * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = CURRENT_DATE ORDER BY datein DESC LIMIT 1',
             [uid]
         );
-        
-        // Get today's leave permissions
         const leavePermissions = await db.query(
             `SELECT * FROM leave_permission 
             WHERE uid = $1 AND date = CURRENT_DATE 
             ORDER BY submittedat DESC`,
             [uid]
         );
-        
-        // Get approved leave permission for today
         const approvedLeave = await db.query(
             `SELECT * FROM leave_permission 
             WHERE uid = $1 AND date = CURRENT_DATE 
@@ -733,8 +681,6 @@ app.get('/employee/:uid/leave-status', async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-
-// Health check endpoint
 app.get('/health', (req, res) => {
     res.json({
         status: 'OK',
@@ -744,7 +690,6 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Add a new leave permission entry
 app.post('/leave-permission', async (req, res) => {
     try {
         const {
@@ -793,12 +738,9 @@ app.post('/leave-permission', async (req, res) => {
     }
 });
 
-
-// Update a leave permission entry by id
 app.put('/leave-permission/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        // Only allow updating certain fields for approval
         const allowedFields = [
             'approval',
             'statusfromhr',
@@ -843,7 +785,6 @@ app.put('/leave-permission/:id', async (req, res) => {
     }
 });
 
-// Get all leave permissions
 app.get('/leave-permission', async (req, res) => {
     try {
         const result = await db.query('SELECT * FROM leave_permission ORDER BY submittedat DESC');
@@ -854,10 +795,7 @@ app.get('/leave-permission', async (req, res) => {
     }
 });
 
-// Authentication routes
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-// Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -886,7 +824,6 @@ app.post('/auth/login', async (req, res) => {
             });
         }
 
-        // Find user by username
         const result = await db.query(
             'SELECT * FROM userlogin WHERE username = $1',
             [username]
@@ -898,21 +835,14 @@ app.post('/auth/login', async (req, res) => {
                 message: 'Invalid username or password'
             });
         }
-
         const user = result.rows[0];
-
-        // For now, we'll do plain text comparison since existing data is not hashed
-        // In production, you should hash passwords and use bcrypt.compare()
         const isValidPassword = password === user.password;
-
         if (!isValidPassword) {
             return res.status(401).json({
                 success: false,
                 message: 'Invalid username or password'
             });
         }
-
-        // Generate JWT token
         const token = jwt.sign(
             { 
                 id: user.id, 
@@ -924,11 +854,9 @@ app.post('/auth/login', async (req, res) => {
             JWT_SECRET,
             { expiresIn: '24h' }
         );
-
-        // Remove password from response
         const { password: _, ...userWithoutPassword } = user;
 
-        console.log(`✅ User logged in: ${user.name} (${user.role})`);
+        console.log(`User logged in: ${user.name} (${user.role})`);
 
         res.json({
             success: true,
@@ -945,8 +873,6 @@ app.post('/auth/login', async (req, res) => {
         });
     }
 });
-
-// Get current user info (protected route)
 app.get('/auth/me', authenticateToken, async (req, res) => {
     try {
         const result = await db.query(
@@ -974,17 +900,14 @@ app.get('/auth/me', authenticateToken, async (req, res) => {
     }
 });
 
-// Logout endpoint (optional - mainly for token blacklisting if implemented)
 app.post('/auth/logout', authenticateToken, (req, res) => {
-    // In a real implementation, you might want to blacklist the token
-    console.log(`👋 User logged out: ${req.user.name}`);
+    console.log(`User logged out: ${req.user.name}`);
     res.json({
         success: true,
         message: 'Logged out successfully'
     });
 });
 
-// Register endpoint (optional - for creating new users)
 app.post('/auth/register', async (req, res) => {
     try {
         const { name, username, password, department, role } = req.body;
@@ -1019,7 +942,7 @@ app.post('/auth/register', async (req, res) => {
             [name, username, hashedPassword, department, role]
         );
 
-        console.log(`✅ New user registered: ${name} (${role})`);
+        console.log(`New user registered: ${name} (${role})`);
 
         res.status(201).json({
             success: true,
@@ -1037,7 +960,7 @@ app.post('/auth/register', async (req, res) => {
 });
 
 server.listen(port, () => {
-    console.log(`🚀 Server + WebSocket listening on http://192.168.4.62:${port}`);
-    console.log(`📡 WebSocket endpoint: ws://192.168.4.62:${port}`);
-    console.log(`🖼️ Image uploads: http://192.168.4.62:${port}/uploads/`);
+    console.log(`Server + WebSocket listening on http://192.168.4.224:${port}`);
+    console.log(`WebSocket endpoint: ws://192.168.4.224:${port}`);
+    console.log(`Image uploads: http://192.168.4.224:${port}/uploads/`);
 });

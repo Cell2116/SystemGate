@@ -5,13 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
-import About from "./pages/About";
-import Advantages from "./pages/Advantages";
-import Products from "./pages/Products";
-import Values from "./pages/Values";
-import Articles from "./pages/Articles";
-import Clients from "./pages/Clients";
-import Contact from "./pages/Contact";
+
 import NotFound from "./pages/NotFound";
 import EmployeeHistory  from "./pages/EmployeeHistory";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
@@ -27,10 +21,9 @@ const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    console.log("🚀 Initiating global WebSocket connection...");
+    console.log("Initiating global WebSocket connection...");
     initWebSocket();
-    console.log("✅ WebSocket initialization completed");
-    // Only initialize once, never close here!
+    console.log("WebSocket initialization completed");
   }, []);
 
   return (

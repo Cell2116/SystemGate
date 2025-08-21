@@ -1,9 +1,7 @@
-// src/store/dashboardStore.ts
 import create from "zustand";
 import axios from "axios";
 
 type leavePermissionStatus = 'pending' | ' approved' | 'rejected';
-
 interface Attendance {
   id: number;
   uid: string;
@@ -17,7 +15,6 @@ interface Attendance {
   datein: string;
   dateout?: string | null;
   status?: string;
-  // Add these leave permission fields
   leave_permission_id?: number | null;
   leave_reason?: string | null;
   planned_exit_time?: string | null;
@@ -25,9 +22,6 @@ interface Attendance {
   actual_exittime?: string | null;
   actual_returntime?: string | null;
 }
-
-
-
 interface LeavePermission {
   id: string;
   name: string;
@@ -46,7 +40,6 @@ interface LeavePermission {
   statusFromDirector: string;
   submittedAt: string;
 }
-
 interface User {
   id: number;
   name: string;
@@ -78,8 +71,6 @@ interface DashboardStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearRecords: () => void;
-
-  // Add new action for history records
   fetchHistoryRecords: (filters?: {
     searchTerm?: string;
     department?: string;
@@ -91,7 +82,6 @@ interface DashboardStore {
 function formatToDateTime(date = new Date()) {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
-  
 
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
   records: [],
@@ -101,16 +91,12 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   leavePermissions: [],
   users: [],
   
-
   fetchLeavePermission: async() =>{
     set({ loading: true, error: null });
     try {
-      const res = await axios.get("http://192.168.4.62:3000/leave-permission");
-      // Map backend snake_case to frontend camelCase
+      const res = await axios.get("http://192.168.4.224:3000/leave-permission");
       const mapped = res.data.map((item: any) => {
-        // Format date to YYYY-MM-DD
         const date = item.date ? new Date(item.date).toISOString().split('T')[0] : '';
-        
         const formatDateTime = (dateTimeString: string | null) => {
           if (!dateTimeString) return '';
           return dateTimeString.replace('T', ' ').slice(0, 16);
@@ -118,8 +104,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
         const formatTime = (timeString: string | null) => {
           if (!timeString) return '';
-          // Format dari DB: "2025-08-11 16:16:00"
-          return timeString.slice(11, 16); // hasil: "16:16"
+          return timeString.slice(11, 16);
         };
         return {
           id: item.id,
@@ -179,7 +164,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         submittedAt: formatted,
       };
       console.log(mappedEntry);
-      const res = await axios.post("http://192.168.4.62:3000/leave-permission", mappedEntry);
+      const res = await axios.post("http://192.168.4.224:3000/leave-permission", mappedEntry);
       console.log(res.data);
       set((state) => ({
         leavePermissions: [res.data, ...state.leavePermissions],
@@ -195,7 +180,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   updateLeavePermission: async (id, updates) => {
     set({ loading: true, error: null });
     try {
-      // Map camelCase update fields to snake_case for backend
       const mapToSnake = (obj: any) => {
         const mapping: Record<string, string> = {
           statusFromHR: 'statusfromhr',
@@ -221,7 +205,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         return result;
       };
       const mappedUpdates = mapToSnake(updates);
-      const res = await axios.put(`http://192.168.4.62:3000/leave-permission/${id}`, mappedUpdates);
+      const res = await axios.put(`http://192.168.4.224:3000/leave-permission/${id}`, mappedUpdates);
       set((state) => ({
         leavePermissions: state.leavePermissions.map(lp => lp.id === id ? { ...lp, ...updates } : lp),
         loading: false,
@@ -234,12 +218,12 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   },
 
   fetchRecords: async () => {
-    console.log("🚀 fetchRecords called - starting fetch...");
+    console.log("fetchRecords called - starting fetch...");
     set({ loading: true, error: null });
     try {
-      console.log("📡 Making API call to http://192.168.4.62:3000/logs");
-      const res = await axios.get("http://192.168.4.62:3000/logs");
-      console.log("📡 API response received:", res.data.length, "records");
+      console.log("Making API call to http://192.168.4.224:3000/logs");
+      const res = await axios.get("http://192.168.4.224:3000/logs");
+      console.log("API response received:", res.data.length, "records");
       console.log(res);
       
       const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
@@ -252,8 +236,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         error: null 
       });
       
-      console.log(`📥 Fetched ${sortedRecords.length} records from API`);
-      console.log("✅ fetchRecords completed successfully");
+      console.log(`Fetched ${sortedRecords.length} records from API`);
+      console.log("fetchRecords completed successfully");
       return sortedRecords;
     } catch (error: any) {
       console.error("❌ fetchRecords failed:", error);
@@ -270,14 +254,14 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchUsers: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.get("http://192.168.4.62:3000/users");
+      const res = await axios.get("http://192.168.4.224:3000/users");
       set({ 
         users: res.data, 
         loading: false,
         error: null 
       });
       
-      console.log(`👥 Fetched ${res.data.length} users from API`);
+      console.log(`Fetched ${res.data.length} users from API`);
       return res.data;
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to fetch users";
@@ -293,14 +277,13 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchUsersByDepartment: async (department: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.get(`http://192.168.4.62:3000/users/department/${encodeURIComponent(department)}`);
-      // Don't overwrite the main users array, just return the filtered results
+      const res = await axios.get(`http://192.168.4.224:3000/users/department/${encodeURIComponent(department)}`);
       set({ 
         loading: false,
         error: null 
       });
       
-      console.log(`👥 Fetched ${res.data.length} users for department: ${department}`);
+      console.log(`Fetched ${res.data.length} users for department: ${department}`);
       return res.data;
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to fetch users by department";
@@ -315,7 +298,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
   addRecord: (newRecord) => {
     set((state) => {
-      // Check for exact duplicates (same UID and same entry time)
       const isDuplicate = state.records.some(
         (rec) =>
           rec.uid === newRecord.uid &&
@@ -323,13 +305,12 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       );
 
       if (isDuplicate) {
-        console.warn("🛑 Duplicate record ignored:", newRecord);
+        console.warn("Duplicate record ignored:", newRecord);
         return state;
       }
 
-      // Add the new record at the beginning (most recent first)
       const updatedRecords = [newRecord, ...state.records];
-      console.log(`➕ Added new record. Total records: ${updatedRecords.length}`);
+      console.log(`Added new record. Total records: ${updatedRecords.length}`);
       
       return {
         ...state,
@@ -349,9 +330,9 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
       const wasUpdated = updatedRecords.some(r => r.id === recordId);
       if (wasUpdated) {
-        console.log(`📝 Updated record ID ${recordId}:`, updates);
+        console.log(`Updated record ID ${recordId}:`, updates);
       } else {
-        console.warn(`⚠️ Record ID ${recordId} not found for update`);
+        console.warn(`Record ID ${recordId} not found for update`);
       }
 
       return {
@@ -363,7 +344,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
   updateRecordByUid: (uid, updates) => {
     set((state) => {
-      // Find the most recent record for this UID (usually the one without dateout)
       const targetRecord = state.records
         .filter(r => r.uid === uid)
         .sort((a, b) => new Date(b.datein).getTime() - new Date(a.datein).getTime())[0];
@@ -379,7 +359,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
           : record
       );
 
-      console.log(`📝 Updated record for UID ${uid}:`, updates);
+      console.log(`Updated record for UID ${uid}:`, updates);
       
       return {
         ...state,
@@ -390,7 +370,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
   setConnectionStatus: (status) => {
     set({ connectionStatus: status });
-    console.log(`🔌 Connection status: ${status}`);
+    console.log(`Connection status: ${status}`);
   },
 
   setLoading: (loading) => {
@@ -406,14 +386,13 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
   clearRecords: () => {
     set({ records: [], error: null });
-    console.log("🧹 Cleared all records");
+    console.log("Cleared all records");
   },
 
   fetchHistoryRecords: async (filters = {}) => {
-    console.log("🚀 fetchHistoryRecords called with filters:", filters);
+    console.log("fetchHistoryRecords called with filters:", filters);
     set({ loading: true, error: null });
     try {
-      // Build query parameters for filtering
       const queryParams = new URLSearchParams();
       if (filters.searchTerm) queryParams.append('search', filters.searchTerm);
       if (filters.department && filters.department !== 'all') queryParams.append('department', filters.department);
@@ -421,11 +400,11 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       if (filters.dateFrom) queryParams.append('dateFrom', filters.dateFrom);
       if (filters.dateTo) queryParams.append('dateTo', filters.dateTo);
 
-      const url = `http://192.168.4.62:3000/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      console.log("📡 Making API call to:", url);
+      const url = `http://192.168.4.224:3000/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      console.log("Making API call to:", url);
       
       const res = await axios.get(url);
-      console.log("📡 API response received:", res.data.length, "history records");
+      console.log("API response received:", res.data.length, "history records");
       
       const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
         new Date(b.datein).getTime() - new Date(a.datein).getTime()
@@ -436,7 +415,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         error: null 
       });
       
-      console.log(`📥 Fetched ${sortedRecords.length} history records from API`);
+      console.log(`Fetched ${sortedRecords.length} history records from API`);
       return sortedRecords;
     } catch (error: any) {
       console.error("❌ fetchHistoryRecords failed:", error);

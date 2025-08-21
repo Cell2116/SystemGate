@@ -27,7 +27,7 @@ const navigation = [
     icon: LayoutDashboard, 
     children:[
       { name: "Employee", href: "/employee" }, 
-      { name: "Inbound/Outbound Trucks", href: "/trucks" }
+      { name: "Trucks", href: "/trucks" }
     ]
   },
   { name: "History Management",
@@ -35,18 +35,18 @@ const navigation = [
     icon: FileClock, 
     children:[
       { name: "Employee History", href: "/employeehistory" }, 
-      { name: "Inbound/Outbound Trucks History", href: "/truckshistory" }
+      { name: "Trucks History", href: "/truckshistory" }
     ]
   },
   { name: "Leave Permission", href: "/leave", icon: DoorOpen }
 ];
 
-console.log("✅ Layout.tsx file loaded");
+console.log("Layout.tsx file loaded");
 
 export default function Layout() {
   const {role} = useUser();
 
-  console.log("✅ ROLE:", role); 
+  console.log("ROLE:", role); 
   const filteredNavigation = navigation.filter(item => roleAccess[item.name as keyof typeof roleAccess]?.includes(role));
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -78,24 +78,21 @@ export default function Layout() {
         />
       )}
 
-      {/* Responsive Sidebar - 1366px */}
       <div
         className={cn(
-          // Much smaller sidebar for 1366px screens
-          "fixed lg:relative inset-y-0 left-0 z-50 w-48 md:w-52 lg:w-56 xl:w-72 2xl:w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "fixed lg:relative inset-y-0 left-0 z-50 w-20 md:w-20 lg:w-[16vw] xl:w-[16vw] 2xl:w-[16vw] bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex flex-col h-screen overflow-y-auto pt-1">
-          {/* Much smaller logo section for 1366px */}
-          <div className="flex items-center justify-between h-10 md:h-12 lg:h-14 xl:h-16 px-2 md:px-3 lg:px-4 xl:px-6 border-b border-gray-200">
+          <div className="flex items-center justify-between h-10 md:h-12 lg:h-14 xl:h-13 px-2 md:px-3 lg:px-4 xl:px-6 border-b border-gray-200">
             <div className="flex items-center">
               <img 
                 src="../../public/alkindo-naratama-tbk--600-removebg-preview.png" 
                 alt="logo" 
                 className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 xl:w-9 xl:h-9" 
               />
-              <span className="ml-1.5 md:ml-2 text-xs md:text-sm lg:text-base xl:text-lg font-bold text-gray-900">
+              <span className="ml-1.5 md:ml-2 text-xs md:text-sm lg:text-lg xl:text-sm 2xl:text-lg font-bold text-gray-900">
                 Gateway System
               </span>
             </div>
@@ -120,7 +117,6 @@ export default function Layout() {
                   {hasChildren ? (
                     <div
                       className={cn(
-                        // Much smaller padding and text for 1366px
                         "flex items-center px-1.5 md:px-2 lg:px-3 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs lg:text-sm xl:text-base font-medium rounded-md cursor-pointer transition-colors",
                         isOpen
                           ? "bg-blue-100 text-blue-900 border-r-2 border-blue-700"
@@ -133,7 +129,7 @@ export default function Layout() {
                       }}
                     >
                       <item.icon className="mr-1.5 md:mr-2 lg:mr-3 h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 flex-shrink-0" />
-                      <span className="truncate text-xs lg:text-sm xl:text-base">{item.name}</span>
+                      <span className="truncate text-xs lg:text-sm xl:text-sm">{item.name}</span>
                     </div>
                   ) : (
                     <NavLink
@@ -153,7 +149,7 @@ export default function Layout() {
                       }}
                     >
                       <item.icon className="mr-1.5 md:mr-2 lg:mr-3 h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 flex-shrink-0" />
-                      <span className="truncate text-xs lg:text-sm xl:text-base">{item.name}</span>
+                      <span className="truncate text-xs lg:text-sm xl:text-sm">{item.name}</span>
                     </NavLink>
                   )}
                   
@@ -166,7 +162,7 @@ export default function Layout() {
                           to={subItem.href}
                           className={({ isActive }) =>
                             cn(
-                              "block px-1.5 md:px-2 lg:px-3 xl:px-4 py-1 md:py-1.5 lg:py-2 text-xs lg:text-sm xl:text-base rounded-md transition-colors",
+                              "block px-1.5 md:px-2 lg:px-3 xl:px-4 py-1 md:py-1.5 lg:py-2 text-xs lg:text-sm xl:text-sm rounded-md transition-colors",
                               isActive
                                 ? "bg-blue-100 text-blue-800"
                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
@@ -185,7 +181,7 @@ export default function Layout() {
           </nav>
 
           {/* Much smaller user profile section */}
-          <div className="border-t border-gray-200 p-1.5 md:p-2 lg:p-3 xl:p-4">
+          <div className="border-t border-gray-200 p-1.5 md:p-2 lg:p-3 xl:p-3">
             <div className="flex items-center">
               <Avatar className="h-5 w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 xl:h-9 xl:w-9">
                 <AvatarImage src="" alt="User" />
@@ -213,7 +209,7 @@ export default function Layout() {
       <div className="flex-1 min-w-0 h-screen overflow-hidden">
         {/* Much smaller header for 1366px */}
         <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between h-10 md:h-12 lg:h-14 xl:h-16 px-2 md:px-3 lg:px-4 xl:px-6">
+          <div className="flex items-center justify-between h-5 md:h-10 lg:h-14 xl:h-15 px-2 md:px-3 lg:px-4 xl:px-6">
             <div className="flex items-center flex-1">
               <Button
                 variant="ghost"
@@ -225,13 +221,13 @@ export default function Layout() {
               </Button>
               
               {/* Much smaller search */}
-              <div className="hidden sm:flex items-center ml-1 md:ml-2 lg:ml-4 flex-1 max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg">
+              <div className="hidden sm:flex items-center ml-1 md:ml-2 lg:ml-4 flex-1 md:max-w-sm lg:max-w-md xl:max-w-lg">
                 <div className="relative w-full">
-                  <Search className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 md:h-4 md:w-4 text-gray-400" />
+                  <Search className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 h-2 w-3 md:h-4 md:w-4 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search employees, documents..."
-                    className="w-full pl-6 md:pl-8 lg:pl-10 pr-2 md:pr-3 py-1 md:py-1.5 lg:py-2 border border-gray-300 rounded-md lg:rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-xs md:text-sm lg:text-base"
+                    className="w-full pl-6 md:pl-8 lg:pl-10 pr-2 md:pr-3 py-1 md:py-1.5 lg:py-2 border border-gray-300 rounded-md lg:rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-xs md:text-sm lg:text-sm"
                   />
                 </div>
               </div>
@@ -251,7 +247,7 @@ export default function Layout() {
         </header>
 
         {/* Much smaller main content padding */}
-        <main className="p-2 md:p-3 lg:p-4 xl:p-6 h-screen">
+        <main className="h-screen">
           <Outlet />
         </main>
       </div>

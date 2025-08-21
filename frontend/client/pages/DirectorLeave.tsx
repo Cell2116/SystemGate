@@ -76,7 +76,6 @@ export default function DirectorLeavePage() {
       mounted = false;
       if (unsubscribeDataChange) unsubscribeDataChange();
       if (unsubscribeLeaveChange) unsubscribeLeaveChange();
-      // Do NOT call closeWebSocket here!
     };
   }, [fetchLeavePermission]);
 
@@ -180,17 +179,13 @@ export default function DirectorLeavePage() {
     }
   };
 
-  // View details modal
   const handleViewDetails = (entry: any) => {
     setSelectedEntry(entry);
     setIsDetailsOpen(true);
   };
-
-
   const handleApprovalAction = async (entryId: string, action: 'approved' | 'rejected') => {
     const entry = leavePermissions.find(e => e.id === entryId);
     if (!entry) return;
-    // Compute new approval status
     const updatedEntry = { ...entry, statusFromDirector: action };
     updatedEntry.approval = getOverallStatus(updatedEntry);
     await updateLeavePermission(entryId, {
@@ -201,11 +196,11 @@ export default function DirectorLeavePage() {
   };
 
   return (
-    <div className="max-h-screen  from-primary/5 via-background to-accent/20">
+    <div className="max-h-screen from-primary/5 via-background to-accent/20 p-3">
       <div className="z-10 sticky top-0 pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Leave Permission Request (Director Side)</h1>
+            <h1 className="text-xl font-bold text-gray-900">Leave Permission Request (Director Side)</h1>
             <p className="mt-1 text-sm text-gray-500">
               Hello, lets see who want to go out during the working hours.
             </p>
@@ -217,7 +212,7 @@ export default function DirectorLeavePage() {
       </div>
       {/* Main content */}
       <div className="relative z-10 flex items-center justify-center pt-3 px-4">
-        <div className="max-w-6xl mx-auto text-center space-y-8 ">
+        <div className="max-w-6xl md:w-[80vw] xl:w-[80vw] 2xl:w-[80vw] mx-auto text-center space-y-4 ">
           {/* Hero section */}
           {/* // Button entry and Pending */}
 
@@ -444,7 +439,6 @@ export default function DirectorLeavePage() {
 
           {/* Recent Processed Entries Table */}
           {getProcessedDirectorEntries().length > 0 && (
-            // Table Section List
             <div className="max-w-6xl mx-auto">
               <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
                 <div className="overflow-auto h-[60vh] scrollbar-hide">

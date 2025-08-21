@@ -26,8 +26,6 @@ import { EmployeeAutocomplete } from "@/components/ui/employee-autocomplete";
 import Clock2 from "../components/dashboard/clock"
 import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Shield, Crown } from "lucide-react";
 
-// Mock Clock component
-
 export default function HR() {
   const [isOpen, setIsOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -55,33 +53,23 @@ export default function HR() {
 
     const setupRealTimeConnection = async () => {
       try {
-        console.log("🚀 Setting up real-time connection for HR Leave...");
-        
-        // Listen to connection status changes
+        console.log("Setting up real-time connection for HR Leave...");
         onConnectionChange((status) => {
           if (!mounted) return;
-          console.log("🔗 WebSocket connection status changed:", status);
+          console.log("WebSocket connection status changed:", status);
         });
-        
-        // Subscribe to global attendance data changes
         unsubscribeDataChange = onDataChange('attendance', (data) => {
           if (!mounted) return;
-          console.log("🔄 Global attendance data change received in HR:", data);
-          
-          // Force refresh when any attendance data changes
+          console.log("Global attendance data change received in HR:", data);
           setTimeout(() => {
             if (mounted) {
               fetchLeavePermission();
             }
           }, 100);
         });
-        
-        // Subscribe to leave permission changes specifically
         unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
           if (!mounted) return;
-          console.log("🟣 Global leave permission data change received in HR:", data);
-          
-          // Force refresh leave permissions
+          console.log("Global leave permission data change received in HR:", data);
           setTimeout(() => {
             if (mounted) {
               fetchLeavePermission();
@@ -95,14 +83,14 @@ export default function HR() {
         await fetchUsers();
 
       } catch (error) {
-        console.error("❌ Error in HR Leave real-time setup:", error);
+        console.error("Error in HR Leave real-time setup:", error);
       }
     };
 
     setupRealTimeConnection();
 
     return () => {
-      console.log("🧹 Cleaning up HR Leave connection...");
+      console.log("Cleaning up HR Leave connection...");
       mounted = false;
       
       if (unsubscribeDataChange) {
@@ -115,7 +103,6 @@ export default function HR() {
     };
   }, [fetchLeavePermission, fetchRecords, fetchUsers]);
 
-  // Use users from database for employee suggestions
   useEffect(() => {
     const employeeSuggestions = users.map(user => ({
       name: user.name,
@@ -127,8 +114,6 @@ export default function HR() {
     
     setEmployees(employeeSuggestions);
   }, [users]);
-
-  // Get unique departments for suggestions from users table
   const departmentSuggestions = [...new Set([
     ...users.map(user => user.department),
     ...records.map(record => record.department),
@@ -148,8 +133,6 @@ export default function HR() {
     reasonType: "", 
     outsideReason: "", 
   });
-
-  // Helper function to determine required approvals based on role
   const getRequiredApprovals = (role: string) => {
     if (role === "Head Department") {
       return ["HR", "Director"];
@@ -157,8 +140,6 @@ export default function HR() {
       return ["HR", "Head Department"];
     }
   };
-
-  // Helper function to check if all required approvals are obtained
   const isFullyApproved = (entry: any) => {
     const requiredApprovals = getRequiredApprovals(entry.role);
     
@@ -168,8 +149,6 @@ export default function HR() {
     
     return true;
   };
-
-  // Helper function to check if any required approval is rejected
   const isRejected = (entry: any) => {
     const requiredApprovals = getRequiredApprovals(entry.role);
     
@@ -179,8 +158,6 @@ export default function HR() {
     
     return false;
   };
-
-  // Helper function to get overall approval status
   const getOverallStatus = (entry: any) => {
     if (isRejected(entry)) return "rejected";
     if (isFullyApproved(entry)) return "approved";
@@ -189,8 +166,6 @@ export default function HR() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate all required fields
     if (!formData.name.trim()) {
       alert("Please enter a name");
       return;
@@ -255,7 +230,6 @@ export default function HR() {
       actual_returntime: null
     };
     await addLeavePermission(newEntry);
-    // Fetch updated data after adding new entry
     await fetchLeavePermission();
     setIsOpen(false);
     setFormData({
@@ -273,7 +247,6 @@ export default function HR() {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    // If reasonType is changed to 'Sick', clear returnTime
     if (field === "reasonType" && value === "Sick") {
       setFormData(prev => ({ ...prev, [field]: value, returnTime: "" }));
     } else {
@@ -285,7 +258,6 @@ export default function HR() {
     setFormData(prev => ({
       ...prev,
       name: name,
-      // Auto-fill other fields if employee data is available from users table
       department: employee?.department || prev.department,
       licensePlate: employee?.licensePlate || prev.licensePlate
     }));
@@ -297,10 +269,8 @@ export default function HR() {
   };
 
   const handleApprovalAction = async (entryId: string, action: 'approved' | 'rejected') => {
-    // Find the entry to get the latest data
     const entry = leavePermissions.find(e => e.id === entryId);
     if (!entry) return;
-    // Compute new approval status
     const updatedEntry = { ...entry, statusFromHR: action };
     updatedEntry.approval = getOverallStatus(updatedEntry);
     await updateLeavePermission(entryId, {
@@ -309,28 +279,23 @@ export default function HR() {
     });
     setIsDetailsOpen(false);
   };
-
-  // Get entries that need HR approval (pending from HR perspective)
   const getPendingHREntries = () => {
-    // Filter entries where HR status is pending and overall status is pending
     return leavePermissions.filter(e => {
       const overallStatus = getOverallStatus(e);
       return e.statusFromHR === 'pending' && overallStatus === 'pending';
     });
   };
 
-  // Get entries for the main table (processed entries only)
   const getProcessedEntries = () => {
-    // Show entries where HR has made a decision (approved/rejected)
     return leavePermissions.filter(e => e.statusFromHR === 'approved' || e.statusFromHR === 'rejected');
   };
 
   return (
-    <div className="max-h-screen from-primary/5 via-background to-accent/20">
+    <div className="max-h-screen from-primary/5 via-background to-accent/20 p-3">
       <div className="z-10 sticky top-0 pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Leave Permission Request (HR Side)</h1>
+            <h1 className="text-xl font-bold text-gray-900">Leave Permission Request (HR Side)</h1>
             <p className="mt-1 text-sm text-gray-500">
               Welcome HR Management, Review leave requests with role-based approval workflow.
             </p>
@@ -343,7 +308,7 @@ export default function HR() {
 
       {/* Main content */}
       <div className="relative z-10 flex items-center justify-center pt-3 px-4">
-        <div className="max-w-6xl mx-auto text-center space-y-8">
+        <div className="max-w-6xl md:w-[80vw] xl:w-[80vw] 2xl:w-[80vw] mx-auto text-center space-y-4">
           {/* Button entry and Pending */}
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -803,7 +768,7 @@ export default function HR() {
           {/* Recent Processed Entries Table */}
           {getProcessedEntries().length > 0 && (
             <div className="max-w-6xl mx-auto">
-              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-4 shadow-lg">
                 <h3 className="text-lg font-semibold mb-4">Processed Leave Requests</h3>
                 <div className="block w-screen max-w-full overflow-x-auto overflow-y-auto h-[60vh] scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <Table className="min-w-max">

@@ -100,7 +100,6 @@ export function EmployeeAutocomplete({
   };
 
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Delay hiding suggestions to allow for click events
     setTimeout(() => {
       setIsOpen(false);
       setHighlightedIndex(-1);

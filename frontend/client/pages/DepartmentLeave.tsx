@@ -81,11 +81,8 @@ export default function DepartmentHead() {
       mounted = false;
       if (unsubscribeDataChange) unsubscribeDataChange();
       if (unsubscribeLeaveChange) unsubscribeLeaveChange();
-      // Do NOT call closeWebSocket here!
     };
   }, [fetchLeavePermission, fetchRecords, fetchUsers, fetchUsersByDepartment]);
-
-  // Load department-specific users when currentUser is available
   useEffect(() => {
     if (currentUser?.department) {
       fetchUsersByDepartment(currentUser.department).then(departmentUsers => {
@@ -100,8 +97,6 @@ export default function DepartmentHead() {
       });
     }
   }, [currentUser, fetchUsersByDepartment]);
-
-  // Load user data from localStorage (or simulated)
   useEffect(() => {
     const loadUserFromStorage = () => {
       try {
@@ -138,8 +133,6 @@ export default function DepartmentHead() {
     loadUserFromStorage();
   }, []);
 
-
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     licensePlate: "",
@@ -152,9 +145,6 @@ export default function DepartmentHead() {
     reasonType: "",
     outsideReason: "",
   });
-  // console.log(formData);
-
-  // Update form data when currentUser changes
   useEffect(() => {
     if (currentUser) {
       setFormData(prev => ({
@@ -184,7 +174,6 @@ const getProcessedDepartmentEntries = () => {
   );
 };
 
-  // Determine overall approval status
   const getOverallStatus = (entry: any) => {
     if (entry.role === "Head Department") {
       if (entry.statusFromHR === "rejected" || entry.statusFromDirector === "rejected") return "rejected";
@@ -201,7 +190,6 @@ const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!currentUser) return;
 
-  // Validate all required fields
   if (!formData.name.trim()) {
     alert("Please enter a staff name");
     return;
@@ -246,8 +234,8 @@ const handleSubmit = async (e: React.FormEvent) => {
   String(now.getSeconds()).padStart(2, '0');
   
   const newEntry = {
-    ...formData, // Use the form name, not currentUser.name
-    department: currentUser.department, // Ensure department is set correctly
+    ...formData,
+    department: currentUser.department,
     reason: reasonValue,
     approval: "pending",
     statusFromDepartment: formData.role === "Head Department" ? "approved" : "pending",
@@ -266,11 +254,10 @@ const handleSubmit = async (e: React.FormEvent) => {
     await fetchLeavePermission();
     setIsOpen(false);
     
-    // Reset form but keep user context
     setFormData({
       name: "",
       licensePlate: "",
-      department: currentUser.department, // Keep the current user's department
+      department: currentUser.department, 
       role: "",
       date: "",
       exitTime: "",
@@ -285,7 +272,6 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 };
 
-  // Handle input change
   const handleInputChange = (field: string, value: string) => {
     if (field === "reasonType") {
       setFormData(prev => ({
@@ -302,29 +288,19 @@ const handleSubmit = async (e: React.FormEvent) => {
     setFormData(prev => ({
       ...prev,
       name: name,
-      // Auto-fill license plate if employee data is available from users table
       licensePlate: employee?.licensePlate || prev.licensePlate
     }));
   };
 
-  // View details modal
   const handleViewDetails = (entry: any) => {
     setSelectedEntry(entry);
     setIsDetailsOpen(true);
   };
 
-  // Approve or reject leave permission
   const handleDepartmentApprovalAction = async (entryId: string, action: "approved" | "rejected") => {
-    // try {
-    //   await updateLeavePermission(entryId, { statusFromDepartment: action });
-    //   setIsDetailsOpen(false);
-    // } catch (err) {
-    //   alert("Failed to update approval status.");
-    //   console.error(err);
-    // }
+
     const entry = leavePermissions.find(e => e.id === entryId);
     if (!entry) return;
-    // Compute new approval status
     const updatedEntry = { ...entry, statusFromDepartment: action };
     updatedEntry.approval = getOverallStatus(updatedEntry);
     await updateLeavePermission(entryId, {
@@ -334,7 +310,6 @@ const handleSubmit = async (e: React.FormEvent) => {
     setIsDetailsOpen(false);
   };
 
-  // Loading user data
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -345,8 +320,6 @@ const handleSubmit = async (e: React.FormEvent) => {
       </div>
     );
   }
-
-  // No currentUser or no permissions
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -362,7 +335,6 @@ const handleSubmit = async (e: React.FormEvent) => {
     );
   }
 
-  // Check role permission
   if (currentUser.role !== "Head Department") {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -389,11 +361,11 @@ const handleSubmit = async (e: React.FormEvent) => {
     );
   }
   return (
-    <div className="max-h-screen from-primary/5 via-background to-accent/20">
+    <div className="max-h-screen from-primary/5 via-background to-accent/20 p-3">
       <div className="z-10 sticky top-0 pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Leave Permission Request (Head Department)</h1>
+            <h1 className="text-xl font-bold text-gray-900">Leave Permission Request (Head Department)</h1>
             <p className="mt-1 text-sm text-gray-500">
               Welcome {currentUser.name} - {currentUser.department} Head Department. Review leave requests for your department.
             </p>
@@ -406,7 +378,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
       {/* Main content */}
       <div className="relative z-10 flex items-center justify-center pt-3 px-4">
-        <div className="max-w-6xl mx-auto text-center space-y-8">
+        <div className="max-w-6xl md:w-[80vw] xl:w-[80vw] 2xl:w-[80vw] mx-auto text-center space-y-4">
           {/* Button entry and Pending */}
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -862,8 +834,8 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           {/* Department Entries Table */}
           {getProcessedDepartmentEntries().length > 0 && (
-            <div className="max-w-6xl mx-auto">
-              <div className="bg-card/50 border border-border/50 rounded-2xl p-5 shadow-lg">
+            <div className="max-w-6xl">
+              <div className="bg-card/50 border border-border/50 rounded-2xl p-3 shadow-lg">
                 <h3 className="text-lg font-semibold mb-4">
                   {currentUser.department} Department Leave Requests
                 </h3>

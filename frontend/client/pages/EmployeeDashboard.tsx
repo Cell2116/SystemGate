@@ -27,8 +27,6 @@ const CardContent = ({ children, className = "" }: CardContentProps) => (
     {children}
   </div>
 );
-
-// Extended Attendance type to include leave permission fields
 interface ExtendedAttendance {
   id: number;
   uid: string;
@@ -42,7 +40,6 @@ interface ExtendedAttendance {
   datein: string;
   dateout?: string | null;
   status?: string;
-  // Leave permission fields
   leave_permission_id?: number | null;
   leave_reason?: string | null;
   planned_exit_time?: string | null;
@@ -68,15 +65,10 @@ export default function EmployeeDashboard() {
     addLeavePermission,
   } = useDashboardStore();
 
-  // Add ref to track current records count without stale closure
   const recordsCountRef = useRef(0);
-  
-  // Update ref whenever records change
   useEffect(() => {
     recordsCountRef.current = records.length;
   }, [records]);
-
-
   const formatCustomDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return null;
     
@@ -107,16 +99,8 @@ export default function EmployeeDashboard() {
 
   const formatLocalDateTime = (dateString: string | null | undefined) => {
   if (!dateString) return null;
-  
-  
-  // Create a date object from the string
   const date = new Date(dateString);
-  
-  // Check if the date is valid
   if (isNaN(date.getTime())) return null;
-  
-  
-  // Format in Indonesian timezone (WIB - UTC+7)
   const formatted = date.toLocaleString("id-ID", {
     timeZone: "Asia/Jakarta",
     year: 'numeric',
@@ -137,13 +121,11 @@ export default function EmployeeDashboard() {
 
     const setupRealTimeConnection = async () => {
       try {
-        console.log("🚀 Setting up real-time connection...");
-        setConnectionStatus('connecting');
-        
-        // Listen to connection status changes
+        console.log("Setting up real-time connection...");
+        setConnectionStatus('connecting');        
         onConnectionChange((status) => {
           if (!mounted) return;
-          console.log("🔗 WebSocket connection status changed:", status);
+          console.log("WebSocket connection status changed:", status);
           
           switch (status) {
             case 'open':
@@ -159,17 +141,12 @@ export default function EmployeeDashboard() {
               break;
           }
         });
-        
-        // Subscribe to global attendance data changes
-        unsubscribeDataChange = onDataChange('attendance', (data) => {
+          unsubscribeDataChange = onDataChange('attendance', (data) => {
           if (!mounted) return;
-          
-          console.log("🔄 Global attendance data change received:", data);
-          console.log("🔄 About to call fetchRecords...");
-          
-          // Log leave permission data if present
+          console.log("Global attendance data change received:", data);
+          console.log("About to call fetchRecords...");          
           if (data.leaveInfo || data.leave_permission_id) {
-            console.log("🟣 Leave permission data in global change:", {
+            console.log("Leave permission data in global change:", {
               leaveInfo: data.leaveInfo,
               leave_permission_id: data.leave_permission_id,
               leave_reason: data.leave_reason,
@@ -178,29 +155,24 @@ export default function EmployeeDashboard() {
               actual_exittime: data.actual_exittime,
               actual_returntime: data.actual_returntime
             });
-          }
-          
-          // Force refresh records when any attendance data changes
-          console.log("🔄 Force refreshing records due to global data change");
+          }          
+          console.log("Force refreshing records due to global data change");
           setTimeout(() => {
             if (mounted) {
-              console.log("🔄 Calling fetchRecords NOW...");
+              console.log("Calling fetchRecords NOW...");
               fetchRecords();
             }
           }, 100);
         });
         
-        // Also subscribe to leave permission changes specifically
         unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
           if (!mounted) return;
           
-          console.log("🟣 Global leave permission data change received:", data);
-          console.log("🟣 About to call fetchRecords and fetchLeavePermission...");
-          
-          // Force refresh both records and leave permissions
+          console.log("Global leave permission data change received:", data);
+          console.log("About to call fetchRecords and fetchLeavePermission...");          
           setTimeout(() => {
             if (mounted) {
-              console.log("🟣 Calling fetchRecords and fetchLeavePermission NOW...");
+              console.log("Calling fetchRecords and fetchLeavePermission NOW...");
               fetchRecords();
               fetchLeavePermission();
             }
@@ -209,30 +181,29 @@ export default function EmployeeDashboard() {
 
         initWebSocket();
         await fetchLeavePermission();
-
         onMessage((data) => {
           if (!mounted) return;
           
-          console.log("📨 WebSocket message received in dashboard:", data);
-          console.log("📊 Current records count before processing:", recordsCountRef.current);
+          console.log("WebSocket message received in dashboard:", data);
+          console.log("Current records count before processing:", recordsCountRef.current);
           
           if (data.type === 'info') {
-            console.log("ℹ️ Received info message, updating connection status");
+            console.log("ℹReceived info message, updating connection status");
             setConnectionStatus('connected');
             setError(null);
             return;
           }
           
           if (!data.licenseplate || !data.name || !data.department) {
-            console.warn("⚠️ Invalid WebSocket data:", data);
+            console.warn("Invalid WebSocket data:", data);
             return;
           }
           
-          console.log("🔄 Processing message type:", data.type, "for UID:", data.uid);
+          console.log("Processing message type:", data.type, "for UID:", data.uid);
           
           switch (data.type) {
             case 'entry':
-              console.log("🚪 Processing entry record:", data.uid);
+              console.log("Processing entry record:", data.uid);
               const entryRecord = {
                 id: data.id || Date.now(),
                 uid: data.uid,
@@ -250,7 +221,7 @@ export default function EmployeeDashboard() {
                 actual_exittime: data.leaveInfo?.actualExitTime || null,
                 actual_returntime: data.leaveInfo?.actualReturnTime || null,
               } as ExtendedAttendance;
-              console.log("✅ Adding entry record:", entryRecord);
+              console.log("Adding entry record:", entryRecord);
               addRecord(entryRecord);
               break;
 
@@ -258,13 +229,11 @@ export default function EmployeeDashboard() {
             case 'leave_exit':
             case 'leave_return':
             case 'image_update':
-              console.log(`🔄 Processing ${data.type} - will be handled by global data change`);
-              // Don't process these here - let the global data change system handle them
-              // The global broadcast will trigger a fetchRecords() which will get fresh data
+              console.log(`Processing ${data.type} - will be handled by global data change`);
               break;
 
             default:
-              console.log("📝 Processing unknown format as new entry");
+              console.log("Processing unknown format as new entry");
               const defaultRecord = {
                 id: data.id || Date.now(),
                 uid: data.uid,
@@ -282,20 +251,14 @@ export default function EmployeeDashboard() {
                 actual_exittime: data.actual_exittime || null,
                 actual_returntime: data.actual_returntime || null,
               } as ExtendedAttendance;
-              console.log("✅ Adding default record:", defaultRecord);
+              console.log("Adding default record:", defaultRecord);
               addRecord(defaultRecord);
           }
-          
-          // console.log("✅ Message processed successfully");
-          // console.log("📊 Final records count:", recordsCountRef.current);
           setConnectionStatus('connected');
           setError(null);
         });
-// 
-        // console.log("📊 Fetching initial records...");
-        await fetchRecords();
-        // console.log("✅ Initial setup complete");
 
+        await fetchRecords();
       } catch (error) {
         console.error("❌ Error in setupRealTimeConnection:", error);
         setConnectionStatus('error');
@@ -306,18 +269,13 @@ export default function EmployeeDashboard() {
     setupRealTimeConnection();
 
     return () => {
-      // console.log("🧹 Cleaning up dashboard connection...");
       mounted = false;
-      
-      // Unsubscribe from global data changes
       if (unsubscribeDataChange) {
         unsubscribeDataChange();
       }
-      
       if (unsubscribeLeaveChange) {
         unsubscribeLeaveChange();
       }
-      
       closeWebSocket();
       setConnectionStatus('disconnected');
     };
@@ -336,19 +294,16 @@ export default function EmployeeDashboard() {
     }
   };
 
-  // State for image modal
   const [modalImage, setModalImage] = useState<string | null>(null);
-
   const status = getStatusIndicator();
-
   return (
     <>
-      <div className="h-screen flex flex-col space-y-4 overflow-hidden bg-gray-50 p-4">
+      <div className="h-[120vh] flex flex-col space-y-4 overflow-hidden bg-gray-50 p-3">
         {/* Header */}
         <div className="z-10 sticky top-0 pb-2 bg-gray-50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Employee Gate Record</h1>
+              <h1 className="text-xl font-bold text-gray-900">Employee Gate Record</h1>
               <p className="mt-1 text-sm text-gray-500">
                 Real-time employee data recorded at the gate
               </p>
@@ -431,14 +386,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path 
-                            ? `http://192.168.4.62:3000/uploads/${record.image_path}` 
+                            ? `http://192.168.4.224:3000/uploads/${record.image_path}` 
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="entry"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
                           onClick={() => {
                             if (record.image_path)
-                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path}`);
+                              setModalImage(`http://192.168.4.224:3000/uploads/${record.image_path}`);
                           }}
                         />
                       </div>
@@ -450,14 +405,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_out
-                            ? `http://192.168.4.62:3000/uploads/${record.image_path_out}`
+                            ? `http://192.168.4.224:3000/uploads/${record.image_path_out}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="exit"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_out)
-                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_out}`);
+                              setModalImage(`http://192.168.4.224:3000/uploads/${record.image_path_out}`);
                           }}
                         />
                       </div>
@@ -470,14 +425,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_exit
-                            ? `http://192.168.4.62:3000/uploads/${record.image_path_leave_exit}`
+                            ? `http://192.168.4.224:3000/uploads/${record.image_path_leave_exit}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_exit"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_exit)
-                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_leave_exit}`);
+                              setModalImage(`http://192.168.4.224:3000/uploads/${record.image_path_leave_exit}`);
                           }}
                         />
                       </div>
@@ -488,14 +443,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_return
-                            ? `http://192.168.4.62:3000/uploads/${record.image_path_leave_return}`
+                            ? `http://192.168.4.224:3000/uploads/${record.image_path_leave_return}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_return"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_return)
-                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_leave_return}`);
+                              setModalImage(`http://192.168.4.224:3000/uploads/${record.image_path_leave_return}`);
                           }}
                         />
                       </div>
