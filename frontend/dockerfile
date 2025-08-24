@@ -1,15 +1,34 @@
-FROM node:18
+# FROM node:18-alpine as builder
+
+# WORKDIR /app
+
+# # Salin hanya package.json dulu untuk layer caching efisien
+# # COPY package*.json ./
+
+# # Pasang dependency dengan flag agar menghindari peer conflict
+# # RUN npm install --legacy-peer-deps
+
+# # Baru salin seluruh project
+# COPY dist ./dist
+# # COPY . . 
+# RUN npm install -g http-server
+# EXPOSE 8080
+# # CMD ["npm", "run", "dev"]
+# CMD ["http-server", "dist", "-p", "8080"]
+
+# NGINX Test
+FROM node:18 AS builder
 
 WORKDIR /app
 
-# Salin hanya package.json dulu untuk layer caching efisien
 COPY package*.json ./
-
-# Pasang dependency dengan flag agar menghindari peer conflict
-RUN npm install --legacy-peer-deps
-
-# Baru salin seluruh project
+RUN npm install
 COPY . .
+RUN npm run build
 
-EXPOSE 8080
-CMD ["npm", "run", "dev"]
+FROM nginx:alpine 
+WORKDIR /usr/share/nginx/html
+RUN rm -rf ./*
+COPY --from=builder /app/dist ./
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

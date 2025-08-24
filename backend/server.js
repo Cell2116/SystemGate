@@ -240,16 +240,39 @@ mqttClient.on('message', async (topic, message) => {
             console.log("Valid UID:", uid, "User:", userInfo.name);
 
             const today = new Date().toISOString().split('T')[0];
+            
+            // Check for current attendance state - find the most recent row that can be "exited"
             const existingEntry = await db.query(
-                'SELECT * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = $2 AND dateout IS NULL ORDER BY datein DESC LIMIT 1',
+                `SELECT * FROM attendance_logs 
+                WHERE uid = $1 AND DATE(datein) = $2 AND dateout IS NULL 
+                ORDER BY id DESC LIMIT 1`,
                 [uid, today]
             );
 
             if (existingEntry.rows.length > 0) {
                 // =================== EXIT/LEAVE LOGIC ===================
                 const attendance = existingEntry.rows[0];
+                console.log("Found existing entry:", attendance);
 
-                // Check for leave permission for today
+                // Priority 1: Check if we need to return from a leave first
+                const returningLeavePermission = await db.query(
+                    `SELECT * FROM leave_permission 
+                    WHERE licenseplate = $1 
+                    AND date = $2
+                    AND (
+                        (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
+                        OR
+                        (statusfromhr = 'approved' AND statusfromdirector = 'approved' AND role = 'Head Department')
+                    )
+                    AND actual_exittime IS NOT NULL
+                    AND actual_returntime IS NULL
+                    ORDER BY actual_exittime DESC
+                    LIMIT 1`,
+                    [licensePlate, today]
+                );
+                const returningLeave = returningLeavePermission.rows[0];
+
+                // Priority 2: Check for new leave permission to exit
                 const leavePermission = await db.query(
                     `SELECT * FROM leave_permission 
                     WHERE licenseplate = $1 
@@ -259,69 +282,43 @@ mqttClient.on('message', async (topic, message) => {
                         OR
                         (statusfromhr = 'approved' AND statusfromdirector = 'approved' AND role = 'Head Department')
                     )
-                    ORDER BY date DESC
+                    AND actual_exittime IS NULL
+                    ORDER BY submittedat ASC
                     LIMIT 1`,
                     [licensePlate, today]
                 );
                 const leave = leavePermission.rows[0];
 
-                //Leave Exit
-                if (leave && !leave.actual_exittime) {
-                    const imagePathLeaveExit = await captureSnapshot(uid);
+                //Leave Return - HIGHEST PRIORITY
+                if (returningLeave) {
+                    console.log("Processing LEAVE RETURN");
+                    const imagePathLeaveReturn = await captureSnapshot(uid);
+                    
+                    // Update the attendance record that has this leave_permission_id
                     await db.query(
-                        'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
-                        [imagePathLeaveExit, 'leave_exit', leave.id, attendance.id]
-                    );
-                    await db.query(
-                        'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP WHERE id = $1',
-                        [leave.id]
+                        'UPDATE attendance_logs SET image_path_leave_return = $1, actual_returntime = CURRENT_TIMESTAMP, status = $2 WHERE leave_permission_id = $3 AND uid = $4 AND DATE(datein) = $5',
+                        [imagePathLeaveReturn, 'leave_return', returningLeave.id, uid, today]
                     );
                     
-                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
-                    const exitDataFull = {
-                        ...updatedRecord.rows[0],
-                        type: 'leave_exit',
-                        leaveInfo: {
-                            permissionId: leave.id,
-                            plannedTime: leave.exittime,
-                            isEarly: new Date() < new Date(leave.exittime),
-                            isLate: new Date() > new Date(leave.exittime),
-                            reason: leave.reason
-                        },
-                        timestamp: new Date().toISOString()
-                    };
-                    broadcast(exitDataFull);
-                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
-                        status: 'approved',
-                        name: userInfo.name.substring(0, 16),
-                        department: userInfo.department.substring(0, 8),
-                        action: 'Leave Exit'
-                    }));
-                    return;
-                }
-
-                //Leave Return
-                if (leave && leave.actual_exittime && !leave.actual_returntime) {
-                    const imagePathLeaveReturn = await captureSnapshot(uid);
-                    await db.query(
-                        'UPDATE attendance_logs SET image_path_leave_return = $1, actual_returntime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
-                        [imagePathLeaveReturn, 'leave_return', leave.id, attendance.id]
-                    );
                     await db.query(
                         'UPDATE leave_permission SET actual_returntime = CURRENT_TIMESTAMP WHERE id = $1',
-                        [leave.id]
+                        [returningLeave.id]
                     );
                     
-                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
+                    const updatedRecord = await db.query(
+                        'SELECT * FROM attendance_logs WHERE leave_permission_id = $1 AND uid = $2 AND DATE(datein) = $3',
+                        [returningLeave.id, uid, today]
+                    );
+                    
                     const returnDataFull = {
                         ...updatedRecord.rows[0],
                         type: 'leave_return',
                         leaveInfo: {
-                            permissionId: leave.id,
-                            plannedTime: leave.returntime,
-                            isEarly: new Date() < new Date(leave.returntime),
-                            isLate: new Date() > new Date(leave.returntime),
-                            reason: leave.reason
+                            permissionId: returningLeave.id,
+                            plannedTime: returningLeave.returntime,
+                            isEarly: new Date() < new Date(returningLeave.returntime),
+                            isLate: new Date() > new Date(returningLeave.returntime),
+                            reason: returningLeave.reason
                         },
                         timestamp: new Date().toISOString()
                     };
@@ -335,21 +332,136 @@ mqttClient.on('message', async (topic, message) => {
                     return;
                 }
 
-                //Exit Regular
-                const imagePathOut = await captureSnapshot(uid);
-                await db.query(
-                    'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
-                    [imagePathOut, 'exit', attendance.id]
+                //Leave Exit - SECOND PRIORITY
+                else if (leave && !leave.actual_exittime) {
+                    // Check if this is a SECOND leave permission (already returned from previous one)
+                    const hasCompletedLeaveToday = await db.query(
+                        `SELECT COUNT(*) as count FROM leave_permission 
+                        WHERE licenseplate = $1 
+                        AND date = $2
+                        AND actual_exittime IS NOT NULL 
+                        AND actual_returntime IS NOT NULL`,
+                        [licensePlate, today]
+                    );
+
+                    if (hasCompletedLeaveToday.rows[0].count > 0) {
+                        // This is a SECOND (or more) leave permission - CREATE NEW ROW
+                        console.log("Creating NEW row for additional leave permission");
+                        
+                        const imagePathLeaveExit = await captureSnapshot(uid);
+                        
+                        // Get the original entry data to copy
+                        const originalEntry = await db.query(
+                            'SELECT * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = $2 AND status IN ($3, $4) ORDER BY datein ASC LIMIT 1',
+                            [uid, today, 'entry', 'leave_return']
+                        );
+                        
+                        if (originalEntry.rows.length > 0) {
+                            const original = originalEntry.rows[0];
+                            
+                            // Create new row with copied entry data + leave_exit
+                            const newLeaveRecord = await db.query(
+                                `INSERT INTO attendance_logs 
+                                (uid, licenseplate, image_path, image_path_leave_exit, datein, actual_exittime, status, leave_permission_id) 
+                                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7) RETURNING *`,
+                                [uid, licensePlate, original.image_path, imagePathLeaveExit, original.datein, 'leave_exit', leave.id]
+                            );
+                            
+                            await db.query(
+                                'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP WHERE id = $1',
+                                [leave.id]
+                            );
+                            
+                            const exitDataFull = {
+                                ...newLeaveRecord.rows[0],
+                                type: 'leave_exit',
+                                name: userInfo.name,
+                                department: userInfo.department,
+                                leaveInfo: {
+                                    permissionId: leave.id,
+                                    plannedTime: leave.exittime,
+                                    isEarly: new Date() < new Date(leave.exittime),
+                                    isLate: new Date() > new Date(leave.exittime),
+                                    reason: leave.reason
+                                },
+                                timestamp: new Date().toISOString()
+                            };
+                            broadcast(exitDataFull);
+                            mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                                status: 'approved',
+                                name: userInfo.name.substring(0, 16),
+                                department: userInfo.department.substring(0, 8),
+                                action: 'Leave Exit'
+                            }));
+                            return;
+                        }
+                    } else {
+                        // FIRST leave permission - UPDATE existing row
+                        console.log("Updating existing row for first leave permission");
+                        
+                        const imagePathLeaveExit = await captureSnapshot(uid);
+                        await db.query(
+                            'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
+                            [imagePathLeaveExit, 'leave_exit', leave.id, attendance.id]
+                        );
+                        await db.query(
+                            'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP WHERE id = $1',
+                            [leave.id]
+                        );
+                        
+                        const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
+                        const exitDataFull = {
+                            ...updatedRecord.rows[0],
+                            type: 'leave_exit',
+                            leaveInfo: {
+                                permissionId: leave.id,
+                                plannedTime: leave.exittime,
+                                isEarly: new Date() < new Date(leave.exittime),
+                                isLate: new Date() > new Date(leave.exittime),
+                                reason: leave.reason
+                            },
+                            timestamp: new Date().toISOString()
+                        };
+                        broadcast(exitDataFull);
+                        mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                            status: 'approved',
+                            name: userInfo.name.substring(0, 16),
+                            department: userInfo.department.substring(0, 8),
+                            action: 'Leave Exit'
+                        }));
+                        return;
+                    }
+                }
+
+                //Exit Regular - Close ALL open rows for end of day
+                else {
+                    console.log("Processing REGULAR EXIT");
+                    const imagePathOut = await captureSnapshot(uid);
+                
+                // Get all open attendance records for today
+                const allOpenRecords = await db.query(
+                    'SELECT * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = $2 AND dateout IS NULL',
+                    [uid, today]
                 );
                 
-                const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
-                const exitDataFull = {
-                    ...updatedRecord.rows[0],
-                    type: 'exit',
-                    leaveInfo: null,
-                    timestamp: new Date().toISOString()
-                };
-                broadcast(exitDataFull);
+                // Close all open records
+                await db.query(
+                    'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE uid = $3 AND DATE(datein) = $4 AND dateout IS NULL',
+                    [imagePathOut, 'exit', uid, today]
+                );
+                
+                // Broadcast for each updated record
+                for (const record of allOpenRecords.rows) {
+                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [record.id]);
+                    const exitDataFull = {
+                        ...updatedRecord.rows[0],
+                        type: 'exit',
+                        leaveInfo: null,
+                        timestamp: new Date().toISOString()
+                    };
+                    broadcast(exitDataFull);
+                }
+                
                 mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
                     status: 'approved',
                     name: userInfo.name.substring(0, 16),
@@ -357,6 +469,7 @@ mqttClient.on('message', async (topic, message) => {
                     action: 'Exit'
                 }));
                 return;
+                }
             
             } else {
                 // =================== ENTRY LOGIC ===================
@@ -502,36 +615,36 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
-function testESP32Response(uid) {
-    const testResponse = {
-        status: 'approved',
-        name: 'Test User',
-        department: 'IT',
-        action: 'Entry'
-    };
+// function testESP32Response(uid) {
+//     const testResponse = {
+//         status: 'approved',
+//         name: 'Test User',
+//         department: 'IT',
+//         action: 'Entry'
+//     };
     
-    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(testResponse));
-    console.log("Test response sent to ESP32 for UID:", uid);
-}
+//     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(testResponse));
+//     console.log("Test response sent to ESP32 for UID:", uid);
+// }
 
-app.post('/test-esp32', async (req, res) => {
-    try {
-        const { uid } = req.body;
+// app.post('/test-esp32', async (req, res) => {
+//     try {
+//         const { uid } = req.body;
         
-        if (!uid) {
-            return res.status(400).json({ message: 'UID is required' });
-        }
+//         if (!uid) {
+//             return res.status(400).json({ message: 'UID is required' });
+//         }
 
-        testESP32Response(uid);
-        res.json({ 
-            message: `Test response sent to ESP32 for UID: ${uid}`,
-            topic: `rfid/approval/${uid}`
-        });
-    } catch (error) {
-        console.error('❌ Error in test endpoint:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
+//         testESP32Response(uid);
+//         res.json({ 
+//             message: `Test response sent to ESP32 for UID: ${uid}`,
+//             topic: `rfid/approval/${uid}`
+//         });
+//     } catch (error) {
+//         console.error('❌ Error in test endpoint:', error);
+//         res.status(500).json({ message: 'Internal Server Error' });
+//     }
+// });
 
 app.get('/mqtt-status', (req, res) => {
     res.json({
@@ -960,7 +1073,7 @@ app.post('/auth/register', async (req, res) => {
 });
 
 server.listen(port, () => {
-    console.log(`Server + WebSocket listening on http://192.168.4.224:${port}`);
-    console.log(`WebSocket endpoint: ws://192.168.4.224:${port}`);
-    console.log(`Image uploads: http://192.168.4.224:${port}/uploads/`);
+    console.log(`Server + WebSocket listening on http://192.168.1.47:${port}`);
+    console.log(`WebSocket endpoint: ws://192.168.1.47:${port}`);
+    console.log(`Image uploads: http://192.168.1.47:${port}/uploads/`);
 });

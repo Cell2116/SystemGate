@@ -386,14 +386,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path 
-                            ? `http://192.168.4.224:3000/uploads/${record.image_path}` 
+                            ? `http://192.168.1.47:3000/uploads/${record.image_path}` 
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="entry"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
                           onClick={() => {
                             if (record.image_path)
-                              setModalImage(`http://192.168.4.224:3000/uploads/${record.image_path}`);
+                              setModalImage(`http://192.168.1.47:3000/uploads/${record.image_path}`);
                           }}
                         />
                       </div>
@@ -405,14 +405,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_out
-                            ? `http://192.168.4.224:3000/uploads/${record.image_path_out}`
+                            ? `http://192.168.1.47:3000/uploads/${record.image_path_out}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="exit"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_out)
-                              setModalImage(`http://192.168.4.224:3000/uploads/${record.image_path_out}`);
+                              setModalImage(`http://192.168.1.47:3000/uploads/${record.image_path_out}`);
                           }}
                         />
                       </div>
@@ -425,14 +425,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_exit
-                            ? `http://192.168.4.224:3000/uploads/${record.image_path_leave_exit}`
+                            ? `http://192.168.1.47:3000/uploads/${record.image_path_leave_exit}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_exit"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_exit)
-                              setModalImage(`http://192.168.4.224:3000/uploads/${record.image_path_leave_exit}`);
+                              setModalImage(`http://192.168.1.47:3000/uploads/${record.image_path_leave_exit}`);
                           }}
                         />
                       </div>
@@ -443,14 +443,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_return
-                            ? `http://192.168.4.224:3000/uploads/${record.image_path_leave_return}`
+                            ? `http://192.168.1.47:3000/uploads/${record.image_path_leave_return}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_return"
                           className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_return)
-                              setModalImage(`http://192.168.4.224:3000/uploads/${record.image_path_leave_return}`);
+                              setModalImage(`http://192.168.1.47:3000/uploads/${record.image_path_leave_return}`);
                           }}
                         />
                       </div>

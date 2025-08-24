@@ -1,19 +1,19 @@
 version: "3.8"
 
 services:
-  postgres:
-    image: postgres:15
-    container_name: esp32_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: espuser
-      POSTGRES_PASSWORD: esp123
-      POSTGRES_DB: esp32db
-    ports:
-      - "5433:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+  # postgres:
+  #   image: postgres:15
+  #   container_name: esp32_postgres
+  #   restart: always
+  #   environment:
+  #     POSTGRES_USER: espuser
+  #     POSTGRES_PASSWORD: esp123
+  #     POSTGRES_DB: esp32db
+  #   ports:
+  #     - "5433:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #     - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mqtt:
     image: eclipse-mosquitto
@@ -32,27 +32,28 @@ services:
       - "3000:3000"
     depends_on:
       - mqtt
-      - postgres
+      # - postgres
     environment:
-      DB_HOST: postgres
+      DB_HOST: 192.168.1.47
       DB_PORT: 5432
-      DB_USER: espuser
-      DB_PASSWORD: esp123
-      DB_NAME: esp32db
+      DB_USER: postgres
+      DB_PASSWORD: ALKINDO@2025
+      DB_NAME: postgres
       MQTT_BROKER_URL : mqtt://mqtt:1884
     volumes:
       # - C:/Users/iotal/Documents/SystemGate/backend/uploads:/usr/src/app/uploads
       # - uploads_data:/usr/src/app/uploads
-      - C:/Users/iotal/Documents/SystemGate/backend/uploads:/app/uploads
+      - C:/Users/iotal/OneDrive/Documents/SystemGate/backend/uploads:/app/uploads
 
   frontend:
     build:
       context: ./frontend
+
       dockerfile: Dockerfile
     container_name: esp32_frontend
     restart: always
     ports:
-      - "8080:8080"
+      - "8080:80"
     depends_on:
       - backend
 
