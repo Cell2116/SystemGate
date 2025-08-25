@@ -34,7 +34,7 @@ services:
       - mqtt
       # - postgres
     environment:
-      DB_HOST: 192.168.1.47
+      DB_HOST: 192.168.4.62
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: ALKINDO@2025
@@ -43,7 +43,7 @@ services:
     volumes:
       # - C:/Users/iotal/Documents/SystemGate/backend/uploads:/usr/src/app/uploads
       # - uploads_data:/usr/src/app/uploads
-      - C:/Users/iotal/OneDrive/Documents/SystemGate/backend/uploads:/app/uploads
+      - C:/Users/iotal/Documents/SystemGate/backend/uploads:/app/uploads
 
   frontend:
     build:

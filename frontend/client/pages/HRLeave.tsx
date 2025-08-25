@@ -53,14 +53,14 @@ export default function HR() {
 
     const setupRealTimeConnection = async () => {
       try {
-        console.log("Setting up real-time connection for HR Leave...");
+        //console.log("Setting up real-time connection for HR Leave...");
         onConnectionChange((status) => {
           if (!mounted) return;
-          console.log("WebSocket connection status changed:", status);
+          //console.log("WebSocket connection status changed:", status);
         });
         unsubscribeDataChange = onDataChange('attendance', (data) => {
           if (!mounted) return;
-          console.log("Global attendance data change received in HR:", data);
+          //console.log("Global attendance data change received in HR:", data);
           setTimeout(() => {
             if (mounted) {
               fetchLeavePermission();
@@ -69,7 +69,7 @@ export default function HR() {
         });
         unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
           if (!mounted) return;
-          console.log("Global leave permission data change received in HR:", data);
+          //console.log("Global leave permission data change received in HR:", data);
           setTimeout(() => {
             if (mounted) {
               fetchLeavePermission();
@@ -90,7 +90,7 @@ export default function HR() {
     setupRealTimeConnection();
 
     return () => {
-      console.log("Cleaning up HR Leave connection...");
+      //console.log("Cleaning up HR Leave connection...");
       mounted = false;
       
       if (unsubscribeDataChange) {
@@ -293,14 +293,14 @@ export default function HR() {
   return (
     <div className="max-h-screen from-primary/5 via-background to-accent/20 p-3">
       <div className="z-10 sticky top-0 pb-2">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between justify-center items-center">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Leave Permission Request (HR Side)</h1>
             <p className="mt-1 text-sm text-gray-500">
               Welcome HR Management, Review leave requests with role-based approval workflow.
             </p>
           </div>
-          <div className="mt-4 sm:mt-0">
+          <div className="mt-4 justify-center items-center w-fit sm:mt-0">
             <Clock2 />
           </div>
         </div>  
@@ -610,7 +610,7 @@ export default function HR() {
 
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent className="sm:max-w-2xl bg-card/95 border-border/50 lg:h-[90vh] overflow-auto scrollbar-hide">
+              <DialogContent className="w-[90vw] h-[90vh] rounded-xl sm:max-w-2xl lg:w-full md:w-full bg-card/95 border-border/50 lg:h-[90vh] overflow-auto scrollbar-hide">
                 <DialogHeader className="space-y-1">
                   <DialogTitle className="text-2xl font-bold text-center">
                     Permission Detail

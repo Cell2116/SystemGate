@@ -198,14 +198,14 @@ export default function DirectorLeavePage() {
   return (
     <div className="max-h-screen from-primary/5 via-background to-accent/20 p-3">
       <div className="z-10 sticky top-0 pb-2">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between justify-center items-center">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Leave Permission Request (Director Side)</h1>
             <p className="mt-1 text-sm text-gray-500">
               Hello, lets see who want to go out during the working hours.
             </p>
           </div>
-          <div className="mt-4 sm:mt-0">
+          <div className="mt-4 justify-center items-center w-fit sm:mt-0">
             <Clock2 />
           </div>
         </div>  
@@ -312,7 +312,7 @@ export default function DirectorLeavePage() {
 
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent className="sm:max-w-xl bg-card/95 border-border/50 sm:h-full lg:h-max overflow-auto scrollbar-hide">
+              <DialogContent className="w-[90vw] h-[90vh] rounded-xl sm:max-w-2xl lg:w-full md:w-full bg-card/95 border-border/50 lg:h-[90vh] overflow-auto scrollbar-hide">
               {/* lg:max-w-lg */}
                 <DialogHeader className="space-y-1">
                   <DialogTitle className="text-2xl font-bold text-center">
@@ -439,10 +439,10 @@ export default function DirectorLeavePage() {
 
           {/* Recent Processed Entries Table */}
           {getProcessedDirectorEntries().length > 0 && (
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-6xl mx-auto overflow-x-auto">
               <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
-                <div className="overflow-auto h-[60vh] scrollbar-hide">
-                  <Table className="min-w-full">
+                <div className="block w-screen max-w-full overflow-x-auto overflow-y-auto h-[60vh] scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <Table className="min-w-max">
                   <TableHeader>
                     <TableRow className="sticky top-0 bg-white z-10">
                       <TableHead>Name</TableHead>

@@ -9,12 +9,12 @@ interface UserContextType {
 
 const defaultRole: Role = "User"; 
 const UserContext = createContext<UserContextType | undefined>(undefined);
-console.log("userContext Mounted");
+//console.log("userContext Mounted");
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRoleState] = useState<Role>(defaultRole);
 
   useEffect(() => {
-    console.log("User Provide mounted");
+    //console.log("User Provide mounted");
     const storedRole = localStorage.getItem("userRole");
     const normalized = storedRole === "Staff" ? "User" : storedRole;
     if (

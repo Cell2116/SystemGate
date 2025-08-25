@@ -121,11 +121,11 @@ export default function EmployeeDashboard() {
 
     const setupRealTimeConnection = async () => {
       try {
-        console.log("Setting up real-time connection...");
+        //console.log("Setting up real-time connection...");
         setConnectionStatus('connecting');        
         onConnectionChange((status) => {
           if (!mounted) return;
-          console.log("WebSocket connection status changed:", status);
+         //console.log("WebSocket connection status changed:", status);
           
           switch (status) {
             case 'open':
@@ -143,23 +143,23 @@ export default function EmployeeDashboard() {
         });
           unsubscribeDataChange = onDataChange('attendance', (data) => {
           if (!mounted) return;
-          console.log("Global attendance data change received:", data);
-          console.log("About to call fetchRecords...");          
+          // console.log("Global attendance data change received:", data);
+          // console.log("About to call fetchRecords...");          
           if (data.leaveInfo || data.leave_permission_id) {
-            console.log("Leave permission data in global change:", {
-              leaveInfo: data.leaveInfo,
-              leave_permission_id: data.leave_permission_id,
-              leave_reason: data.leave_reason,
-              planned_exit_time: data.planned_exit_time,
-              planned_return_time: data.planned_return_time,
-              actual_exittime: data.actual_exittime,
-              actual_returntime: data.actual_returntime
-            });
+            // console.log("Leave permission data in global change:", {
+            //   leaveInfo: data.leaveInfo,
+            //   leave_permission_id: data.leave_permission_id,
+            //   leave_reason: data.leave_reason,
+            //   planned_exit_time: data.planned_exit_time,
+            //   planned_return_time: data.planned_return_time,
+            //   actual_exittime: data.actual_exittime,
+            //   actual_returntime: data.actual_returntime
+            // });
           }          
-          console.log("Force refreshing records due to global data change");
+          // console.log("Force refreshing records due to global data change");
           setTimeout(() => {
             if (mounted) {
-              console.log("Calling fetchRecords NOW...");
+              // console.log("Calling fetchRecords NOW...");
               fetchRecords();
             }
           }, 100);
@@ -168,11 +168,11 @@ export default function EmployeeDashboard() {
         unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
           if (!mounted) return;
           
-          console.log("Global leave permission data change received:", data);
-          console.log("About to call fetchRecords and fetchLeavePermission...");          
+          // console.log("Global leave permission data change received:", data);
+          // console.log("About to call fetchRecords and fetchLeavePermission...");          
           setTimeout(() => {
             if (mounted) {
-              console.log("Calling fetchRecords and fetchLeavePermission NOW...");
+              // console.log("Calling fetchRecords and fetchLeavePermission NOW...");
               fetchRecords();
               fetchLeavePermission();
             }
@@ -184,26 +184,26 @@ export default function EmployeeDashboard() {
         onMessage((data) => {
           if (!mounted) return;
           
-          console.log("WebSocket message received in dashboard:", data);
-          console.log("Current records count before processing:", recordsCountRef.current);
+          // console.log("WebSocket message received in dashboard:", data);
+          // console.log("Current records count before processing:", recordsCountRef.current);
           
           if (data.type === 'info') {
-            console.log("ℹReceived info message, updating connection status");
+            // console.log("ℹReceived info message, updating connection status");
             setConnectionStatus('connected');
             setError(null);
             return;
           }
           
           if (!data.licenseplate || !data.name || !data.department) {
-            console.warn("Invalid WebSocket data:", data);
+            // console.warn("Invalid WebSocket data:", data);
             return;
           }
           
-          console.log("Processing message type:", data.type, "for UID:", data.uid);
+          // console.log("Processing message type:", data.type, "for UID:", data.uid);
           
           switch (data.type) {
             case 'entry':
-              console.log("Processing entry record:", data.uid);
+              // console.log("Processing entry record:", data.uid);
               const entryRecord = {
                 id: data.id || Date.now(),
                 uid: data.uid,
@@ -221,7 +221,7 @@ export default function EmployeeDashboard() {
                 actual_exittime: data.leaveInfo?.actualExitTime || null,
                 actual_returntime: data.leaveInfo?.actualReturnTime || null,
               } as ExtendedAttendance;
-              console.log("Adding entry record:", entryRecord);
+              // console.log("Adding entry record:", entryRecord);
               addRecord(entryRecord);
               break;
 
@@ -229,11 +229,11 @@ export default function EmployeeDashboard() {
             case 'leave_exit':
             case 'leave_return':
             case 'image_update':
-              console.log(`Processing ${data.type} - will be handled by global data change`);
+              // console.log(`Processing ${data.type} - will be handled by global data change`);
               break;
 
             default:
-              console.log("Processing unknown format as new entry");
+              // console.log("Processing unknown format as new entry");
               const defaultRecord = {
                 id: data.id || Date.now(),
                 uid: data.uid,
@@ -251,7 +251,7 @@ export default function EmployeeDashboard() {
                 actual_exittime: data.actual_exittime || null,
                 actual_returntime: data.actual_returntime || null,
               } as ExtendedAttendance;
-              console.log("Adding default record:", defaultRecord);
+              // console.log("Adding default record:", defaultRecord);
               addRecord(defaultRecord);
           }
           setConnectionStatus('connected');
@@ -260,7 +260,7 @@ export default function EmployeeDashboard() {
 
         await fetchRecords();
       } catch (error) {
-        console.error("❌ Error in setupRealTimeConnection:", error);
+        // console.error("❌ Error in setupRealTimeConnection:", error);
         setConnectionStatus('error');
         setError(error instanceof Error ? error.message : 'Connection failed');
       }
@@ -316,7 +316,9 @@ export default function EmployeeDashboard() {
               <div className="text-xs text-gray-500">
                 {records.length} records
               </div>
+              <div className="w-fit">
               <Clock2 />
+              </div>
             </div>
           </div>
         </div>
@@ -386,14 +388,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path 
-                            ? `http://192.168.1.47:3000/uploads/${record.image_path}` 
+                            ? `http://192.168.4.62:3000/uploads/${record.image_path}` 
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="entry"
-                          className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
+                          className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
                           onClick={() => {
                             if (record.image_path)
-                              setModalImage(`http://192.168.1.47:3000/uploads/${record.image_path}`);
+                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path}`);
                           }}
                         />
                       </div>
@@ -405,14 +407,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_out
-                            ? `http://192.168.1.47:3000/uploads/${record.image_path_out}`
+                            ? `http://192.168.4.62:3000/uploads/${record.image_path_out}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="exit"
-                          className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
+                          className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_out)
-                              setModalImage(`http://192.168.1.47:3000/uploads/${record.image_path_out}`);
+                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_out}`);
                           }}
                         />
                       </div>
@@ -425,14 +427,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_exit
-                            ? `http://192.168.1.47:3000/uploads/${record.image_path_leave_exit}`
+                            ? `http://192.168.4.62:3000/uploads/${record.image_path_leave_exit}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_exit"
-                          className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
+                          className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_exit)
-                              setModalImage(`http://192.168.1.47:3000/uploads/${record.image_path_leave_exit}`);
+                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_leave_exit}`);
                           }}
                         />
                       </div>
@@ -443,14 +445,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_return
-                            ? `http://192.168.1.47:3000/uploads/${record.image_path_leave_return}`
+                            ? `http://192.168.4.62:3000/uploads/${record.image_path_leave_return}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_return"
-                          className="h-[17vh] w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
+                          className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_return)
-                              setModalImage(`http://192.168.1.47:3000/uploads/${record.image_path_leave_return}`);
+                              setModalImage(`http://192.168.4.62:3000/uploads/${record.image_path_leave_return}`);
                           }}
                         />
                       </div>

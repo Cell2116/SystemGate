@@ -17,7 +17,7 @@ const client = new DigestFetch(USERNAME, PASSWORD);
 async function captureSnapshot(uid) {
     try {
         const url = `http://${CAMERA_IP}/ISAPI/Streaming/channels/101/picture`;
-        console.log(`Taking MAX QUALITY snapshot for UID: ${uid}...`);
+        //console.log(`Taking MAX QUALITY snapshot for UID: ${uid}...`);
 
         const res = await client.fetch(url, { method: 'GET' });
 
@@ -53,7 +53,7 @@ async function captureSnapshot(uid) {
             })
             .toFile(savePath);
 
-        console.log('MAX QUALITY snapshot saved:', fileName);
+        //console.log('MAX QUALITY snapshot saved:', fileName);
         return fileName;
     } catch (err) {
         console.error('❌ Failed to capture max quality snapshot:', err.message);

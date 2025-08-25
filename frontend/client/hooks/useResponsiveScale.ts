@@ -47,7 +47,7 @@ export const useResponsiveScale = (): void => {
         document.documentElement.style.overflow = '';
       }
       
-      console.log(`Screen: ${screenWidth}x${screenHeight}, Scale: ${scale}`);
+      //console.log(`Screen: ${screenWidth}x${screenHeight}, Scale: ${scale}`);
     };
 
     applyScale();

@@ -44,7 +44,7 @@ const sizes = packages.map(pkg => {
 sizes.sort((a, b) => b.size - a.size);
 
 // Print top 10
-console.log("📦 Top 10 biggest node_modules packages:\n");
+//console.log("📦 Top 10 biggest node_modules packages:\n");
 sizes.slice(0, 10).forEach(pkg => {
-  console.log(`${pkg.name.padEnd(30)} ${formatSize(pkg.size)}`);
+  //console.log(`${pkg.name.padEnd(30)} ${formatSize(pkg.size)}`);
 });

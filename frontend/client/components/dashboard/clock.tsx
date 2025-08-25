@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export default  function clock(){
+export default function clock(){
   const [time, setTime] = useState(new Date());
 
   useEffect(()=>{
@@ -21,10 +21,10 @@ export default  function clock(){
     weekday: 'long'
   });
   return(
-    <div className="bg-gray-600 bg-opacity-5 shadow-md rounded-xl p-2 w-full max-w-sm ">
-      <span>
-      <span className="text-sm font-semibold text-gray-500 mb-2">{formattedDate} | </span>
-      <span className="text-sm font-semibold text-black-600 mb-2">{formattedTime}</span>
+        <div className="bg-gray-600 bg-opacity-5 shadow-md rounded-xl p-2 w-full max-w-sm ">
+    <span>
+      <span className="text-xs mb-0 md:text-sm xl:text-sm font-semibold text-gray-500 md:mb-2 xl:mb-2">{formattedDate} | </span>
+      <span className="text-xs mb-0 md:text-sm xl:text-sm font-semibold text-black-600 md:mb-2 xl:mb-2">{formattedTime}</span>
       </span>
     </div>
   )

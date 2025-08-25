@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import EmployeeHistory  from "./pages/EmployeeHistory";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import InOutTrucks from "./pages/InOutTrucks";
+import InOutTrucksHistory from "./pages/InOutTrucksHistory";
 import LeavePermission from "./pages/LeavePermission";
 import Login from "./pages/Login";
 import ProtectedRoute from "./authentication/protectedRoute";
@@ -21,9 +22,9 @@ const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    console.log("Initiating global WebSocket connection...");
+    //console.log("Initiating global WebSocket connection...");
     initWebSocket();
-    console.log("WebSocket initialization completed");
+    //console.log("WebSocket initialization completed");
   }, []);
 
   return (
@@ -47,6 +48,7 @@ const App = () => {
               <Route path="leave" element={<LeavePermission />} />
               <Route path="history" element={<EmployeeHistory />} />
               <Route path="/employeehistory" element={<EmployeeHistory />} />
+              <Route path="/truckshistory" element={<InOutTrucksHistory />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

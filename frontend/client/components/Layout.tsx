@@ -1,4 +1,15 @@
 import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useDashboardStore } from "@/store/dashboardStore";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,7 +30,22 @@ import {
 import {roleAccess} from "../authentication/accessControl.ts";
 import {useUser} from "../authentication/userContext.tsx";
 import { useEffect } from "react";
+import NotificationCard from "../components/dashboard/notification.tsx"
 
+// Ambil jumlah notifikasi approval yang belum diproses
+function usePendingApprovalCount() {
+  const leavePermissions = useDashboardStore(state => state.leavePermissions);
+  const { role } = useUser();
+  if (!role) return 0;
+  if (role === "HR") {
+    return leavePermissions.filter((e: any) => e.statusFromHR === "pending").length;
+  } else if (role === "Head Department") {
+    return leavePermissions.filter((e: any) => e.statusFromDepartment === "pending").length;
+  } else if (role === "Director") {
+    return leavePermissions.filter((e: any) => e.statusFromDirector === "pending").length;
+  }
+  return 0;
+}
 
 const navigation = [
   { name: "Dashboard",
@@ -41,19 +67,18 @@ const navigation = [
   { name: "Leave Permission", href: "/leave", icon: DoorOpen }
 ];
 
-console.log("Layout.tsx file loaded");
+//console.log("Layout.tsx file loaded");
 
 export default function Layout() {
   const {role} = useUser();
 
-  console.log("ROLE:", role); 
+  //console.log("ROLE:", role); 
   const filteredNavigation = navigation.filter(item => roleAccess[item.name as keyof typeof roleAccess]?.includes(role));
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState(() => {
     return localStorage.getItem("openMenu") || null;
   });
-
   const [user, setUser] = useState<{ name: string; role: string }>({ name: "", role: "" });
 
   useEffect(() => {
@@ -80,7 +105,7 @@ export default function Layout() {
 
       <div
         className={cn(
-          "fixed lg:relative inset-y-0 left-0 z-50 w-20 md:w-20 lg:w-[16vw] xl:w-[16vw] 2xl:w-[16vw] bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "fixed lg:relative inset-y-0 left-0 z-50 w-25 md:w-20 lg:w-[16vw] xl:w-[16vw] 2xl:w-[16vw] bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -209,7 +234,7 @@ export default function Layout() {
       <div className="flex-1 min-w-0 h-screen overflow-hidden">
         {/* Much smaller header for 1366px */}
         <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between h-5 md:h-10 lg:h-14 xl:h-15 px-2 md:px-3 lg:px-4 xl:px-6">
+          <div className="flex items-center justify-between h-14 md:h-10 lg:h-14 xl:h-15 px-2 md:px-3 lg:px-4 xl:px-6">
             <div className="flex items-center flex-1">
               <Button
                 variant="ghost"
@@ -235,13 +260,63 @@ export default function Layout() {
             
             {/* Much smaller action buttons */}
             <div className="flex items-center space-x-1 md:space-x-2">
-              <Button variant="ghost" size="sm" className="relative p-1 md:p-1.5">
-                <Bell className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
-                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 md:h-2 md:w-2 bg-red-500 rounded-full"></span>
-              </Button>
-              <Button variant="ghost" size="sm" className="p-1 md:p-1.5">
-                <User className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
-              </Button>
+              {/* Notification */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="relative p-1 md:p-1.5">
+                    <Bell className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
+                    {(() => {
+                      const count = usePendingApprovalCount();
+                      return count > 0 ? (
+                        <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white font-bold z-10">
+                          {count}
+                        </span>
+                      ) : null;
+                    })()}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-0 mt-2 shadow-lg rounded-xl">
+                  <NotificationCard />
+                </PopoverContent>
+              </Popover>
+
+
+              {/* User Profile */}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="p-1 md:p-1.5">
+                    <User className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xs w-full p-0 rounded-xl">
+                  <div className="flex flex-col items-center p-6">
+                    <Avatar className="h-16 w-16 mb-3">
+                      <AvatarImage src="" alt={user.name} />
+                      <AvatarFallback className="text-2xl">{user.name?.[0] || "U"}</AvatarFallback>
+                    </Avatar>
+                    <DialogHeader className="w-full text-center">
+                      <DialogTitle className="text-lg font-bold">{user.name || "Unknown User"}</DialogTitle>
+                      <DialogDescription className="text-sm text-gray-500 mt-1">Department: 
+                        <span className="text-slate-700"> {user.role || "-"}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="w-full mt-4 flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          localStorage.removeItem("user");
+                          localStorage.removeItem("userRole");
+                          localStorage.removeItem("isLoggedIn");
+                          navigate("/login");
+                        }}
+                      >
+                        <LogOut className="h-4 w-4 mr-2" /> Logout
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </header>

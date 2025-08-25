@@ -1,6 +1,6 @@
 export type Role = "Security" | "HR" | "User" | "Head Department" | "Director" | "Super User";
 
-console.log("accessControl mounted")
+//console.log("accessControl mounted")
 
 export const roleAccess: Record<string, Role[]> = {
   Dashboard: ["Security", "HR", "Super User"], // Menu Dashboard

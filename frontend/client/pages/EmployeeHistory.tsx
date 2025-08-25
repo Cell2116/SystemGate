@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+  // State untuk filter collapsible di mobile
+  import { useState, useEffect } from "react";
 import { ReactNode, CSSProperties } from "react";
 import { useDashboardStore } from "../store/dashboardStore";
 import * as XLSX from "xlsx";
@@ -51,6 +52,8 @@ interface HistoryRecord {
 export default function EmployeeHistory() {
   // Store connection
   const { fetchHistoryRecords, loading, error } = useDashboardStore();
+  const [filterOpen, setFilterOpen] = useState(false);
+
   // State management
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<HistoryRecord[]>([]);
@@ -261,7 +264,8 @@ export default function EmployeeHistory() {
   };
   return (
     <>
-      <div className="h-screen flex flex-col space-y-4 overflow-hidden p-3 bg-gray-50">
+      <div className="overflow-y-auto md:h-screen xl:h-screen flex flex-col space-y-4 p-3 bg-gray-50">
+
         {/* Header */}
         <div className="z-10 sticky top-0 pb-2 bg-gray-50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -290,22 +294,29 @@ export default function EmployeeHistory() {
               </div>
             </div>
           </div>
-          
-          {/* Error Display */}
           {error && (
             <div className="mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
               <p className="text-sm">⚠️ {error}</p>
             </div>
           )}
         </div>
-
-        {/* Filters */}
-        <Card>
-          <CardContent className="p-1">
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="md:hidden mb-2">
+          <button
+            onClick={() => setFilterOpen((prev) => !prev)}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+          >
+            {filterOpen ? 'Hide Filter ▲' : 'Show Filter ▼'}
+          </button>
+        </div>
+        <div
+          className={`transition-all duration-300 overflow-hidden ${filterOpen ? 'max-h-[100vh] mb-2 max-w-[100vw]' : 'max-h-0 mb-0'} md:max-h-none md:mb-0 md:block`}
+        >
+          <Card className="md:mb-0">
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-1">
               {/* Search */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700">
                   Search
                 </label>
                 <input
@@ -381,52 +392,56 @@ export default function EmployeeHistory() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-            </div>
-
-            {/* Sort Options */}
-            <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-200">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Sort by:</label>
-                <label htmlFor="sortby-select" className="sr-only">
-                  Sort by
-                </label>
-                <select
-                  id="sortby-select"
-                  aria-label="Sort by"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm"
-                >
-                  <option value="datein">Entry Time</option>
-                  <option value="name">Name</option>
-                  <option value="department">Department</option>
-                  <option value="licenseplate">License Plate</option>
-                </select>
               </div>
-              <button
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
-              >
-                {sortOrder === "asc" ? "↑ Ascending" : "↓ Descending"}
-              </button>
-              <button
-                onClick={() => {
-                  setSearchTerm("");
-                  setSelectedDepartment("all");
-                  setSelectedStatus("all");
-                  setDateFrom("");
-                  setDateTo("");
-                }}
-                className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
-              >
-                Clear Filters
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+
+              {/* Sort Options */}
+              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-sm font-medium text-gray-700">Sort by:</label>
+                  <label htmlFor="sortby-select" className="sr-only">
+                    Sort by
+                  </label>
+                  <select
+                    id="sortby-select"
+                    aria-label="Sort by"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm"
+                  >
+                    <option value="datein">Entry Time</option>
+                    <option value="name">Name</option>
+                    <option value="department">Department</option>
+                    <option value="licenseplate">License Plate</option>
+                  </select>
+                  <button
+                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
+                  >
+                    {sortOrder === "asc" ? "↑ Ascending" : "↓ Descending"}
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setSelectedDepartment("all");
+                    setSelectedStatus("all");
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                  className="px-3 py-1 mt-2 md:mt-0 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 w-full md:w-auto"
+                >
+                  Clear Filters
+                </button>
+              </div>
+
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Records Table */}
-        <Card className="flex-1 overflow-hidden">
+        <Card
+          className={`flex-1 overflow-hidden ${filterOpen ? 'hidden' : ''} md:block`}
+        >
           <CardContent className="h-[45vh] overflow-y-auto p-0">
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -622,10 +637,10 @@ export default function EmployeeHistory() {
                     <div className="text-center">
                       <p className="text-sm font-medium mb-2">Entry</p>
                       <img
-                        src={`http://192.168.1.47:3000/uploads/${selectedRecord.image_path}`}
+                        src={`http://192.168.4.62:3000/uploads/${selectedRecord.image_path}`}
                         alt="Entry"
                         className="w-full h-24 object-cover rounded border cursor-pointer"
-                        onClick={() => setModalImage(`http://192.168.1.47:3000/uploads/${selectedRecord.image_path}`)}
+                        onClick={() => setModalImage(`http://192.168.4.62:3000/uploads/${selectedRecord.image_path}`)}
                       />
                     </div>
                   )}
@@ -633,10 +648,10 @@ export default function EmployeeHistory() {
                     <div className="text-center">
                       <p className="text-sm font-medium mb-2">Exit</p>
                       <img
-                        src={`http://192.168.1.47:3000/uploads/${selectedRecord.image_path_out}`}
+                        src={`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_out}`}
                         alt="Exit"
                         className="w-full h-24 object-cover rounded border cursor-pointer"
-                        onClick={() => setModalImage(`http://192.168.1.47:3000/uploads/${selectedRecord.image_path_out}`)}
+                        onClick={() => setModalImage(`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_out}`)}
                       />
                     </div>
                   )}
@@ -644,10 +659,10 @@ export default function EmployeeHistory() {
                     <div className="text-center">
                       <p className="text-sm font-medium mb-2">Leave Exit</p>
                       <img
-                        src={`http://192.168.1.47:3000/uploads/${selectedRecord.image_path_leave_exit}`}
+                        src={`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_leave_exit}`}
                         alt="Leave Exit"
                         className="w-full h-24 object-cover rounded border cursor-pointer"
-                        onClick={() => setModalImage(`http://192.168.1.47:3000/uploads/${selectedRecord.image_path_leave_exit}`)}
+                        onClick={() => setModalImage(`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_leave_exit}`)}
                       />
                     </div>
                   )}
@@ -655,10 +670,10 @@ export default function EmployeeHistory() {
                     <div className="text-center">
                       <p className="text-sm font-medium mb-2">Leave Return</p>
                       <img
-                        src={`http://192.168.1.47:3000/uploads/${selectedRecord.image_path_leave_return}`}
+                        src={`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_leave_return}`}
                         alt="Leave Return"
                         className="w-full h-24 object-cover rounded border cursor-pointer"
-                        onClick={() => setModalImage(`http://192.168.1.47:3000/uploads/${selectedRecord.image_path_leave_return}`)}
+                        onClick={() => setModalImage(`http://192.168.4.62:3000/uploads/${selectedRecord.image_path_leave_return}`)}
                       />
                     </div>
                   )}
