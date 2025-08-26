@@ -92,7 +92,6 @@ export default function Layout() {
     }
   }, []);
 
-
   return (  
     <div className="min-h-full bg-gray-50 flex">
       {/* Mobile sidebar backdrop */}

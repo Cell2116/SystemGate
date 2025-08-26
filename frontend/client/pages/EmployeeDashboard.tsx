@@ -65,10 +65,20 @@ export default function EmployeeDashboard() {
     addLeavePermission,
   } = useDashboardStore();
 
+  // Filter: hanya tampilkan data yang BELUM 24 jam ATAU BELUM keluar
+  const now = new Date();
+  const filteredRecords = records.filter((record: ExtendedAttendance) => {
+    const dateIn = new Date(record.datein);
+    const isLessThan24h = (now.getTime() - dateIn.getTime()) < 24 * 60 * 60 * 1000;
+    const notExited = !record.dateout && !record.actual_returntime;
+    // Tampilkan jika masih <24 jam ATAU belum keluar
+    return isLessThan24h || notExited;
+  });
+
   const recordsCountRef = useRef(0);
   useEffect(() => {
-    recordsCountRef.current = records.length;
-  }, [records]);
+    recordsCountRef.current = filteredRecords.length;
+  }, [filteredRecords]);
   const formatCustomDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return null;
     
@@ -314,7 +324,7 @@ export default function EmployeeDashboard() {
                 <span>{status.text}</span>
               </div>
               <div className="text-xs text-gray-500">
-                {records.length} records
+                {filteredRecords.length} records
               </div>
               <div className="w-fit">
               <Clock2 />
@@ -368,7 +378,7 @@ export default function EmployeeDashboard() {
             )}
             
             {/* Records List */}
-            {records.map((record: ExtendedAttendance, index) => (
+            {filteredRecords.map((record: ExtendedAttendance, index) => (
               <Card 
                 key={`${record.uid}-${record.id}-${index}`}
                 className={`w-full transition-all duration-500 hover:shadow-md ${
