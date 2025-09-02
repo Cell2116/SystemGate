@@ -86,10 +86,8 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
         AND statusfromhr = 'approved' 
         AND statusfromdept = 'approved' 
         AND (
-            role != 'Staff'
-            OR statusfromdirector = 'approved'
-            OR statusfromdirector IS NULL
-            OR statusfromdirector = ''
+            role = 'Staff'
+            OR role = 'Head Department'
         )
         AND actual_exittime IS NULL
         ORDER BY date DESC
@@ -262,7 +260,7 @@ mqttClient.on('message', async (topic, message) => {
                     AND (
                         (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
                         OR
-                        (statusfromhr = 'approved' AND statusfromdirector = 'approved' AND role = 'Head Department')
+                        (statusfromhr = 'approved' AND role = 'Head Department')
                     )
                     AND actual_exittime IS NOT NULL
                     AND actual_returntime IS NULL
@@ -280,7 +278,7 @@ mqttClient.on('message', async (topic, message) => {
                     AND (
                         (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
                         OR
-                        (statusfromhr = 'approved' AND statusfromdirector = 'approved' AND role = 'Head Department')
+                        (statusfromhr = 'approved' AND role = 'Head Department')
                     )
                     AND actual_exittime IS NULL
                     ORDER BY submittedat ASC
@@ -543,7 +541,7 @@ mqttClient.on('message', async (topic, message) => {
                         WHERE uid = $1 AND date = $2 
                         AND statusfromhr = 'approved' 
                         AND statusfromdept = 'approved' 
-                        AND (statusfromdirector = 'approved' OR role != 'Staff')
+                        AND (role = 'Staff' OR role = 'Head Department')
                         ORDER BY submittedat DESC LIMIT 1`,
                         [uid, today]
                     );
@@ -747,7 +745,7 @@ app.get('/employee/:uid/leave-status', async (req, res) => {
             WHERE uid = $1 AND date = CURRENT_DATE 
             AND statusfromhr = 'approved' 
             AND statusfromdept = 'approved' 
-            AND (statusfromdirector = 'approved' OR role != 'Staff')`,
+            AND (role = 'Staff' OR role = 'Head Department')`,
             [uid]
         );
         
@@ -766,6 +764,8 @@ app.get('/employee/:uid/leave-status', async (req, res) => {
 });
 app.get('/health', (req, res) => {
     res.json({
+
+        
         status: 'OK',
         websocket_clients: wss.clients.size,
         mqtt_connected: mqttClient.connected,
@@ -1050,6 +1050,124 @@ app.post('/auth/register', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Internal server error'
+        });
+    }
+});
+
+// API endpoint untuk mendapatkan daftar surat jalan
+// TODO: Implementasi dengan database sebenarnya
+app.get('/api/surat-jalan', async (req, res) => {
+    try {
+        // Contoh data dummy - nantinya ambil dari database
+        const dummySuratJalan = [
+            { id: "SJ001", noSuratJalan: "SJ001/2025/HPC", tanggal: "2025-09-01", status: "pending" },
+            { id: "SJ002", noSuratJalan: "SJ002/2025/LOG", tanggal: "2025-09-01", status: "pending" },
+            { id: "SJ003", noSuratJalan: "SJ003/2025/PRD", tanggal: "2025-09-02", status: "completed" },
+            { id: "SJ004", noSuratJalan: "SJ004/2025/QUA", tanggal: "2025-09-02", status: "pending" },
+            { id: "SJ005", noSuratJalan: "SJ005/2025/HPC", tanggal: "2025-09-03", status: "pending" },
+        ];
+
+        // Filter hanya surat jalan yang statusnya pending jika diperlukan
+        const { status } = req.query;
+        let filteredData = dummySuratJalan;
+        
+        if (status) {
+            filteredData = dummySuratJalan.filter(sj => sj.status === status);
+        }
+
+        res.json({
+            success: true,
+            data: filteredData,
+            message: 'Data surat jalan berhasil diambil'
+        });
+
+        /* 
+        TODO: Implementasi dengan database sebenarnya seperti ini:
+        
+        const query = `
+            SELECT id, no_surat_jalan, tanggal, status 
+            FROM surat_jalan 
+            WHERE status = ? OR ? = ''
+            ORDER BY tanggal DESC, id DESC
+        `;
+        
+        const results = await db.query(query, [status || '', status || '']);
+        
+        res.json({
+            success: true,
+            data: results,
+            message: 'Data surat jalan berhasil diambil'
+        });
+        */
+
+    } catch (error) {
+        console.error('Error fetching surat jalan:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil data surat jalan',
+            error: error.message
+        });
+    }
+});
+
+// API endpoint untuk mendapatkan detail surat jalan berdasarkan ID
+app.get('/api/surat-jalan/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Contoh data dummy - nantinya ambil dari database
+        const dummySuratJalan = [
+            { id: "SJ001", noSuratJalan: "SJ001/2025/HPC", tanggal: "2025-09-01", status: "pending", supplier: "PT ABC", barang: "Material A" },
+            { id: "SJ002", noSuratJalan: "SJ002/2025/LOG", tanggal: "2025-09-01", status: "pending", supplier: "PT DEF", barang: "Material B" },
+            { id: "SJ003", noSuratJalan: "SJ003/2025/PRD", tanggal: "2025-09-02", status: "completed", supplier: "PT GHI", barang: "Material C" },
+            { id: "SJ004", noSuratJalan: "SJ004/2025/QUA", tanggal: "2025-09-02", status: "pending", supplier: "PT JKL", barang: "Material D" },
+            { id: "SJ005", noSuratJalan: "SJ005/2025/HPC", tanggal: "2025-09-03", status: "pending", supplier: "PT MNO", barang: "Material E" },
+        ];
+
+        const suratJalan = dummySuratJalan.find(sj => sj.id === id);
+        
+        if (!suratJalan) {
+            return res.status(404).json({
+                success: false,
+                message: 'Surat jalan tidak ditemukan'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: suratJalan,
+            message: 'Detail surat jalan berhasil diambil'
+        });
+
+        /* 
+        TODO: Implementasi dengan database sebenarnya seperti ini:
+        
+        const query = `
+            SELECT * FROM surat_jalan WHERE id = ?
+        `;
+        
+        const results = await db.query(query, [id]);
+        
+        if (results.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Surat jalan tidak ditemukan'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: results[0],
+            message: 'Detail surat jalan berhasil diambil'
+        });
+        */
+
+    } catch (error) {
+        console.error('Error fetching surat jalan detail:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil detail surat jalan',
+            error: error.message
         });
     }
 });

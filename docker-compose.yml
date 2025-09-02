@@ -1,19 +1,21 @@
 version: "3.8"
 
 services:
-  # postgres:
-  #   image: postgres:15
-  #   container_name: esp32_postgres
-  #   restart: always
-  #   environment:
-  #     POSTGRES_USER: espuser
-  #     POSTGRES_PASSWORD: esp123
-  #     POSTGRES_DB: esp32db
-  #   ports:
-  #     - "5433:5432"
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-  #     - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+  postgres:
+    image: postgres:15
+    container_name: esp32_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: espuser
+      POSTGRES_PASSWORD: esp123
+      POSTGRES_DB: esp32db
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/sql/DK4.csv:/docker-entrypoint-initdb.d/DK4.csv
+      - ./backend/sql/userlogin.csv:/docker-entrypoint-initdb.d/userlogin.csv
 
   mqtt:
     image: eclipse-mosquitto
@@ -34,11 +36,11 @@ services:
       - mqtt
       # - postgres
     environment:
-      DB_HOST: 192.168.4.62
+      DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: ALKINDO@2025
-      DB_NAME: postgres
+      DB_USER: espuser
+      DB_PASSWORD: esp123
+      DB_NAME: esp32db
       MQTT_BROKER_URL : mqtt://mqtt:1884
     volumes:
       # - C:/Users/iotal/Documents/SystemGate/backend/uploads:/usr/src/app/uploads

@@ -1,0 +1,28 @@
+﻿name ;role;department;username;password
+BENNY BERNADIE;Head Department;Engineering;bennyb;bennyb123
+JAPAR SIDIK;Head Department;Designer;japars;japars123
+MAKSUDI INDRA RUKMANA;Head Department;IT;maksindra;maksindra123
+MUHAMAD RAMDANI;Head Department;CSD;mramdani;mramdani123
+MUHAMAD YASIN;Head Department;Produksi ;myasin;myasin123
+KUSWARA;Head Department;Finance;kuswara;kuswara123
+MIA PUTRI NURDIANTI;HR;Administrasi;dpurba;dpurba123
+SITI ROMLAH;HR;HRD GA;miaputri;miaputri123
+TAUFIQ BACHTIAR;Head Department;PPIC - PC;taufiqb;taufiqb123
+SETIAWAN HS;Head Department;PPIC - Paper Variant;setiawanhs;setiawanhs123
+DADANG ZAENAL A;Head Department;PPIC - PT;dadangz;dadangz123
+Super User IT;Head Department;IT;suit;suit123
+Super User Produksi;Head Department;Produksi ;supr;supr123
+Super User QC - RND;Head Department;QC - RND;suqc;suqc123
+Super User HR;HR;HRD GA;suhr;suhr123
+Super User Finance;Head Department;Finance;sufi;sufi123
+Super User Invoicing;Head Department;Invoicing;suin;suin123
+Super User Purchasing;Head Department;Purchasing;supu;supu123
+Super User Accounting;Head Department;Accounting;suac;suac123
+Super User Corporate Secretary;Head Department;Corporate Secretary;sucse;sucse123
+Super User Collector;Head Department;Collector;suco;suco123
+Super User Audit Internal;Head Department;Audit Internal;suain;suain123
+Super User Administrasi;Head Department;Administrasi;suad;suad123
+Super User Designer;Head Department;Designer;sude;sude123
+Super User Costing;Head Department;Costing;suco;suco123
+Super User CSD;Head Department;CSD;sucsd;sucsd123
+Super User Direktur;Direktur;IT;sudit;sudit123

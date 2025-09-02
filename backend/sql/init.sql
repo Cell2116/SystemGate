@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   uid VARCHAR(50) UNIQUE NOT NULL,
-  licenseplate VARCHAR(50) UNIQUE NOT NULL,
+  licenseplate VARCHAR(50),
   department VARCHAR(50) NOT NULL,
   role VARCHAR(50) NOT NULL
 );
@@ -57,22 +57,25 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
   leave_permission_id INTEGER REFERENCES leave_permission(id)
 );
 
--- Dummy users
-INSERT INTO users (name, uid, licenseplate, department, role) VALUES
-('Andi Wijaya',     'UID001', 'B1234ABC', 'Engineering', 'Staff'),
-('Budi Santoso',    'UID002', 'D5678DEF', 'HR',         'Staff'),
-('Clara Sari',      'UID003', 'F9876XYZ', 'Finance',     'Head Department'),
-('Dewi Ayu',        'UID004', 'G1122HJK', 'HR', 'Staff'),
-('Eko Prasetyo',    'UID005', 'H4455LMN', 'General',     'Director'),
-('Marcello',        'CD131D06', 'D1235AD', 'IT',     'Staff'),
-('Test 2',          '9B023306', 'D1234AD', 'IT',     'Head Department');
+COPY users(name, uid, role, department, licenseplate) FROM '/docker-entrypoint-initdb.d/DK4.csv' DELIMITER ';' CSV HEADER;
+COPY userlogin(name, role, department, username, password) FROM '/docker-entrypoint-initdb.d/userlogin.csv' DELIMITER ';' CSV HEADER;
 
-INSERT INTO userlogin (name, username, password, department, role) VALUES
-('Marcello',     'marcello', 'cello123456', 'IT', 'Staff'),
-('Head Department Test',     'headdept', 'hd123456', 'IT', 'Head Department'),
-('Director Test',     'dr', 'dr123456', 'Director', 'Director'),
-('HR Test',     'hr', 'hr123456', 'HR', 'HR'),
-('Super User',     'superuser', 'su123456', 'IT', 'Super User');
+-- -- Dummy users
+-- INSERT INTO users (name, uid, licenseplate, department, role) VALUES
+-- ('Andi Wijaya',     'UID001', 'B 1234 ABC', 'Engineering', 'Staff'),
+-- ('Budi Santoso',    'UID002', 'D 5678 DEF', 'HR',         'Staff'),
+-- ('Clara Sari',      'UID003', 'F 9876 XYZ', 'Finance',     'Head Department'),
+-- ('Dewi Ayu',        'UID004', 'G 1122 HJK', 'HR', 'Staff'),
+-- ('Eko Prasetyo',    'UID005', 'H 4455 LMN', 'General',     'Director'),
+-- ('Marcello',        'CD131D06', 'D 1235 AD', 'IT',     'Staff'),
+-- ('Test 2',          '9B023306', 'D 1234 AD', 'IT',     'Head Department');
+
+-- INSERT INTO userlogin (name, username, password, department, role) VALUES
+-- ('Marcello',     'marcello', 'cello123456', 'IT', 'Staff'),
+-- ('Head Department Test',     'headdept', 'hd123456', 'IT', 'Head Department'),
+-- ('Director Test',     'dr', 'dr123456', 'Director', 'Director'),
+-- ('HR Test',     'hr', 'hr123456', 'HR', 'HR'),
+-- ('Super User',     'superuser', 'su123456', 'IT', 'Super User');
 
 
 -- ATTENDANCE_LOGS

@@ -54,6 +54,10 @@ export default function DepartmentHead() {
   const error = useDashboardStore(state => state.error);
   const updateLeavePermission = useDashboardStore(state => state.updateLeavePermission);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [hiddenEntries, setHiddenEntries] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('departmentLeaveHiddenEntries');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -85,18 +89,39 @@ export default function DepartmentHead() {
   }, [fetchLeavePermission, fetchRecords, fetchUsers, fetchUsersByDepartment]);
   useEffect(() => {
     if (currentUser?.department) {
-      fetchUsersByDepartment(currentUser.department).then(departmentUsers => {
-        const employeeSuggestions = departmentUsers.map(user => ({
-          name: user.name,
-          department: user.department,
-          licensePlate: user.licenseplate,
-          uid: user.uid,
-          role: user.role
-        }));
-        setEmployees(employeeSuggestions);
-      });
+      const approvalDepartments = getApprovalDepartments(currentUser.department);
+      
+      // If head department manages multiple departments, fetch users from all of them
+      if (approvalDepartments.length > 1) {
+        // Fetch all users and filter by supervised departments
+        fetchUsers().then(() => {
+          const allUsers = useDashboardStore.getState().users;
+          const employeeSuggestions = allUsers
+            .filter(user => approvalDepartments.includes(user.department))
+            .map(user => ({
+              name: user.name,
+              department: user.department,
+              licensePlate: user.licenseplate,
+              uid: user.uid,
+              role: user.role
+            }));
+          setEmployees(employeeSuggestions);
+        });
+      } else {
+        // Single department - use existing logic
+        fetchUsersByDepartment(currentUser.department).then(departmentUsers => {
+          const employeeSuggestions = departmentUsers.map(user => ({
+            name: user.name,
+            department: user.department,
+            licensePlate: user.licenseplate,
+            uid: user.uid,
+            role: user.role
+          }));
+          setEmployees(employeeSuggestions);
+        });
+      }
     }
-  }, [currentUser, fetchUsersByDepartment]);
+  }, [currentUser, fetchUsersByDepartment, fetchUsers]);
   useEffect(() => {
     const loadUserFromStorage = () => {
       try {
@@ -156,28 +181,66 @@ export default function DepartmentHead() {
     }
   }, [currentUser]);
 
+// Define which departments each head department can approve
+const getApprovalDepartments = (userDepartment: string) => {
+  const departmentHierarchyFinance: Record<string, string[]> = {
+    "Finance": [
+      "Invoicing",
+      "Purchasing", 
+      "Accounting",
+      "Corporate Secretary",
+      "Collector",
+      "Audit Internal",
+      "Administrasi",
+      "Finance"
+    ],
+  };
+  const departmentHierarchyPPIC: Record<string, string[]> = {
+    "PPIC - PC": [
+      "PPIC - HC",
+      "PPIC - PC"
+    ],
+  };
+  
 
+  return departmentHierarchyFinance[userDepartment] || departmentHierarchyPPIC[userDepartment] || [userDepartment];
+};
 
 const getPendingDepartmentEntries = () => {
   if (!currentUser) return [];
+  const approvalDepartments = getApprovalDepartments(currentUser.department);
   return leavePermissions.filter(entry => 
-    entry.department === currentUser.department && 
+    approvalDepartments.includes(entry.department) && 
     entry.statusFromDepartment === "pending"
   );
 };
 
 const getProcessedDepartmentEntries = () => {
   if (!currentUser) return [];
+  const approvalDepartments = getApprovalDepartments(currentUser.department);
   return leavePermissions.filter(entry => 
-    entry.department === currentUser.department && 
-    entry.statusFromDepartment !== "pending"
+    approvalDepartments.includes(entry.department) && 
+    entry.statusFromDepartment !== "pending" &&
+    !hiddenEntries.has(entry.id)
   );
+};
+
+const handleCleanTable = () => {
+  if (!currentUser) return;
+  const approvalDepartments = getApprovalDepartments(currentUser.department);
+  const processedEntryIds = leavePermissions
+    .filter(e => approvalDepartments.includes(e.department) && e.statusFromDepartment !== "pending")
+    .map(e => e.id);
+  
+  const newHiddenEntries = new Set(processedEntryIds);
+  setHiddenEntries(newHiddenEntries);
+  localStorage.setItem('departmentLeaveHiddenEntries', JSON.stringify([...newHiddenEntries]));
 };
 
   const getOverallStatus = (entry: any) => {
     if (entry.role === "Head Department") {
-      if (entry.statusFromHR === "rejected" || entry.statusFromDirector === "rejected") return "rejected";
-      if (entry.statusFromHR === "approved" && entry.statusFromDirector === "approved") return "approved";
+      if (entry.statusFromHR === "rejected") return "rejected";
+      if (entry.statusFromHR === "approved") return "approved";
       return "pending";
     } else {
       if (entry.statusFromDepartment === "rejected" || entry.statusFromHR === "rejected") return "rejected";
@@ -367,7 +430,13 @@ const handleSubmit = async (e: React.FormEvent) => {
           <div>
             <h1 className="text-xl font-bold text-gray-900">Leave Permission Request (Head Department)</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Welcome {currentUser.name} - {currentUser.department} Head Department. Review leave requests for your department.
+              Welcome {currentUser.name} - {currentUser.department} Head {getApprovalDepartments(currentUser.department).length > 1 ? 'Division' : 'Department'}. 
+              Review leave requests for {getApprovalDepartments(currentUser.department).length > 1 ? 'your division departments' : 'your department'}.
+              {getApprovalDepartments(currentUser.department).length > 1 && (
+                <span className="block mt-1 text-xs text-blue-600">
+                  Managing: {getApprovalDepartments(currentUser.department).join(', ')}
+                </span>
+              )}
             </p>
           </div>
           <div className="mt-4 justify-center items-center w-fit sm:mt-0">
@@ -416,7 +485,14 @@ const handleSubmit = async (e: React.FormEvent) => {
                         className="h-10 border-border/50 focus:border-primary"
                         required
                       />
-                      <p className="text-xs text-blue-600">You can request for any staff in your department</p>
+                      <p className="text-xs text-blue-600">
+                        You can request for any staff in your {getApprovalDepartments(currentUser.department).length > 1 ? 'supervised departments' : 'department'}
+                        {/* {getApprovalDepartments(currentUser.department).length > 1 && (
+                          <span className="block mt-1">
+                            ({getApprovalDepartments(currentUser.department).join(', ')})
+                          </span>
+                        )} */}
+                      </p>
                     </div>
                     <div className="space-y-2 flex flex-col">
                       <Label htmlFor="role" className="text-sm font-medium">
@@ -448,7 +524,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                         disabled
                         className="h-10 border-border/50 bg-muted/50"
                       />
-                      <p className="text-xs text-muted-foreground">Your department</p>
+                      <p className="text-xs text-muted-foreground">
+                        Request will be submitted under {currentUser.department} department
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="licensePlate" className="text-sm font-medium">
@@ -522,7 +600,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                       required
                     >
                       <option value="">Select reason</option>
-                      <option value="PT">Plant 1</option>
+                      <option value="PaT">Plant 1</option>
                       <option value="Outside">Outside</option>
                       <option value="Sick">Sick</option>
                     </select>
@@ -595,10 +673,15 @@ const handleSubmit = async (e: React.FormEvent) => {
               <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
                 <DialogHeader className="space-y-3">
                   <DialogTitle className="text-2xl font-bold text-center">
-                    Pending Department Approval - {currentUser.department}
+                    Pending {getApprovalDepartments(currentUser.department).length > 1 ? 'Division' : 'Department'} Approval - {currentUser.department}
                   </DialogTitle>
                   <DialogDescription className="text-center text-muted-foreground">
-                    Leave requests awaiting your approval as Head Department
+                    Leave requests awaiting your approval as Head {getApprovalDepartments(currentUser.department).length > 1 ? 'Division' : 'Department'}
+                    {getApprovalDepartments(currentUser.department).length > 1 && (
+                      <div className="mt-2 text-xs">
+                        Managing: {getApprovalDepartments(currentUser.department).join(', ')}
+                      </div>
+                    )}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
@@ -744,7 +827,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">Approval Flow</label>
                           <p className="text-sm mt-1 bg-blue-50 px-3 py-2 rounded-lg">
-                            {selectedEntry.role === "Head Department" ? "Department (Auto) → HR → Director" : "Head Department → HR"}
+                            {selectedEntry.role === "Head Department" ? "Head Department → HR" : "Head Department → HR"}
                           </p>
                         </div>
                       </div>
@@ -779,7 +862,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                             {selectedEntry.statusFromHR.charAt(0).toUpperCase() + selectedEntry.statusFromHR.slice(1)}
                           </div>
                         </div>
-                        {selectedEntry.role === 'Head Department' && (
+                        {/* {selectedEntry.role === 'Head Department' && (
                           <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                           <div className="flex items-center">
                             <BookUser className="w-4 h-4 mr-2 text-red-600" />
@@ -793,7 +876,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                             {selectedEntry.statusFromDirector.charAt(0).toUpperCase() + selectedEntry.statusFromDirector.slice(1)}
                           </div>
                         </div>
-                        )}
+                        )} */}
                       </div>
                     </div>
 
@@ -836,9 +919,26 @@ const handleSubmit = async (e: React.FormEvent) => {
           {getProcessedDepartmentEntries().length > 0 && (
             <div className="max-w-6xl">
               <div className="bg-card/50 border border-border/50 rounded-2xl p-3 shadow-lg">
-                <h3 className="text-lg font-semibold mb-4">
-                  {currentUser.department} Department Leave Requests
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex-1"></div>
+                  <h3 className="text-lg font-semibold text-center flex-1">
+                    {getApprovalDepartments(currentUser.department).length > 1 
+                      ? `${currentUser.department} Division Leave Requests`
+                      : `${currentUser.department} Department Leave Requests`
+                    }
+                  </h3>
+                  <div className="flex-1 flex justify-end mr-6 md:mr-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCleanTable}
+                      className="group relative px-3 py-2 text-sm font-medium border-2 hover:bg-secondary/80 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                    >
+                      <Sparkles className="w-4 h-4 md:w-4 md:h-4 md:mr-2 group-hover:rotate-12 transition-transform duration-300" />
+                      Clear
+                    </Button>
+                  </div>
+                </div>
                 <div className="block w-screen max-w-full overflow-x-auto overflow-y-auto h-[60vh] scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <Table className="min-w-max">
                     <TableHeader className="">
@@ -914,17 +1014,17 @@ const handleSubmit = async (e: React.FormEvent) => {
                                 entry.statusFromHR === 'rejected' ? 'bg-red-500' :
                                 'bg-yellow-500'
                               }`} title={`HR: ${entry.statusFromHR}`} />
-                              {entry.role === "Head Department" && (
+                              {/* {entry.role === "Head Department" && (
                                 <>
-                                <div className="w-2 h-0.5 bg-gray-300 mx-1" />
+                                <div className="w-2 h-0.5 bg-gray-300 mx-1" /> */}
                                   {/* Director approval status */}
-                                  <div className={`w-3 h-3 rounded-full ${
+                                  {/* <div className={`w-3 h-3 rounded-full ${
                                     entry.statusFromDirector === 'approved' ? 'bg-green-500' :
                                     entry.statusFromDirector === 'rejected' ? 'bg-red-500' :
                                     'bg-yellow-500'
                                     }`} title={`Director: ${entry.statusFromDirector}`} />
                                 </>
-                              )}
+                              )} */}
                             </div>
 
                             <div className="text-xs text-muted-foreground mt-1">
@@ -943,7 +1043,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                               }`}>
                                 H
                               </span>
-                              {entry.role === "Head Department" && (
+                              {/* {entry.role === "Head Department" && (
                                 <>
                                   →
                                   <span className={`${
@@ -954,7 +1054,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                                     Dir
                                   </span>
                                 </>
-                              )}
+                              )} */}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">

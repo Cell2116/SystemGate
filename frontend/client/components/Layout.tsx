@@ -24,6 +24,7 @@ import {
   LogOut,
   User,
   DoorOpen,
+  PackageOpen
 } from "lucide-react";
 
 
@@ -54,6 +55,16 @@ const navigation = [
     children:[
       { name: "Employee", href: "/employee" }, 
       { name: "Trucks", href: "/trucks" }
+    ]
+  },
+  {
+    name: "Operation",
+    href: "/operation",
+    icon: PackageOpen,
+    children: [
+      { name: "Loading", href: "/loadingtrucks"},
+      { name: "Unloading", href: "/unloadingtrucks"},
+      { name: "Scan", href: "/scan"},
     ]
   },
   { name: "History Management",
@@ -104,7 +115,7 @@ export default function Layout() {
 
       <div
         className={cn(
-          "fixed lg:relative inset-y-0 left-0 z-50 w-25 md:w-20 lg:w-[16vw] xl:w-[16vw] 2xl:w-[16vw] bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "fixed lg:relative inset-y-0 left-0 z-50 w-25 md:w-20 lg:w-[16vw] xl:w-[16vw] 2xl:w-[15vw] bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -153,7 +164,7 @@ export default function Layout() {
                       }}
                     >
                       <item.icon className="mr-1.5 md:mr-2 lg:mr-3 h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 flex-shrink-0" />
-                      <span className="truncate text-xs lg:text-sm xl:text-sm">{item.name}</span>
+                      <span className="truncate text-xs lg:text-sm xl:text-xs">{item.name}</span>
                     </div>
                   ) : (
                     <NavLink
@@ -173,7 +184,7 @@ export default function Layout() {
                       }}
                     >
                       <item.icon className="mr-1.5 md:mr-2 lg:mr-3 h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 flex-shrink-0" />
-                      <span className="truncate text-xs lg:text-sm xl:text-sm">{item.name}</span>
+                      <span className="truncate text-xs lg:text-sm xl:text-xs">{item.name}</span>
                     </NavLink>
                   )}
                   
@@ -186,7 +197,7 @@ export default function Layout() {
                           to={subItem.href}
                           className={({ isActive }) =>
                             cn(
-                              "block px-1.5 md:px-2 lg:px-3 xl:px-4 py-1 md:py-1.5 lg:py-2 text-xs lg:text-sm xl:text-sm rounded-md transition-colors",
+                              "block px-1.5 md:px-2 lg:px-3 xl:px-4 py-1 md:py-1.5 lg:py-2 text-xs lg:text-sm xl:text-xs rounded-md transition-colors",
                               isActive
                                 ? "bg-blue-100 text-blue-800"
                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
@@ -207,12 +218,12 @@ export default function Layout() {
           {/* Much smaller user profile section */}
           <div className="border-t border-gray-200 p-1.5 md:p-2 lg:p-3 xl:p-3">
             <div className="flex items-center">
-              <Avatar className="h-5 w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 xl:h-9 xl:w-9">
+              <Avatar className="h-5 w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 xl:h-6 xl:w-6">
                 <AvatarImage src="" alt="User" />
-                <AvatarFallback className="text-xs lg:text-sm">C</AvatarFallback>
+                <AvatarFallback className="text-xs lg:text-sm">{user.name.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="ml-1.5 md:ml-2 lg:ml-3 flex-1 min-w-0">
-                <p className="text-xs lg:text-sm xl:text-base font-medium text-gray-900 truncate">{user.name}</p>
+                <p className="text-xs lg:text-sm xl:text-xs font-medium text-gray-900 truncate">{user.name}</p>
                 <p className="text-xs text-gray-500 truncate">{user.role}</p>
               </div>
               <Button variant="ghost" size="sm" className="p-0.5 md:p-1" onClick={()=>{

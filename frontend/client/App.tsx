@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
+import LoadingTrucks from "./pages/LoadingTrucks";
+import UnloadingTrucks from "./pages/UnloadingTrucks";
+import Scan from "./pages/Scan";
 
 import NotFound from "./pages/NotFound";
 import EmployeeHistory  from "./pages/EmployeeHistory";
@@ -17,6 +20,9 @@ import ProtectedRoute from "./authentication/protectedRoute";
 import { UserProvider } from "./authentication/userContext";
 import { useEffect } from "react";
 import { initWebSocket } from "@/lib/ws";
+import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
+import { InstallPrompt } from "./components/InstallPrompt";
+import { NetworkStatus } from "./components/NetworkStatus";
 
 const queryClient = new QueryClient();
 
@@ -49,9 +55,16 @@ const App = () => {
               <Route path="history" element={<EmployeeHistory />} />
               <Route path="/employeehistory" element={<EmployeeHistory />} />
               <Route path="/truckshistory" element={<InOutTrucksHistory />} />
+              <Route path="/loadingtrucks" element={<LoadingTrucks />} />
+              <Route path="/unloadingtrucks" element={<UnloadingTrucks />} />
+              <Route path="/scan" element={<Scan />} />
+
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <PWAUpdatePrompt />
+          <InstallPrompt />
+          <NetworkStatus />
         </UserProvider>
       </BrowserRouter>
     </QueryClientProvider>

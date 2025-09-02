@@ -44,6 +44,10 @@ export default function HR() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>([]);
+  const [hiddenEntries, setHiddenEntries] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('hrLeaveHiddenEntries');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -135,7 +139,15 @@ export default function HR() {
   });
   const getRequiredApprovals = (role: string) => {
     if (role === "Head Department") {
-      return ["HR", "Director"];
+      return ["HR"];
+    } else {
+      return ["HR", "Head Department"];
+    }
+  };
+
+  const getDisplayApprovals = (role: string) => {
+    if (role === "Head Department") {
+      return ["Head Department", "HR"];
     } else {
       return ["HR", "Head Department"];
     }
@@ -145,7 +157,6 @@ export default function HR() {
     
     if (requiredApprovals.includes("HR") && entry.statusFromHR !== "approved") return false;
     if (requiredApprovals.includes("Head Department") && entry.statusFromDepartment!== "approved") return false;
-    if (requiredApprovals.includes("Director") && entry.statusFromDirector !== "approved") return false;
     
     return true;
   };
@@ -154,7 +165,6 @@ export default function HR() {
     
     if (requiredApprovals.includes("HR") && entry.statusFromHR === "rejected") return true;
     if (requiredApprovals.includes("Head Department") && entry.statusFromDepartment=== "rejected") return true;
-    if (requiredApprovals.includes("Director") && entry.statusFromDirector === "rejected") return true;
     
     return false;
   };
@@ -287,7 +297,20 @@ export default function HR() {
   };
 
   const getProcessedEntries = () => {
-    return leavePermissions.filter(e => e.statusFromHR === 'approved' || e.statusFromHR === 'rejected');
+    return leavePermissions.filter(e => 
+      (e.statusFromHR === 'approved' || e.statusFromHR === 'rejected') && 
+      !hiddenEntries.has(e.id)
+    );
+  };
+
+  const handleCleanTable = () => {
+    const processedEntryIds = leavePermissions
+      .filter(e => e.statusFromHR === 'approved' || e.statusFromHR === 'rejected')
+      .map(e => e.id);
+    
+    const newHiddenEntries = new Set(processedEntryIds);
+    setHiddenEntries(newHiddenEntries);
+    localStorage.setItem('hrLeaveHiddenEntries', JSON.stringify([...newHiddenEntries]));
   };
 
   return (
@@ -479,7 +502,7 @@ export default function HR() {
                       {formData.role === "Head Department" ? (
                         <div className="flex items-center gap-2">
                           <Shield className="w-4 h-4" />
-                          <span>Head Department → HR → Director</span>
+                          <span>Head Department → HR</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
@@ -584,7 +607,7 @@ export default function HR() {
                               </TableCell>
                               <TableCell>
                                 <div className="text-xs">
-                                  {getRequiredApprovals(entry.role).join(" → ")}
+                                  {getDisplayApprovals(entry.role).join(" → ")}
                                 </div>
                               </TableCell>
                               <TableCell className="text-right">
@@ -691,7 +714,7 @@ export default function HR() {
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">Required Approvals</label>
                           <p className="text-sm mt-1 bg-blue-50 px-3 py-2 rounded-lg">
-                            {getRequiredApprovals(selectedEntry.role).join(" → ")}
+                            {getDisplayApprovals(selectedEntry.role).join(" → ")}
                           </p>
                         </div>
                       </div>
@@ -700,28 +723,38 @@ export default function HR() {
                     <div className="pt-1 border-t border-border/30">
                       <label className="text-sm font-medium text-muted-foreground mb-1 block">Approval Status</label>
                       <div className="grid grid-cols-1 gap-4">
-                        {getRequiredApprovals(selectedEntry.role).map((approval) => (
+                        {getDisplayApprovals(selectedEntry.role).map((approval) => (
                           <div key={approval} className="flex justify-between items-center p-2 bg-muted/30 rounded-lg">
                             <div className="flex items-center">
                               {approval === "HR" && <Shield className="w-4 h-4 mr-2 text-blue-600" />}
                               {approval === "Head Department" && <User className="w-4 h-4 mr-2 text-green-600" />}
-                              {approval === "Director" && <Crown className="w-4 h-4 mr-2 text-purple-600" />}
                               <label className="text-sm font-medium">{approval}</label>
                             </div>
                             <div className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
                               (() => {
-                                const status = (approval === "HR" ? selectedEntry.statusFromHR :
-                                  approval === "Head Department" ? selectedEntry.statusFromDepartment :
-                                  selectedEntry.statusFromDirector) || 'pending';
+                                let status;
+                                if (approval === "HR") {
+                                  status = selectedEntry.statusFromHR;
+                                } else if (approval === "Head Department") {
+                                  status = selectedEntry.statusFromDepartment;
+                                } else {
+                                  status = 'pending';
+                                }
+                                
                                 if (status === 'approved') return 'bg-green-100 text-green-800';
                                 if (status === 'rejected') return 'bg-red-100 text-red-800';
                                 return 'bg-yellow-100 text-yellow-800';
                               })()
                             }`}>
                               {(() => {
-                                const status = (approval === "HR" ? selectedEntry.statusFromHR :
-                                  approval === "Head Department" ? selectedEntry.statusFromDepartment :
-                                  selectedEntry.statusFromDirector) || 'pending';
+                                let status;
+                                if (approval === "HR") {
+                                  status = selectedEntry.statusFromHR;
+                                } else if (approval === "Head Department") {
+                                  status = selectedEntry.statusFromDepartment;
+                                } else {
+                                  status = 'pending';
+                                }
                                 return status.charAt(0).toUpperCase() + status.slice(1);
                               })()}
                             </div>
@@ -769,7 +802,21 @@ export default function HR() {
           {getProcessedEntries().length > 0 && (
             <div className="max-w-6xl mx-auto">
               <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-4 shadow-lg">
-                <h3 className="text-lg font-semibold mb-4">Processed Leave Requests</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex-1"></div>
+                  <h3 className="text-lg font-semibold text-center flex-1">Processed Leave Requests</h3>
+                  <div className="flex-1 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCleanTable}
+                      className="group relative px-3 py-2 text-sm font-medium border-2 hover:bg-secondary/80 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                    >
+                      <Sparkles className="w-4 h-4 md:w-4 md:h-4 md:mr-2 group-hover:rotate-12 transition-transform duration-300" />
+                      Clear
+                    </Button>
+                  </div>
+                </div>
                 <div className="block w-screen max-w-full overflow-x-auto overflow-y-auto h-[60vh] scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <Table className="min-w-max">
                     <TableHeader>
@@ -824,40 +871,66 @@ export default function HR() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-1">
-                              {getRequiredApprovals(entry.role).map((approval, index) => {
-                                const status = approval === "HR" ? entry.statusFromHR :
-                                            approval === "Head Department" ? entry.statusFromDepartment :
-                                            entry.statusFromDirector;
-                                return (
-                                  <div key={approval} className="flex items-center">
+                              {entry.role === "Head Department" ? (
+                                // Head Department workflow: HD → HR
+                                <>
+                                  <div className="flex items-center">
                                     <div className={`w-3 h-3 rounded-full ${
-                                      status === 'approved' ? 'bg-green-500' :
-                                      status === 'rejected' ? 'bg-red-500' :
+                                      entry.statusFromDepartment === 'approved' ? 'bg-green-500' :
+                                      entry.statusFromDepartment === 'rejected' ? 'bg-red-500' :
                                       'bg-yellow-500'
-                                    }`} title={`${approval}: ${status}`} />
-                                    {index < getRequiredApprovals(entry.role).length - 1 && (
-                                      <div className="w-2 h-0.5 bg-gray-300 mx-1" />
-                                    )}
+                                    }`} title={`Head Department: ${entry.statusFromDepartment}`} />
+                                    <div className="w-2 h-0.5 bg-gray-300 mx-1" />
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      entry.statusFromHR === 'approved' ? 'bg-green-500' :
+                                      entry.statusFromHR === 'rejected' ? 'bg-red-500' :
+                                      'bg-yellow-500'
+                                    }`} title={`HR: ${entry.statusFromHR}`} />
                                   </div>
-                                );
-                              })}
+                                </>
+                              ) : (
+                                // Staff workflow: Staff → HD → HR
+                                <>
+                                  <div className="flex items-center">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      entry.statusFromDepartment === 'approved' ? 'bg-green-500' :
+                                      entry.statusFromDepartment === 'rejected' ? 'bg-red-500' :
+                                      'bg-yellow-500'
+                                    }`} title={`Head Department: ${entry.statusFromDepartment}`} />
+                                    <div className="w-2 h-0.5 bg-gray-300 mx-1" />
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      entry.statusFromHR === 'approved' ? 'bg-green-500' :
+                                      entry.statusFromHR === 'rejected' ? 'bg-red-500' :
+                                      'bg-yellow-500'
+                                    }`} title={`HR: ${entry.statusFromHR}`} />
+                                  </div>
+                                </>
+                              )}
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
-                              {getRequiredApprovals(entry.role).map((approval, index) => {
-                                const status = approval === "HR" ? entry.statusFromHR :
-                                            approval === "Head Department" ? entry.statusFromDepartment :
-                                            entry.statusFromDirector;
-                                return (
-                                  <span key={approval} className={`${
-                                    status === 'approved' ? 'text-green-600' :
-                                    status === 'rejected' ? 'text-red-600' :
+                              {entry.role === "Head Department" ? (
+                                // <span className="text-green-600">HD→</span>
+                                <>
+                                  <span className={`${
+                                    entry.statusFromDepartment === 'approved' ? 'text-green-600' :
+                                    entry.statusFromDepartment === 'rejected' ? 'text-red-600' :
                                     'text-yellow-600'
-                                  }`}>
-                                    {approval.charAt(0)}
-                                    {index < getRequiredApprovals(entry.role).length - 1 && "→"}
-                                  </span>
-                                );
-                              })}
+                                  }`}>HD→</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className={`${
+                                    entry.statusFromDepartment === 'approved' ? 'text-green-600' :
+                                    entry.statusFromDepartment === 'rejected' ? 'text-red-600' :
+                                    'text-yellow-600'
+                                  }`}>HD→</span>
+                                </>
+                              )}
+                              <span className={`${
+                                entry.statusFromHR === 'approved' ? 'text-green-600' :
+                                entry.statusFromHR === 'rejected' ? 'text-red-600' :
+                                'text-yellow-600'
+                              }`}>HR</span>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">

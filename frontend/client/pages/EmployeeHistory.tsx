@@ -1,5 +1,5 @@
   // State untuk filter collapsible di mobile
-  import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ReactNode, CSSProperties } from "react";
 import { useDashboardStore } from "../store/dashboardStore";
 import * as XLSX from "xlsx";
@@ -300,16 +300,16 @@ export default function EmployeeHistory() {
             </div>
           )}
         </div>
-        <div className="md:hidden mb-2">
+        <div className="flex justify-center items-center xl:items-end xl:justify-end">
           <button
             onClick={() => setFilterOpen((prev) => !prev)}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-          >
+            className="px-4 py-2 md:px-2 md:py-1 md:mr-4 bg-blue-600 text-white rounded-lg font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all hover:bg-blue-500"
+            >
             {filterOpen ? 'Hide Filter ▲' : 'Show Filter ▼'}
           </button>
         </div>
         <div
-          className={`transition-all duration-300 overflow-hidden ${filterOpen ? 'max-h-[100vh] mb-2 max-w-[100vw]' : 'max-h-0 mb-0'} md:max-h-none md:mb-0 md:block`}
+          className={`transition-all duration-300 overflow-hidden ${filterOpen ? 'max-h-[100vh] mb-2 xl:mb-0 max-w-[100vw]' : 'max-h-0'}  md:mb-0 md:block`}
         >
           <Card className="md:mb-0">
             <CardContent>
