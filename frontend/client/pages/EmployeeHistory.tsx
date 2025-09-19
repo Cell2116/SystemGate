@@ -63,7 +63,7 @@ export default function EmployeeHistory() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [recordsPerPage] = useState(10);
+  const [recordsPerPage] = useState(5);
   const [sortBy, setSortBy] = useState("datein");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedRecord, setSelectedRecord] = useState<HistoryRecord | null>(null);
@@ -264,7 +264,7 @@ export default function EmployeeHistory() {
   };
   return (
     <>
-      <div className="overflow-y-auto md:h-screen xl:h-screen flex flex-col space-y-4 p-3 bg-gray-50">
+      <div className="min-h-screen flex flex-col space-y-4 p-3 bg-gray-50">
 
         {/* Header */}
         <div className="z-10 sticky top-0 pb-2 bg-gray-50">
@@ -308,12 +308,12 @@ export default function EmployeeHistory() {
             {filterOpen ? 'Hide Filter ▲' : 'Show Filter ▼'}
           </button>
         </div>
-        <div
+        <div  
           className={`transition-all duration-300 overflow-hidden ${filterOpen ? 'max-h-[100vh] mb-2 xl:mb-0 max-w-[100vw]' : 'max-h-0'}  md:mb-0 md:block`}
         >
           <Card className="md:mb-0">
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-1">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
               {/* Search */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700">
@@ -438,11 +438,9 @@ export default function EmployeeHistory() {
           </Card>
         </div>
 
-        {/* Records Table */}
-        <Card
-          className={`flex-1 overflow-hidden ${filterOpen ? 'hidden' : ''} md:block`}
-        >
-          <CardContent className="h-[45vh] overflow-y-auto p-0">
+        {/* Records Table - Hidden on mobile when filter is open */}
+        <Card className={`${filterOpen ? 'hidden md:block' : 'block'}`}>
+          <CardContent className={`${filterOpen ? 'max-h-[35vh]' : 'max-h-[60vh]'} overflow-y-auto p-0`}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-2">
@@ -535,44 +533,88 @@ export default function EmployeeHistory() {
           </CardContent>
         </Card>
 
-        {/* Pagination */}
+        {/* Pagination - Hidden on mobile when filter is open, always visible on desktop */}
         {totalPages > 1 && (
-          <Card>
-            <CardContent className="p-1">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
+          <Card className={`mt-4 ${filterOpen ? 'hidden md:block' : 'block'}`}>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-gray-700 text-center sm:text-left order-2 sm:order-1">
                   Showing {indexOfFirstRecord + 1} to {Math.min(indexOfLastRecord, filteredRecords.length)} of {filteredRecords.length} results
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap order-1 sm:order-2">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="px-2 sm:px-3 py-2 border border-gray-300 rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
                   >
                     Previous
                   </button>
                   
-                  {totalPages > 0 && Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = i + 1;
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-1 border rounded text-sm ${
-                          currentPage === page
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
+                  {/* Show page numbers */}
+                  {(() => {
+                    const maxVisiblePages = 5;
+                    const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                    const adjustedStartPage = Math.max(1, endPage - maxVisiblePages + 1);
+                    
+                    const pages = [];
+                    
+                    // First page if not in range
+                    if (adjustedStartPage > 1) {
+                      pages.push(
+                        <button
+                          key={1}
+                          onClick={() => setCurrentPage(1)}
+                          className="px-2 sm:px-3 py-2 border border-gray-300 rounded text-xs sm:text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          1
+                        </button>
+                      );
+                      if (adjustedStartPage > 2) {
+                        pages.push(<span key="ellipsis1" className="px-1 text-gray-400">...</span>);
+                      }
+                    }
+                    
+                    // Visible page range
+                    for (let page = adjustedStartPage; page <= endPage; page++) {
+                      pages.push(
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm transition-colors ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+                    
+                    // Last page if not in range
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(<span key="ellipsis2" className="px-1 text-gray-400">...</span>);
+                      }
+                      pages.push(
+                        <button
+                          key={totalPages}
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="px-2 sm:px-3 py-2 border border-gray-300 rounded text-xs sm:text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          {totalPages}
+                        </button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
                   
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="px-2 sm:px-3 py-2 border border-gray-300 rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
                   >
                     Next
                   </button>
@@ -585,8 +627,14 @@ export default function EmployeeHistory() {
 
       {/* Detail Modal */}
       {selectedRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+          onClick={() => setSelectedRecord(null)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Record Details</h2>

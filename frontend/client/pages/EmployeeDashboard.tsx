@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { initWebSocket, onMessage, closeWebSocket, getConnectionStatus, onConnectionChange, onDataChange } from "@/lib/ws";
+import { useAudio } from "@/hooks/useAudio";
 import Clock2 from "../components/dashboard/clock"
 
 import { ReactNode, CSSProperties } from "react";
@@ -49,6 +50,7 @@ interface ExtendedAttendance {
 }
 
 export default function EmployeeDashboard() {
+  const { playDingDongBell } = useAudio();
   const {
     records,
     loading,
@@ -76,9 +78,20 @@ export default function EmployeeDashboard() {
   });
 
   const recordsCountRef = useRef(0);
-  useEffect(() => {
-    recordsCountRef.current = filteredRecords.length;
-  }, [filteredRecords]);
+  
+  // Monitor perubahan jumlah records untuk memainkan suara
+  // Disabled karena audio sudah dimainkan di onMessage untuk setiap tap card action
+  // useEffect(() => {
+  //   const currentCount = filteredRecords.length;
+  //   
+  //   // Jika ada penambahan record baru (count bertambah)
+  //   if (recordsCountRef.current > 0 && currentCount > recordsCountRef.current) {
+  //     // console.log(`Records increased from ${recordsCountRef.current} to ${currentCount} - playing sound`);
+  //     playDingDongBell();
+  //   }
+  //   
+  //   recordsCountRef.current = currentCount;
+  // }, [filteredRecords, playDingDongBell]);
   const formatCustomDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return null;
     
@@ -233,11 +246,18 @@ export default function EmployeeDashboard() {
               } as ExtendedAttendance;
               // console.log("Adding entry record:", entryRecord);
               addRecord(entryRecord);
+              // Play ding dong sound when new entry is added
+              playDingDongBell();
               break;
 
             case 'exit':
             case 'leave_exit':
             case 'leave_return':
+              // console.log(`Processing ${data.type} - will be handled by global data change`);
+              // Play ding dong sound for all tap card actions
+              playDingDongBell();
+              break;
+            
             case 'image_update':
               // console.log(`Processing ${data.type} - will be handled by global data change`);
               break;
@@ -263,6 +283,7 @@ export default function EmployeeDashboard() {
               } as ExtendedAttendance;
               // console.log("Adding default record:", defaultRecord);
               addRecord(defaultRecord);
+              playDingDongBell();
           }
           setConnectionStatus('connected');
           setError(null);

@@ -36,7 +36,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const result = await login({ username, password });
+      const result = await login({ username: username.trim(), password });
       
       if (result.success && result.user) {
         const normalizedRole = result.user.role === "Staff" ? "User" : result.user.role;
@@ -104,7 +104,7 @@ export default function LoginPage() {
                 <Input
                   placeholder="Username"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => setUsername(e.target.value.trim())}
                   disabled={loading}
                 />
                 <Input

@@ -6,6 +6,7 @@ interface Employee {
   name: string;
   department: string;
   licensePlate?: string;
+  role?: string;
 }
 
 interface EmployeeAutocompleteProps {
@@ -43,6 +44,7 @@ export function EmployeeAutocomplete({
         .filter(employee => 
           employee.name.toLowerCase().includes(value.toLowerCase()) ||
           employee.department.toLowerCase().includes(value.toLowerCase()) ||
+          (employee.role && employee.role.toLowerCase().includes(value.toLowerCase())) ||
           (employee.licensePlate && employee.licensePlate.toLowerCase().includes(value.toLowerCase()))
         )
         .slice(0, maxSuggestions);
@@ -157,6 +159,7 @@ export function EmployeeAutocomplete({
                   <span className="font-medium text-sm">{employee.name}</span>
                   <span className="text-xs text-muted-foreground">
                     {employee.department}
+                    {employee.role && ` • ${employee.role}`}
                     {employee.licensePlate && ` • ${employee.licensePlate}`}
                   </span>
                 </div>

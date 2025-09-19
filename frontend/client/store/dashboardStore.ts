@@ -1,5 +1,6 @@
 import create from "zustand";
 import axios from "axios";
+import { onDataChange } from "@/lib/ws";
 
 type leavePermissionStatus = 'pending' | ' approved' | 'rejected';
 interface Attendance {
@@ -59,6 +60,7 @@ interface DashboardStore {
   
   // Actions
   fetchLeavePermission:  () => Promise<LeavePermission[]>;
+  setLeavePermissions: (permissions: LeavePermission[]) => void;
   addLeavePermission: (entry: Omit<LeavePermission, "id">) => Promise<LeavePermission>;
   updateLeavePermission: (id: string, updates: Partial<LeavePermission>) => Promise<LeavePermission>;
   fetchRecords: () => Promise<Attendance[]>;
@@ -131,6 +133,10 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       set({ error: error?.message || "Failed to Fetch Leave Permission", loading: false });
       throw error;
     }
+  },
+
+  setLeavePermissions: (permissions) => {
+    set({ leavePermissions: permissions });
   },
 
   addLeavePermission: async (entry) =>{
@@ -404,7 +410,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       //console.log("Making API call to:", url);
       
       const res = await axios.get(url);
-      //console.log("API response received:", res.data.length, "history records");
+      // console.log("API response received:", res.data.length, "history records");
       
       const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
         new Date(b.datein).getTime() - new Date(a.datein).getTime()
@@ -428,3 +434,24 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     }
   },
 }));
+
+// Setup WebSocket listener for real-time leave permission updates
+let isListenerSetup = false;
+
+export const setupLeavePermissionListener = () => {
+  if (isListenerSetup) return;
+  
+  isListenerSetup = true;
+  
+  onDataChange('leave_permission', (data) => {
+    const store = useDashboardStore.getState();
+    
+    if (data.type === 'leave_permission' && data.action === 'insert') {
+      // New leave permission submitted - refetch to get latest data
+      store.fetchLeavePermission();
+    } else if (data.action === 'update') {
+      // Update existing leave permission
+      store.fetchLeavePermission();
+    }
+  });
+};

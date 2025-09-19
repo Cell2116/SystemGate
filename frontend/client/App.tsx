@@ -23,6 +23,8 @@ import { initWebSocket } from "@/lib/ws";
 import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { NetworkStatus } from "./components/NetworkStatus";
+import GlobalScanner from "./components/GlobalScanner";
+import ScannerIndicator from "./components/ScannerIndicator";
 
 const queryClient = new QueryClient();
 
@@ -37,34 +39,37 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <UserProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="employee" element={<EmployeeDashboard />} />
-              <Route path="trucks" element={<InOutTrucks />} />
-              <Route path="leave" element={<LeavePermission />} />
-              <Route path="history" element={<EmployeeHistory />} />
-              <Route path="/employeehistory" element={<EmployeeHistory />} />
-              <Route path="/truckshistory" element={<InOutTrucksHistory />} />
-              <Route path="/loadingtrucks" element={<LoadingTrucks />} />
-              <Route path="/unloadingtrucks" element={<UnloadingTrucks />} />
-              <Route path="/scan" element={<Scan />} />
+          <GlobalScanner>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="employee" element={<EmployeeDashboard />} />
+                <Route path="trucks" element={<InOutTrucks />} />
+                <Route path="leave" element={<LeavePermission />} />
+                <Route path="history" element={<EmployeeHistory />} />
+                <Route path="/employeehistory" element={<EmployeeHistory />} />
+                <Route path="/truckshistory" element={<InOutTrucksHistory />} />
+                <Route path="/loadingtrucks" element={<LoadingTrucks />} />
+                <Route path="/unloadingtrucks" element={<UnloadingTrucks />} />
+                <Route path="/scan" element={<Scan />} />
 
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <PWAUpdatePrompt />
-          <InstallPrompt />
-          <NetworkStatus />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <PWAUpdatePrompt />
+            <InstallPrompt />
+            <NetworkStatus />
+            <ScannerIndicator />
+          </GlobalScanner>
         </UserProvider>
       </BrowserRouter>
     </QueryClientProvider>

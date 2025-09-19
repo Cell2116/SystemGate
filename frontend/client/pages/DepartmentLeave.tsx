@@ -22,11 +22,12 @@ import {
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { EmployeeAutocomplete } from "@/components/ui/employee-autocomplete";
 import Clock2 from "../components/dashboard/clock"
-import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Shield, Crown, Building, BookUser } from "lucide-react";
+import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Shield, Crown, Building, BookUser, RefreshCw, Users, MapPin } from "lucide-react";
 
 import { useEffect } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { initWebSocket, onMessage, closeWebSocket, onConnectionChange, onDataChange } from "@/lib/ws";
+import { C } from "vitest/dist/chunks/reporters.d.BFLkQcL6";
 
 interface User {
   name: string;
@@ -58,6 +59,10 @@ export default function DepartmentHead() {
     const saved = localStorage.getItem('departmentLeaveHiddenEntries');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
+  const [isGroupLeave, setIsGroupLeave] = useState(false);
+  const [selectedColleagues, setSelectedColleagues] = useState<any[]>([]);
+  const [availableColleagues, setAvailableColleagues] = useState<any[]>([]);
+  const [colleagueSearch, setColleagueSearch] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -89,39 +94,21 @@ export default function DepartmentHead() {
   }, [fetchLeavePermission, fetchRecords, fetchUsers, fetchUsersByDepartment]);
   useEffect(() => {
     if (currentUser?.department) {
-      const approvalDepartments = getApprovalDepartments(currentUser.department);
-      
-      // If head department manages multiple departments, fetch users from all of them
-      if (approvalDepartments.length > 1) {
-        // Fetch all users and filter by supervised departments
-        fetchUsers().then(() => {
-          const allUsers = useDashboardStore.getState().users;
-          const employeeSuggestions = allUsers
-            .filter(user => approvalDepartments.includes(user.department))
-            .map(user => ({
-              name: user.name,
-              department: user.department,
-              licensePlate: user.licenseplate,
-              uid: user.uid,
-              role: user.role
-            }));
-          setEmployees(employeeSuggestions);
-        });
-      } else {
-        // Single department - use existing logic
-        fetchUsersByDepartment(currentUser.department).then(departmentUsers => {
-          const employeeSuggestions = departmentUsers.map(user => ({
-            name: user.name,
-            department: user.department,
-            licensePlate: user.licenseplate,
-            uid: user.uid,
-            role: user.role
-          }));
-          setEmployees(employeeSuggestions);
-        });
-      }
+      // Always fetch all users for cross-department group leave capability
+      fetchUsers().then(() => {
+        const allUsers = useDashboardStore.getState().users;
+        const employeeSuggestions = allUsers.map(user => ({
+          name: user.name,
+          department: user.department,
+          licensePlate: user.licenseplate,
+          uid: user.uid,
+          role: user.role
+        }));
+        setEmployees(employeeSuggestions);
+      });
     }
-  }, [currentUser, fetchUsersByDepartment, fetchUsers]);
+  }, [currentUser, fetchUsers]);
+  
   useEffect(() => {
     const loadUserFromStorage = () => {
       try {
@@ -170,6 +157,19 @@ export default function DepartmentHead() {
     reasonType: "",
     outsideReason: "",
   });
+  
+  // Update available colleagues when employees change
+  useEffect(() => {
+    if (employees.length > 0 && formData.name) {
+      const colleagues = employees.filter(emp => 
+        emp.name !== formData.name
+      );
+      setAvailableColleagues(colleagues);
+    } else {
+      setAvailableColleagues(employees);
+    }
+  }, [employees, formData.name]);
+  
   useEffect(() => {
     if (currentUser) {
       setFormData(prev => ({
@@ -211,7 +211,8 @@ const getPendingDepartmentEntries = () => {
   const approvalDepartments = getApprovalDepartments(currentUser.department);
   return leavePermissions.filter(entry => 
     approvalDepartments.includes(entry.department) && 
-    entry.statusFromDepartment === "pending"
+    entry.statusFromDepartment === "pending" &&
+    !(entry.reason && entry.reason.includes('(Group with ') && entry.approval === 'approved') // Exclude group members
   );
 };
 
@@ -225,6 +226,16 @@ const getProcessedDepartmentEntries = () => {
   );
 };
 
+// New function to get all department entries (including hidden ones)
+const getAllDepartmentEntries = () => {
+  if (!currentUser) return [];
+  const approvalDepartments = getApprovalDepartments(currentUser.department);
+  return leavePermissions.filter(entry => 
+    approvalDepartments.includes(entry.department) && 
+    entry.statusFromDepartment !== "pending"
+  );
+};
+
 const handleCleanTable = () => {
   if (!currentUser) return;
   const approvalDepartments = getApprovalDepartments(currentUser.department);
@@ -235,6 +246,11 @@ const handleCleanTable = () => {
   const newHiddenEntries = new Set(processedEntryIds);
   setHiddenEntries(newHiddenEntries);
   localStorage.setItem('departmentLeaveHiddenEntries', JSON.stringify([...newHiddenEntries]));
+};
+
+const handleShowAll = () => {
+  setHiddenEntries(new Set());
+  localStorage.removeItem('departmentLeaveHiddenEntries');
 };
 
   const getOverallStatus = (entry: any) => {
@@ -296,27 +312,66 @@ const handleSubmit = async (e: React.FormEvent) => {
   String(now.getMinutes()).padStart(2, '0') + ':' +
   String(now.getSeconds()).padStart(2, '0');
   
-  const newEntry = {
-    ...formData,
-    department: currentUser.department,
-    reason: reasonValue,
-    approval: "pending",
-    statusFromDepartment: formData.role === "Head Department" ? "approved" : "pending",
-    statusFromHR: "pending",
-    statusFromDirector: "pending",
-    submittedAt: formatted,
-    actual_exittime: null,
-    actual_returntime: null
-  };
-    
-  //console.log("=== DEBUG NEW ENTRY ===");
-  //console.log("newEntry:", newEntry);
-
   try {
-    await addLeavePermission(newEntry);
+    // Create leave requests for main person and selected colleagues
+    const leaveRequests = [];
+    
+    // Main person
+    const mainEntry = {
+      ...formData,
+      department: currentUser.department,
+      reason: isGroupLeave && selectedColleagues.length > 0 
+        ? `${reasonValue} (Group Leader with: ${selectedColleagues.map(c => c.name).join(', ')})` 
+        : reasonValue,
+      approval: "pending",
+      statusFromDepartment: formData.role === "Head Department" ? "approved" : "pending",
+      statusFromHR: "pending",
+      statusFromDirector: "pending",
+      submittedAt: formatted,
+      actual_exittime: null,
+      actual_returntime: null,
+      ...(isGroupLeave && selectedColleagues.length > 0 && {
+        isGroupLeader: true,
+        groupMembers: selectedColleagues.map(c => c.name).join(', ')
+      })
+    };
+    leaveRequests.push(mainEntry);
+    
+    // Add colleagues if group leave - they don't need separate approval
+    if (isGroupLeave && selectedColleagues.length > 0) {
+      selectedColleagues.forEach(colleague => {
+        const colleagueEntry = {
+          name: colleague.name,
+          licensePlate: colleague.licensePlate || colleague.licenseplate,
+          department: colleague.department,
+          role: colleague.role,
+          date: formData.date,
+          exitTime: formData.exitTime,
+          returnTime: formData.returnTime,
+          reason: `${reasonValue} (Group with ${formData.name})`,
+          approval: "approved", // Auto-approved as part of group
+          statusFromDepartment: "approved", // Auto-approved
+          statusFromHR: "approved", // Auto-approved
+          statusFromDirector: "approved", // Auto-approved
+          submittedAt: formatted,
+          actual_exittime: null,
+          actual_returntime: null,
+          groupLeader: formData.name, // Track who is the group leader
+          isGroupMember: true // Flag to identify group members
+        };
+        leaveRequests.push(colleagueEntry);
+      });
+    }
+    
+    // Submit all leave requests
+    for (const entry of leaveRequests) {
+      await addLeavePermission(entry);
+    }
+    
     await fetchLeavePermission();
     setIsOpen(false);
     
+    // Reset form and group leave states
     setFormData({
       name: "",
       licensePlate: "",
@@ -329,11 +384,28 @@ const handleSubmit = async (e: React.FormEvent) => {
       reasonType: "",
       outsideReason: "",
     });
+    setIsGroupLeave(false);
+    setSelectedColleagues([]);
+    setColleagueSearch("");
+    
+    const groupMessage = isGroupLeave ? 
+      `Group leave request submitted successfully for ${leaveRequests.length} people!` : 
+      "Leave request submitted successfully!";
+    // alert(groupMessage);
   } catch (error) {
     console.error("Error adding leave permission:", error);
-    alert("Failed to submit leave request. Please try again.");
+    // alert("Failed to submit leave request. Please try again.");
   }
 };
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }
+  const getTomorrowDate = () =>{
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  }
 
   const handleInputChange = (field: string, value: string) => {
     if (field === "reasonType") {
@@ -351,7 +423,8 @@ const handleSubmit = async (e: React.FormEvent) => {
     setFormData(prev => ({
       ...prev,
       name: name,
-      licensePlate: employee?.licensePlate || prev.licensePlate
+      licensePlate: employee?.licensePlate || prev.licensePlate,
+      role: employee?.role || prev.role  // Add role autocomplete
     }));
   };
 
@@ -531,6 +604,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                     <div className="space-y-2">
                       <Label htmlFor="licensePlate" className="text-sm font-medium">
                         License Plate
+                        <span className="text-sm italic opacity-70"> (Fill '-' if doesnt use vehicle)</span> 
                       </Label>
                       <Input
                         id="licensePlate"
@@ -555,10 +629,31 @@ const handleSubmit = async (e: React.FormEvent) => {
                         className="h-10 border-border/50 focus:border-primary"
                         required
                       />
+                      <div className="flex gap-2">
+                        <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleInputChange("date", getTodayDate())}
+                        className="text-xs px-2 py-1 h-7"
+                        >
+                          Today
+                        </Button>
+                        <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick = {() => handleInputChange("date", getTomorrowDate())}
+                        className="text-xs px-2 py-1 h-7"
+                        >
+                          Tomorrow
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="exitTime" className="text-sm font-medium">
                         Exit Time
+                        <span className="text-xs opacity-60"> (24H Format)</span>
                       </Label>
                       <Input
                         id="exitTime"
@@ -573,6 +668,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <div className="space-y-2">
                     <Label htmlFor="returnTime" className="text-sm font-medium">
                       Return Time
+                      <span className="text-xs opacity-60"> (24H Format)</span>
                     </Label>
                     <Input
                       id="returnTime"
@@ -600,7 +696,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                       required
                     >
                       <option value="">Select reason</option>
-                      <option value="PaT">Plant 1</option>
+                      <option value="PT">Plant 1</option>
                       <option value="Outside">Outside</option>
                       <option value="Sick">Sick</option>
                     </select>
@@ -620,6 +716,135 @@ const handleSubmit = async (e: React.FormEvent) => {
                     )}
                     {formData.reasonType && formData.reasonType !== "Outside" && (
                       <p className="text-xs text-muted-foreground mt-2">Reason will be set as <span className="font-semibold">{formData.reasonType}</span>.</p>
+                    )}
+                  </div>
+                  
+                  {/* Group Leave Section */}
+                  <div className="space-y-4">
+                    <div className="space-x-2">
+                      <input
+                        type="checkbox"
+                        id="groupLeave"
+                        checked={isGroupLeave}
+                        onChange={(e) => setIsGroupLeave(e.target.checked)}
+                        className="rounded border-gray-300"
+                        required={formData.reasonType !== "Sick"}
+                        disabled={formData.reasonType === "Sick"}
+                      />
+                      <Label htmlFor="groupLeave" className="text-sm font-medium">
+                        Cross-Department Group Leave (Invite colleagues from any department)
+                      </Label>
+                      {formData.reasonType === "Sick" && (
+                        <p className="text-xs text-muted-foreground mt-2">Reason SICK can't bring other person</p>
+                      )}
+                    </div>
+                    
+                    {isGroupLeave && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          Select Colleagues from Any Department
+                        </Label>
+                        
+                        {/* Search input */}
+                        <input
+                          placeholder="Search colleagues by name or department..."
+                          value={colleagueSearch}
+                          onChange={(e) => setColleagueSearch(e.target.value)}
+                          className="w-full h-8 text-sm px-3 border border-gray-300 rounded-md"
+                          required={formData.reasonType !== "Sick"}
+                          disabled={formData.reasonType === "Sick"}
+                        />
+                        
+                        {/* Quick actions */}
+                        <div className="flex gap-2 text-xs">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedColleagues([])}
+                            className="h-6 px-2"
+                            // required={formData.reasonType !== "Sick"}
+                            disabled={formData.reasonType === "Sick"}
+                          >
+                            Clear All
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const mainDept = currentUser?.department;
+                              const sameDeptColleagues = availableColleagues.filter(c => 
+                                c.department === mainDept
+                              );
+                              setSelectedColleagues(sameDeptColleagues);
+                            }}
+                            className="h-6 px-2"
+                            disabled={formData.reasonType === "Sick"}
+                            >
+                            Select My Dept
+                          </Button>
+                        </div>
+                        
+                        <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-2 bg-gray-50">
+                          {availableColleagues.length === 0 ? (
+                            <p className="text-sm text-gray-500 text-center py-2">
+                              No colleagues available
+                            </p>
+                          ) : (
+                            (() => {
+                              const filteredColleagues = availableColleagues.filter(colleague =>
+                                colleague.name.toLowerCase().includes(colleagueSearch.toLowerCase()) ||
+                                colleague.department.toLowerCase().includes(colleagueSearch.toLowerCase())
+                              );
+                              
+                              const groupedByDept = filteredColleagues.reduce((groups, colleague) => {
+                                const dept = colleague.department;
+                                if (!groups[dept]) groups[dept] = [];
+                                groups[dept].push(colleague);
+                                return groups;
+                              }, {} as Record<string, typeof filteredColleagues>);
+                              
+                              return Object.entries(groupedByDept).map(([dept, colleagues]) => (
+                                <div key={dept} className="space-y-1">
+                                  <div className="flex items-center gap-1 text-xs font-medium text-gray-600">
+                                    <Building className="w-3 h-3" />
+                                    {dept}
+                                  </div>
+                                  <div className="pl-4 space-y-1">
+                                    {(colleagues as any[]).map((colleague: any, idx: number) => (
+                                      <label key={idx} className="flex items-center space-x-2 text-xs cursor-pointer hover:bg-white rounded p-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedColleagues.some(c => c.uid === colleague.uid)}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setSelectedColleagues([...selectedColleagues, colleague]);
+                                            } else {
+                                              setSelectedColleagues(selectedColleagues.filter(c => c.uid !== colleague.uid));
+                                            }
+                                          }}
+                                          className="rounded border-gray-300"
+                                          disabled={formData.reasonType === "Sick"}
+                                        />
+                                        <span className="font-medium">{colleague.name}</span>
+                                        <span className="text-gray-500">({colleague.role})</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              ));
+                            })()
+                          )}
+                        </div>
+                        
+                        {selectedColleagues.length > 0 && (
+                          <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                            <Users className="w-3 h-3 inline mr-1" />
+                            Selected: {selectedColleagues.length} colleague(s) + 1 main person = {selectedColleagues.length + 1} total
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                   
@@ -651,7 +876,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                       className="flex-1 sm:flex-none group"
                     >
                       <Send className="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-200" />
-                      Submit My Request
+                      {isGroupLeave ? 
+                        `Submit Group Request (${selectedColleagues.length + 1} people)` : 
+                        "Submit My Request"
+                      }
                     </Button>
                   </DialogFooter>
                 </form>
@@ -916,7 +1144,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
 
           {/* Department Entries Table */}
-          {getProcessedDepartmentEntries().length > 0 && (
+          {(getProcessedDepartmentEntries().length > 0 || getAllDepartmentEntries().length > 0) && (
             <div className="max-w-6xl">
               <div className="bg-card/50 border border-border/50 rounded-2xl p-3 shadow-lg">
                 <div className="flex justify-between items-center mb-4">
@@ -927,7 +1155,16 @@ const handleSubmit = async (e: React.FormEvent) => {
                       : `${currentUser.department} Department Leave Requests`
                     }
                   </h3>
-                  <div className="flex-1 flex justify-end mr-6 md:mr-2">
+                  <div className="flex-1 flex justify-end gap-2 mr-6 md:mr-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleShowAll}
+                      className="group relative px-3 py-2 text-sm font-medium border-2 hover:bg-primary/10 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                    >
+                      <RefreshCw className="w-4 h-4 md:w-4 md:h-4 md:mr-2 group-hover:rotate-180 transition-transform duration-300" />
+                      Show All
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -955,6 +1192,22 @@ const handleSubmit = async (e: React.FormEvent) => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {getProcessedDepartmentEntries().length === 0 && getAllDepartmentEntries().length > 0 && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8">
+                            <div className="flex flex-col items-center justify-center space-y-3">
+                              <Eye className="w-12 h-12 text-muted-foreground/50" />
+                              <div className="text-muted-foreground">
+                                <p className="font-medium">All processed entries are hidden</p>
+                                <p className="text-sm">
+                                  {getAllDepartmentEntries().length} entries have been processed. 
+                                  Click "Show All" to view them.
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {getProcessedDepartmentEntries().map((entry) => (
                         <TableRow key={entry.id}>
                           <TableCell className="font-medium">

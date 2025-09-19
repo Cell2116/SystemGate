@@ -1,10 +1,776 @@
-import PlaceholderPage from "./PlaceholderPage";
+  // State untuk filter collapsible di mobile
+import { useState, useEffect } from "react";
+import { ReactNode, CSSProperties } from "react";
+import { useDashboardStore } from "../store/dashboardStore";
+import * as XLSX from "xlsx";
 
-export default function InOutTrucksHistory(){
-  return(
-    <PlaceholderPage
-    title="In Out Trucks History"
-    description="This page will be use for seeing history of the Trucks from Internal or External."
-    />
-  )
+
+type CardProps = {
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+};
+
+const Card = ({ children, className = "", style = {} }: CardProps) => (
+  <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`} style={style}>
+    {children}
+  </div>
+);
+
+type CardContentProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+const CardContent = ({ children, className = "" }: CardContentProps) => (
+  <div className={`p-6 ${className}`}>
+    {children}
+  </div>
+);
+
+interface TruckHistoryRecord {
+  id: number;
+  platenumber: string;
+  noticket?: string;
+  department?: string;
+  nikdriver?: string;
+  tlpdriver?: string;
+  nosj?: string;
+  tglsj?: string;
+  driver?: string;
+  supplier?: string;
+  arrivaltime?: string;
+  eta?: string;
+  status?: string;
+  type?: string;
+  goods?: string;
+  descin?: string;
+  descout?: string;
+  statustruck?: string;
+  estimatedfinish?: string;
+  estimatedwaittime?: string;
+  actualwaittime?: string;
+  startloadingtime?: string;
+  finishtime?: string;
+  date?: string;
+  armada?: string;
+  kelengkapan?: string;
+  jenismobil?: string;
+}
+
+export default function TruckHistory() {
+  // Store connection - we'll create a truck-specific fetch function
+  const { loading, error } = useDashboardStore();
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  // State management
+  const [records, setRecords] = useState<TruckHistoryRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<TruckHistoryRecord[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedJenisMobil, setSelectedJenisMobil] = useState("all");
+  const [selectedDepartment, setSelectedDepartment] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage] = useState(5);
+  const [sortBy, setSortBy] = useState("arrivaltime");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedRecord, setSelectedRecord] = useState<TruckHistoryRecord | null>(null);
+  const [modalImage, setModalImage] = useState<string | null>(null);
+
+  // Fetch truck history data
+  const fetchTruckHistory = async () => {
+    try {
+      const response = await fetch('http://192.168.4.62:3000/api/trucks/history');
+      if (!response.ok) {
+        throw new Error('Failed to fetch truck history');
+      }
+      const data = await response.json();
+      setRecords(data);
+    } catch (err) {
+      console.error("Failed to fetch truck history:", err);
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      const filters = {
+        searchTerm: searchTerm || undefined,
+        jenismobil: selectedJenisMobil !== "all" ? selectedJenisMobil : undefined,
+        department: selectedDepartment !== "all" ? selectedDepartment : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      };
+      
+      await fetchTruckHistory();
+    } catch (err) {
+      console.error("Failed to fetch truck history records:", err);
+    }
+  };
+
+  // Initial data load
+  useEffect(() => {
+    fetchData();
+  }, []);
+  // Debounced search and filter effect
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      fetchData();
+    }, 500); 
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, selectedJenisMobil, selectedDepartment, dateFrom, dateTo]);
+
+  useEffect(() => {
+    let filtered = [...records];
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(record => 
+        (record.platenumber && record.platenumber.toLowerCase().includes(search)) ||
+        (record.driver && record.driver.toLowerCase().includes(search)) ||
+        (record.supplier && record.supplier.toLowerCase().includes(search)) ||
+        (record.goods && record.goods.toLowerCase().includes(search))
+      );
+    }
+
+    if (selectedDepartment !== "all") {
+      filtered = filtered.filter(record => record.department === selectedDepartment);
+    }
+
+    if (selectedJenisMobil !== "all") {
+      filtered = filtered.filter(record => record.jenismobil === selectedJenisMobil);
+    }
+
+    if (dateFrom) {
+      filtered = filtered.filter(record => {
+        if (!record.date) return false;
+        const recordDate = new Date(record.date).toDateString();
+        const fromDate = new Date(dateFrom).toDateString();
+        return recordDate >= fromDate;
+      });
+    }
+
+    if (dateTo) {
+      filtered = filtered.filter(record => {
+        if (!record.date) return false;
+        const recordDate = new Date(record.date).toDateString();
+        const toDate = new Date(dateTo).toDateString();
+        return recordDate <= toDate;
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (sortBy) {
+        case "platenumber":
+          aValue = a.platenumber || "";
+          bValue = b.platenumber || "";
+          break;
+        case "driver":
+          aValue = a.driver || "";
+          bValue = b.driver || "";
+          break;
+        case "supplier":
+          aValue = a.supplier || "";
+          bValue = b.supplier || "";
+          break;
+        case "status":
+          aValue = a.status || "";
+          bValue = b.status || "";
+          break;
+        case "date":
+        default:
+          aValue = a.date ? new Date(a.date) : new Date(0);
+          bValue = b.date ? new Date(b.date) : new Date(0);
+          break;
+      }
+      
+      if (sortOrder === "asc") {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    setFilteredRecords(filtered);
+    setCurrentPage(1);
+  }, [records, sortBy, sortOrder, searchTerm, selectedJenisMobil, selectedDepartment, dateFrom, dateTo]);
+
+  // Pagination
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = filteredRecords.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(filteredRecords.length / recordsPerPage);
+
+  const formatDateTime = (dateString: string | null | undefined) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
+    const formatCustomDateTime = (dateString: string | null | undefined) => {
+    if (!dateString) return null;
+    
+    let date: Date;
+    if (dateString.includes('T')) {
+      const [datePart, timePart] = dateString.split('T');
+      const timeOnly = timePart.split('.')[0];
+      const cleanDateString = `${datePart} ${timeOnly}`;
+      date = new Date(cleanDateString);
+    } else if (dateString.includes(' ')) {
+      date = new Date(dateString);
+    } else {
+      date = new Date(dateString);
+    }
+
+    if (isNaN(date.getTime())) return dateString;
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+    return `${day}/${month}/${year}, ${hours}.${minutes}.${seconds}`;
+  };
+  const exportToXLSX = () => {
+    const exportData = filteredRecords.map(record => ({
+      'Plate Number': record.platenumber || '',
+      'Ticket Number': record.noticket || '',
+      'Driver': record.driver || '',
+      'NIK Driver': record.nikdriver || '',
+      'Telp Driver': record.tlpdriver || '',
+      'Supplier': record.supplier || '',
+      'No SJ': record.nosj || '',
+      'Tanggal SJ': record.tglsj || '',
+      'Arrival Time': record.arrivaltime ? formatDateTime(record.arrivaltime) : '',
+      'Start Loading': record.startloadingtime ? formatDateTime(record.startloadingtime) : '',
+      'Finish Time': record.finishtime ? formatDateTime(record.finishtime) : '',
+      'Status': record.status || '',
+      'Type': record.type || '',
+      'Goods': record.goods || '',
+      'Estimated Finish': record.estimatedfinish ? formatDateTime(record.estimatedfinish) : '',
+      'Estimated Wait Time': record.estimatedwaittime || '',
+      'Actual Wait Time': record.actualwaittime || '',
+      'Description In': record.descin || '',
+      'Description Out': record.descout || '',
+      'Status Truck': record.statustruck || '',
+      'Armada': record.armada || '',
+      'Kelengkapan': record.kelengkapan || '',
+      'Jenis Mobil': record.jenismobil || ''
+    }));
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const columnWidths = [
+      { wch: 15 }, 
+      { wch: 25 }, 
+      { wch: 20 }, 
+      { wch: 15 }, 
+      { wch: 20 }, 
+      { wch: 20 }, 
+      { wch: 15 }, 
+      { wch: 20 }, 
+      { wch: 30 }, 
+      { wch: 20 }, 
+      { wch: 20 },
+      { wch: 20 }, 
+      { wch: 20 }  
+    ];
+    worksheet['!cols'] = columnWidths;
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Employee History');
+    const fileName = `employee_history_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+  return (
+    <>
+      <div className="min-h-screen flex flex-col space-y-4 p-3 bg-gray-50">
+
+        {/* Header */}
+        <div className="z-10 sticky top-0 pb-2 bg-gray-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Truck History</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                View and manage historical truck records and shipment data
+              </p>
+            </div>
+            <div className="mt-4 sm:mt-0 flex items-center gap-2">
+              <button
+                onClick={exportToXLSX}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+              >
+                📊 Export Excel
+              </button>
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                {loading ? "🔄 Loading..." : "🔄 Refresh"}
+              </button>
+              <div className="text-xs text-gray-500">
+                {filteredRecords.length} of {records.length} records
+              </div>
+            </div>
+          </div>
+          {error && (
+            <div className="mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              <p className="text-sm">⚠️ {error}</p>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-center items-center xl:items-end xl:justify-end">
+          <button
+            onClick={() => setFilterOpen((prev) => !prev)}
+            className="px-4 py-2 md:px-2 md:py-1 md:mr-4 bg-blue-600 text-white rounded-lg font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all hover:bg-blue-500"
+            >
+            {filterOpen ? 'Hide Filter ▲' : 'Show Filter ▼'}
+          </button>
+        </div>
+        <div  
+          className={`transition-all duration-300 overflow-hidden ${filterOpen ? 'max-h-[100vh] mb-2 xl:mb-0 max-w-[100vw]' : 'max-h-0'}  md:mb-0 md:block`}
+        >
+          <Card className="md:mb-0">
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
+              {/* Search */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Search
+                </label>
+                <input
+                  type="text"
+                  placeholder="Plate number, driver, supplier, or goods..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Department Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Department
+                </label>
+                <select
+                  aria-label="Department"
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Departments</option>
+                  <option value="HPC">HPC</option>
+                  <option value="PT">PT</option>
+                  <option value="Logistics">Logistics</option>
+                  <option value="Production">Production</option>
+                  <option value="Warehouse">Warehouse</option>
+                </select>
+              </div>
+
+              {/* Jenis Mobil Filter */}
+              <div>
+                <label htmlFor="jenismobil-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                  Jenis Mobil
+                </label>
+                <select
+                  id="jenismobil-filter"
+                  value={selectedJenisMobil}
+                  onChange={(e) => setSelectedJenisMobil(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Types</option>
+                  <option value="Container">Container</option>
+                  <option value="Wing Box">Wing Box</option>
+                  <option value="Wingbox">Wingbox</option>
+                  <option value="Tronton">Tronton</option>
+                  <option value="Dump Truck">Dump Truck</option>
+                  <option value="Dumptruck">Dumptruck</option>
+                  <option value="Colt">Colt</option>
+                  <option value="Fuso">Fuso</option>
+                </select>
+              </div>
+
+              {/* Date From */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  placeholder="datefrom"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Date To */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  placeholder="dateto"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              </div>
+
+              {/* Sort Options */}
+              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-sm font-medium text-gray-700">Sort by:</label>
+                  <label htmlFor="sortby-select" className="sr-only">
+                    Sort by
+                  </label>
+                  <select
+                    id="sortby-select"
+                    aria-label="Sort by"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm"
+                  >
+                    <option value="arrivaltime">Arrival Time</option>
+                    <option value="platenumber">Plate Number</option>
+                    <option value="driver">Driver Name</option>
+                    <option value="department">Department</option>
+                    <option value="jenismobil">Jenis Mobil</option>
+                    <option value="goods">Goods</option>
+                  </select>
+                  <button
+                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
+                  >
+                    {sortOrder === "asc" ? "↑ Ascending" : "↓ Descending"}
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setSelectedDepartment("all");
+                    setSelectedJenisMobil("all");
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                  className="px-3 py-1 mt-2 md:mt-0 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 w-full md:w-auto"
+                >
+                  Clear Filters
+                </button>
+              </div>
+
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Records Table - Hidden on mobile when filter is open */}
+        <Card className={`${filterOpen ? 'hidden md:block' : 'block'}`}>
+          <CardContent className={`${filterOpen ? 'max-h-[35vh]' : 'max-h-[60vh]'} overflow-y-auto p-0`}>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <p className="text-gray-500">Loading history records from database...</p>
+                </div>
+              </div>
+            ) : filteredRecords.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">📋</div>
+                  <p className="text-gray-500 text-lg">No records found</p>
+                  <p className="text-gray-400 text-sm">Try adjusting your filters or check your connection</p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Goods & Vehicle
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Driver & Dept
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Plate Number
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Arrival Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Finish Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentRecords.map((record) => (
+                      <tr key={record.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{record.goods || 'No goods info'}</div>
+                            <div className="text-sm text-gray-500">Jenis: {record.jenismobil || 'Unknown'}</div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div>
+                            <div className="font-medium">{record.driver || 'Unknown Driver'}</div>
+                            <div className="text-xs text-gray-500">Dept: {record.department || 'No dept'}</div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-blue-600">
+                          {record.platenumber || 'No plate'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                          {record.arrivaltime ? formatDateTime(record.arrivaltime) : '-'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                          {record.finishtime ? formatDateTime(record.finishtime) : '-'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            record.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :
+                            record.status === 'Loading' ? 'bg-blue-100 text-blue-800' :
+                            record.status === 'Finished' ? 'bg-green-100 text-green-800' :
+                            record.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {record.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => setSelectedRecord(record)}
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pagination - Hidden on mobile when filter is open, always visible on desktop */}
+        {totalPages > 1 && (
+          <Card className={`mt-4 ${filterOpen ? 'hidden md:block' : 'block'}`}>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-gray-700 text-center sm:text-left order-2 sm:order-1">
+                  Showing {indexOfFirstRecord + 1} to {Math.min(indexOfLastRecord, filteredRecords.length)} of {filteredRecords.length} results
+                </div>
+                <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap order-1 sm:order-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 sm:px-3 py-2 border border-gray-300 rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  
+                  {/* Show page numbers */}
+                  {(() => {
+                    const maxVisiblePages = 5;
+                    const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                    const adjustedStartPage = Math.max(1, endPage - maxVisiblePages + 1);
+                    
+                    const pages = [];
+                    
+                    // First page if not in range
+                    if (adjustedStartPage > 1) {
+                      pages.push(
+                        <button
+                          key={1}
+                          onClick={() => setCurrentPage(1)}
+                          className="px-2 sm:px-3 py-2 border border-gray-300 rounded text-xs sm:text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          1
+                        </button>
+                      );
+                      if (adjustedStartPage > 2) {
+                        pages.push(<span key="ellipsis1" className="px-1 text-gray-400">...</span>);
+                      }
+                    }
+                    
+                    // Visible page range
+                    for (let page = adjustedStartPage; page <= endPage; page++) {
+                      pages.push(
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-2 sm:px-3 py-2 border rounded text-xs sm:text-sm transition-colors ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+                    
+                    // Last page if not in range
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(<span key="ellipsis2" className="px-1 text-gray-400">...</span>);
+                      }
+                      pages.push(
+                        <button
+                          key={totalPages}
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="px-2 sm:px-3 py-2 border border-gray-300 rounded text-xs sm:text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          {totalPages}
+                        </button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 sm:px-3 py-2 border border-gray-300 rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Detail Modal */}
+      {selectedRecord && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+          onClick={() => setSelectedRecord(null)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Record Details</h2>
+                <button
+                  onClick={() => setSelectedRecord(null)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Basic Info */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Truck Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Plate Number:</span> {selectedRecord.platenumber || 'N/A'}</div>
+                    <div><span className="font-medium">Ticket Number:</span> {selectedRecord.noticket || 'N/A'}</div>
+                    <div><span className="font-medium">Driver:</span> {selectedRecord.driver || 'N/A'}</div>
+                    <div><span className="font-medium">NIK Driver:</span> {selectedRecord.nikdriver || 'N/A'}</div>
+                    <div><span className="font-medium">Telp Driver:</span> {selectedRecord.tlpdriver || 'N/A'}</div>
+                    <div><span className="font-medium">Department:</span> {selectedRecord.department || 'N/A'}</div>
+                    <div><span className="font-medium">Jenis Mobil:</span> {selectedRecord.jenismobil || 'N/A'}</div>
+                    <div><span className="font-medium">Type:</span> {selectedRecord.type || 'N/A'}</div>
+                    <div><span className="font-medium">Status:</span> {selectedRecord.status || 'N/A'}</div>
+                  </div>
+                </div>
+
+                {/* Shipment Info */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Shipment Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Supplier:</span> {selectedRecord.supplier || 'N/A'}</div>
+                    <div><span className="font-medium">Goods:</span> {selectedRecord.goods || 'N/A'}</div>
+                    <div><span className="font-medium">No SJ:</span> {selectedRecord.nosj || 'N/A'}</div>
+                    <div><span className="font-medium">Tanggal SJ:</span> {selectedRecord.tglsj || 'N/A'}</div>
+                    <div><span className="font-medium">Armada:</span> {selectedRecord.armada || 'N/A'}</div>
+                    <div><span className="font-medium">Kelengkapan:</span> {selectedRecord.kelengkapan || 'N/A'}</div>
+                  </div>
+                </div>
+
+                {/* Timing Info */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Timing Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Arrival Time:</span> {selectedRecord.arrivaltime ? formatDateTime(selectedRecord.arrivaltime) : 'N/A'}</div>
+                    <div><span className="font-medium">ETA:</span> {selectedRecord.eta || 'N/A'}</div>
+                    <div><span className="font-medium">Start Loading:</span> {selectedRecord.startloadingtime ? formatDateTime(selectedRecord.startloadingtime) : 'N/A'}</div>
+                    <div><span className="font-medium">Finish Time:</span> {selectedRecord.finishtime ? formatDateTime(selectedRecord.finishtime) : 'N/A'}</div>
+                    <div><span className="font-medium">Estimated Finish:</span> {selectedRecord.estimatedfinish ? formatDateTime(selectedRecord.estimatedfinish) : 'N/A'}</div>
+                  </div>
+                </div>
+
+                {/* Additional Info */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Additional Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Description In:</span> {selectedRecord.descin || 'N/A'}</div>
+                    <div><span className="font-medium">Description Out:</span> {selectedRecord.descout || 'N/A'}</div>
+                    <div><span className="font-medium">Status Truck:</span> {selectedRecord.statustruck || 'N/A'}</div>
+                    <div><span className="font-medium">Date:</span> {selectedRecord.date || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Removed Images section since trucks table doesn't have image fields */}
+              <div className="mt-6">
+                <p className="text-sm text-gray-500 text-center">Image functionality not available for truck records</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {modalImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+          onClick={() => setModalImage(null)}
+        >
+          <img
+            src={modalImage}
+            alt="Full Preview"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-50 rounded-full px-3 py-1"
+            onClick={() => setModalImage(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </>
+  );
 }

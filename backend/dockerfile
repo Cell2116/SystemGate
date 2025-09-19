@@ -11,9 +11,16 @@
 # EXPOSE 3000
 # CMD ["node", "server.js"]
 
-# Alpine Test
+# Alpine with FFmpeg
 FROM node:18-alpine
 WORKDIR /app
+
+# Install ffmpeg
+RUN apk add --no-cache ffmpeg
+
+# Set ffmpeg path for the application
+ENV FFMPEG_PATH=ffmpeg
+
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY . .

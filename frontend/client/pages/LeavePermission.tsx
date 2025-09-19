@@ -20,14 +20,14 @@ export default function LeavePermission(){
       return <HRLeavePage/>
     case "Super User":
       return <HRLeavePage/>
-    // case "User":
-    //   return <UserLeavePage/>
+    case "Staff":
+      return <UserLeavePage/>
     case "Director":
       return <DirectorLeavePage/>
     case "Head Department":
       return <DepartmentLeavePage/>
       default:
-      return <p>Unauthorized</p>;
-      return <UserLeavePage/>
+      // return <p>Unauthorized</p>;
+      // return <UserLeavePage/>
   }
 }

@@ -144,7 +144,8 @@ export default function DirectorLeavePage() {
     if (!currentUser) return [];
     return leavePermissions.filter(entry => 
       entry.role === "Head Department" && 
-      entry.statusFromDirector?.toLowerCase() === "pending"
+      entry.statusFromDirector?.toLowerCase() === "pending" &&
+      !(entry as any).isGroupMember // Exclude group members, only show group leaders and individual requests
     );
   };
 

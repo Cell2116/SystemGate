@@ -30,8 +30,9 @@ import {
 
 import {roleAccess} from "../authentication/accessControl.ts";
 import {useUser} from "../authentication/userContext.tsx";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import NotificationCard from "../components/dashboard/notification.tsx"
+import { useAudio } from "@/hooks/useAudio";
 
 // Ambil jumlah notifikasi approval yang belum diproses
 function usePendingApprovalCount() {
@@ -39,13 +40,51 @@ function usePendingApprovalCount() {
   const { role } = useUser();
   if (!role) return 0;
   if (role === "HR") {
-    return leavePermissions.filter((e: any) => e.statusFromHR === "pending").length;
+    return leavePermissions.filter((e: any) => {
+      // Exclude group members (they have "Group with [name]" in reason and are already approved)
+      const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
+      return e.statusFromHR === "pending" && !isGroupMember;
+    }).length;
   } else if (role === "Head Department") {
-    return leavePermissions.filter((e: any) => e.statusFromDepartment === "pending").length;
+    return leavePermissions.filter((e: any) => {
+      // Exclude group members (they have "Group with [name]" in reason and are already approved)
+      const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
+      return e.statusFromDepartment === "pending" && !isGroupMember;
+    }).length;
   } else if (role === "Director") {
-    return leavePermissions.filter((e: any) => e.statusFromDirector === "pending").length;
+    return leavePermissions.filter((e: any) => {
+      // Exclude group members (they have "Group with [name]" in reason and are already approved)
+      const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
+      return e.statusFromDirector === "pending" && !isGroupMember;
+    }).length;
   }
   return 0;
+}
+
+// Hook untuk memantau perubahan count dan mainkan sound
+function useNotificationSound() {
+  const count = usePendingApprovalCount();
+  const { playDing } = useAudio();
+  const prevCountRef = useRef(0);
+  const isInitialLoadRef = useRef(true);
+
+  useEffect(() => {
+    // Skip sound on initial load
+    if (isInitialLoadRef.current) {
+      prevCountRef.current = count;
+      isInitialLoadRef.current = false;
+      return;
+    }
+
+    // Play ding sound only when count increases
+    if (count > prevCountRef.current && count > 0) {
+      playDing(); // Menggunakan simple ding sound
+    }
+
+    prevCountRef.current = count;
+  }, [count, playDing]);
+
+  return count;
 }
 
 const navigation = [
@@ -53,8 +92,8 @@ const navigation = [
     href: "/",
     icon: LayoutDashboard, 
     children:[
-      { name: "Employee", href: "/employee" }, 
-      { name: "Trucks", href: "/trucks" }
+      { key: "employee", name: "Employee", href: "/employee" }, 
+      { key: "trucks", name: "Trucks", href: "/trucks" }
     ]
   },
   {
@@ -62,17 +101,33 @@ const navigation = [
     href: "/operation",
     icon: PackageOpen,
     children: [
-      { name: "Loading", href: "/loadingtrucks"},
-      { name: "Unloading", href: "/unloadingtrucks"},
-      { name: "Scan", href: "/scan"},
+      { 
+        key: "loading",
+        name: (
+          <span>
+            Loading / <span className="text-green-600 font-semibold italic">Angkut</span>
+          </span>
+        ), 
+        href: "/loadingtrucks"
+      },
+      { 
+        key: "unloading",
+        name: (
+          <span>
+            Unloading / <span className="text-orange-600 font-semibold italic">Bongkar</span>
+          </span>
+        ), 
+        href: "/unloadingtrucks"
+      },
+      { key: "scan", name: "Scan", href: "/scan"},
     ]
   },
   { name: "History Management",
     href: "/history",
     icon: FileClock, 
     children:[
-      { name: "Employee History", href: "/employeehistory" }, 
-      { name: "Trucks History", href: "/truckshistory" }
+      { key: "employee-history", name: "Employee History", href: "/employeehistory" }, 
+      { key: "trucks-history", name: "Trucks History", href: "/truckshistory" }
     ]
   },
   { name: "Leave Permission", href: "/leave", icon: DoorOpen }
@@ -193,7 +248,7 @@ export default function Layout() {
                     <div className="ml-3 md:ml-4 lg:ml-6 xl:ml-8 mt-0.5 md:mt-1 space-y-0.5">
                       {item.children.map((subItem) => (
                         <NavLink
-                          key={subItem.name}
+                          key={subItem.key || subItem.href}
                           to={subItem.href}
                           className={({ isActive }) =>
                             cn(
@@ -276,7 +331,7 @@ export default function Layout() {
                   <Button variant="ghost" size="sm" className="relative p-1 md:p-1.5">
                     <Bell className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
                     {(() => {
-                      const count = usePendingApprovalCount();
+                      const count = useNotificationSound(); // Menggunakan hook yang memiliki sound
                       return count > 0 ? (
                         <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white font-bold z-10">
                           {count}

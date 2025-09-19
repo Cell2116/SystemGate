@@ -1,13 +1,13 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
-type Role = "Security" | "HR" | "User" | "Head Department" | "Director" | "Super User";
+type Role = "Security" | "HR" | "Staff" | "Head Department" | "Director" | "Super User";
 
 interface UserContextType {
   role: Role;
   setRole: (role: Role) => void;
 }
 
-const defaultRole: Role = "User"; 
+const defaultRole: Role = "Staff"; 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 //console.log("userContext Mounted");
 export const UserProvider = ({ children }: { children: ReactNode }) => {
@@ -16,11 +16,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     //console.log("User Provide mounted");
     const storedRole = localStorage.getItem("userRole");
-    const normalized = storedRole === "Staff" ? "User" : storedRole;
+    const normalized = storedRole;
     if (
       normalized === "Security" ||
       normalized === "HR" ||
-      normalized === "User" ||
+      normalized === "Staff" ||
       normalized === "Head Department" ||
       normalized === "Director" ||
       normalized === "Super User"

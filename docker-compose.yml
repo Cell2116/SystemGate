@@ -47,17 +47,17 @@ services:
       # - uploads_data:/usr/src/app/uploads
       - C:/Users/iotal/Documents/SystemGate/backend/uploads:/app/uploads
 
-  frontend:
-    build:
-      context: ./frontend
+  # frontend:
+  #   build:
+  #     context: ./frontend
 
-      dockerfile: Dockerfile
-    container_name: esp32_frontend
-    restart: always
-    ports:
-      - "8080:80"
-    depends_on:
-      - backend
+  #     dockerfile: Dockerfile
+  #   container_name: esp32_frontend
+  #   restart: always
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #     - backend
 
 volumes:
   pgdata:

@@ -30,7 +30,11 @@ function broadcast(data) {
     });
 }
 
-// WebSocket setup
+//-----------------------------------------------------//
+//-----------------------------------------------------//
+//-----------------------------------------------------//
+
+// !! WEBSOCKET CONNECTION FUNCTION
 wss.on("connection", (ws) => {
     //console.log("WebSocket client connected. Total clients:", wss.clients.size);
 
@@ -52,6 +56,7 @@ wss.on("connection", (ws) => {
         console.error("WebSocket error:", error);
     });
 });
+// !! END OF WEBSOCKET FUNCTION
 
 app.use(cors({
     origin: '*',
@@ -60,20 +65,6 @@ app.use(cors({
 
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// MQTT Setup
-const mqttClient = mqtt.connect(process.env.MQTT_BROKER_URL || 'mqtt://mqtt:1884');
-
-mqttClient.on('connect', () => {
-    //console.log('Connected to MQTT broker');
-    mqttClient.subscribe('rfid/entry', (err) => {
-        if (err) {
-            console.error('Failed to subscribe to rfid/entry topic:', err);
-        } else {
-            //console.log('Subscribed to rfid/entry topic');
-        }
-    });
-});
 
 async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
     //console.log("Checking leave permission for exit:", licensePlate);
@@ -153,6 +144,7 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
 async function handleEmployeeReturn(uid, licensePlate) {
     //console.log("Checking for active leave permission return:", licensePlate);
     
+    // Check for leave that was exited but not returned (and not final)
     const activeLeavePermission = await db.query(
         `SELECT * FROM leave_permission 
         WHERE licenseplate = $1 
@@ -164,6 +156,24 @@ async function handleEmployeeReturn(uid, licensePlate) {
     
     if (activeLeavePermission.rows.length > 0) {
         const permission = activeLeavePermission.rows[0];
+        
+        // Check if this was a final leave (no return expected)
+        const leaveReason = permission.reason.toLowerCase();
+        const isNoReturnLeave = leaveReason.includes('sick') || 
+                                leaveReason.includes('sakit') || 
+                                leaveReason.includes('emergency') || 
+                                leaveReason.includes('darurat') ||
+                                leaveReason.includes('pulang') ||
+                                leaveReason.includes('home');
+        
+        if (isNoReturnLeave) {
+            // This was supposed to be final, but user is back - treat as new entry
+            //console.log("User returned after final leave - treating as new entry");
+            return {
+                type: 'new_entry_after_final'
+            };
+        }
+        
         const now = new Date();
         const plannedReturnTime = new Date(permission.returntime);
         
@@ -177,8 +187,9 @@ async function handleEmployeeReturn(uid, licensePlate) {
             SET actual_returntime = CURRENT_TIMESTAMP,
                 status = 'leave_return'
             WHERE licenseplate = $1 
-            AND DATE(datein) = CURRENT_DATE`,
-            [licensePlate]
+            AND DATE(datein) = CURRENT_DATE
+            AND leave_permission_id = $2`,
+            [licensePlate, permission.id]
         );
         
         // Update leave_permission with actual_returntime
@@ -203,6 +214,24 @@ async function handleEmployeeReturn(uid, licensePlate) {
     }
 }
 
+//------------------------------------------------------//
+//------------------------------------------------------//
+//------------------------------------------------------//
+
+// !! MQTT CONNECT FUNCTION DATA FROM IOT
+// MQTT Setup
+const mqttClient = mqtt.connect(process.env.MQTT_BROKER_URL || 'mqtt://mqtt:1884');
+
+mqttClient.on('connect', () => {
+    //console.log('Connected to MQTT broker');
+    mqttClient.subscribe('rfid/entry', (err) => {
+        if (err) {
+            console.error('Failed to subscribe to rfid/entry topic:', err);
+        } else {
+            //console.log('Subscribed to rfid/entry topic');
+        }
+    });
+});
 mqttClient.on('error', (error) => {
     console.error('MQTT Client Error:', error);
 });
@@ -239,7 +268,7 @@ mqttClient.on('message', async (topic, message) => {
 
             const today = new Date().toISOString().split('T')[0];
             
-            // Check for current attendance state - find the most recent row that can be "exited"
+            // Check for current attendance state - find ANY open attendance record for today
             const existingEntry = await db.query(
                 `SELECT * FROM attendance_logs 
                 WHERE uid = $1 AND DATE(datein) = $2 AND dateout IS NULL 
@@ -332,76 +361,63 @@ mqttClient.on('message', async (topic, message) => {
 
                 //Leave Exit - SECOND PRIORITY
                 else if (leave && !leave.actual_exittime) {
-                    // Check if this is a SECOND leave permission (already returned from previous one)
-                    const hasCompletedLeaveToday = await db.query(
-                        `SELECT COUNT(*) as count FROM leave_permission 
-                        WHERE licenseplate = $1 
-                        AND date = $2
-                        AND actual_exittime IS NOT NULL 
-                        AND actual_returntime IS NOT NULL`,
-                        [licensePlate, today]
-                    );
-
-                    if (hasCompletedLeaveToday.rows[0].count > 0) {
-                        // This is a SECOND (or more) leave permission - CREATE NEW ROW
-                        //console.log("Creating NEW row for additional leave permission");
-                        
-                        const imagePathLeaveExit = await captureSnapshot(uid);
-                        
-                        // Get the original entry data to copy
-                        const originalEntry = await db.query(
-                            'SELECT * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = $2 AND status IN ($3, $4) ORDER BY datein ASC LIMIT 1',
-                            [uid, today, 'entry', 'leave_return']
+                    //console.log("Processing LEAVE EXIT - updating existing row");
+                    
+                    const imagePathLeaveExit = await captureSnapshot(uid);
+                    
+                    // Check if this is a "no-return" leave (sick, emergency, etc.)
+                    const leaveReason = leave.reason.toLowerCase();
+                    const isNoReturnLeave = leaveReason.includes('sick') || 
+                                            leaveReason.includes('sakit') || 
+                                            leaveReason.includes('emergency') || 
+                                            leaveReason.includes('darurat') ||
+                                            leaveReason.includes('pulang') ||
+                                            leaveReason.includes('home');
+                    
+                    if (isNoReturnLeave) {
+                        // For no-return leaves, close the record completely
+                        await db.query(
+                            'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, dateout = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
+                            [imagePathLeaveExit, 'leave_exit_final', leave.id, attendance.id]
                         );
                         
-                        if (originalEntry.rows.length > 0) {
-                            const original = originalEntry.rows[0];
-                            
-                            // Create new row with copied entry data + leave_exit
-                            const newLeaveRecord = await db.query(
-                                `INSERT INTO attendance_logs 
-                                (uid, licenseplate, image_path, image_path_leave_exit, datein, actual_exittime, status, leave_permission_id) 
-                                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7) RETURNING *`,
-                                [uid, licensePlate, original.image_path, imagePathLeaveExit, original.datein, 'leave_exit', leave.id]
-                            );
-                            
-                            await db.query(
-                                'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP WHERE id = $1',
-                                [leave.id]
-                            );
-                            
-                            const exitDataFull = {
-                                ...newLeaveRecord.rows[0],
-                                type: 'leave_exit',
-                                name: userInfo.name,
-                                department: userInfo.department,
-                                leaveInfo: {
-                                    permissionId: leave.id,
-                                    plannedTime: leave.exittime,
-                                    isEarly: new Date() < new Date(leave.exittime),
-                                    isLate: new Date() > new Date(leave.exittime),
-                                    reason: leave.reason
-                                },
-                                timestamp: new Date().toISOString()
-                            };
-                            broadcast(exitDataFull);
-                            mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
-                                status: 'approved',
-                                name: userInfo.name.substring(0, 16),
-                                department: userInfo.department.substring(0, 8),
-                                action: 'Leave Exit'
-                            }));
-                            return;
-                        }
-                    } else {
-                        // FIRST leave permission - UPDATE existing row
-                        //console.log("Updating existing row for first leave permission");
+                        // Also mark the leave as completed (no return expected)
+                        await db.query(
+                            'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP, actual_returntime = CURRENT_TIMESTAMP WHERE id = $1',
+                            [leave.id]
+                        );
                         
-                        const imagePathLeaveExit = await captureSnapshot(uid);
+                        const exitDataFull = {
+                            ...attendance,
+                            image_path_leave_exit: imagePathLeaveExit,
+                            actual_exittime: new Date().toISOString(),
+                            dateout: new Date().toISOString(),
+                            status: 'leave_exit_final',
+                            type: 'leave_exit_final',
+                            leaveInfo: {
+                                permissionId: leave.id,
+                                plannedTime: leave.exittime,
+                                isEarly: new Date() < new Date(leave.exittime),
+                                isLate: new Date() > new Date(leave.exittime),
+                                reason: leave.reason,
+                                noReturn: true
+                            },
+                            timestamp: new Date().toISOString()
+                        };
+                        broadcast(exitDataFull);
+                        mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                            status: 'approved',
+                            name: userInfo.name.substring(0, 16),
+                            department: userInfo.department.substring(0, 8),
+                            action: 'Leave (Final)'
+                        }));
+                    } else {
+                        // Regular leave exit (expecting return)
                         await db.query(
                             'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
                             [imagePathLeaveExit, 'leave_exit', leave.id, attendance.id]
                         );
+                        
                         await db.query(
                             'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP WHERE id = $1',
                             [leave.id]
@@ -416,7 +432,8 @@ mqttClient.on('message', async (topic, message) => {
                                 plannedTime: leave.exittime,
                                 isEarly: new Date() < new Date(leave.exittime),
                                 isLate: new Date() > new Date(leave.exittime),
-                                reason: leave.reason
+                                reason: leave.reason,
+                                noReturn: false
                             },
                             timestamp: new Date().toISOString()
                         };
@@ -427,30 +444,22 @@ mqttClient.on('message', async (topic, message) => {
                             department: userInfo.department.substring(0, 8),
                             action: 'Leave Exit'
                         }));
-                        return;
                     }
+                    return;
                 }
 
-                //Exit Regular - Close ALL open rows for end of day
+                //Exit Regular - Close current open attendance record
                 else {
                     //console.log("Processing REGULAR EXIT");
                     const imagePathOut = await captureSnapshot(uid);
                 
-                // Get all open attendance records for today
-                const allOpenRecords = await db.query(
-                    'SELECT * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = $2 AND dateout IS NULL',
-                    [uid, today]
-                );
-                
-                // Close all open records
-                await db.query(
-                    'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE uid = $3 AND DATE(datein) = $4 AND dateout IS NULL',
-                    [imagePathOut, 'exit', uid, today]
-                );
-                
-                // Broadcast for each updated record
-                for (const record of allOpenRecords.rows) {
-                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [record.id]);
+                    // Close the current open record only
+                    await db.query(
+                        'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
+                        [imagePathOut, 'exit', attendance.id]
+                    );
+                    
+                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
                     const exitDataFull = {
                         ...updatedRecord.rows[0],
                         type: 'exit',
@@ -458,20 +467,49 @@ mqttClient.on('message', async (topic, message) => {
                         timestamp: new Date().toISOString()
                     };
                     broadcast(exitDataFull);
-                }
-                
-                mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
-                    status: 'approved',
-                    name: userInfo.name.substring(0, 16),
-                    department: userInfo.department.substring(0, 8),
-                    action: 'Exit'
-                }));
-                return;
+                    
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                        status: 'approved',
+                        name: userInfo.name.substring(0, 16),
+                        department: userInfo.department.substring(0, 8),
+                        action: 'Exit'
+                    }));
+                    return;
                 }
             
             } else {
                 // =================== ENTRY LOGIC ===================
+                // Only allow entry if NO open attendance record exists for today
                 //console.log("Processing ENTRY for:", userInfo.name);
+                
+                // Check for open records (dateout is NULL)
+                const doubleCheckEntry = await db.query(
+                    `SELECT * FROM attendance_logs 
+                    WHERE uid = $1 AND DATE(datein) = $2 AND dateout IS NULL`,
+                    [uid, today]
+                );
+                
+                if (doubleCheckEntry.rows.length > 0) {
+                    //console.log("Found open record, should not create new entry");
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                        status: 'rejected',
+                        reason: 'Open Record Exists'
+                    }));
+                    return;
+                }
+                
+                // Check if user had a leave_exit_final today (no return expected but might come back next tap)
+                const hadFinalLeaveToday = await db.query(
+                    `SELECT * FROM attendance_logs 
+                    WHERE uid = $1 AND DATE(datein) = $2 AND status = 'leave_exit_final'`,
+                    [uid, today]
+                );
+                
+                if (hadFinalLeaveToday.rows.length > 0) {
+                    // This is a new entry after a final leave (like coming back after sick leave)
+                    //console.log("User returning after final leave, creating new entry");
+                }
+                
                 const returnResult = await handleEmployeeReturn(uid, licensePlate);
                 
                 if (returnResult.type === 'leave_return') {
@@ -531,6 +569,50 @@ mqttClient.on('message', async (topic, message) => {
 
                     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
                     //console.log("Sent LEAVE RETURN approval to ESP32:", esp32Response);
+                    
+                } else if (returnResult.type === 'new_entry_after_final') {
+                    //console.log("Processing NEW ENTRY after final leave for:", userInfo.name);
+                    
+                    const insertResult = await db.query(
+                        'INSERT INTO attendance_logs (uid, licenseplate, status) VALUES ($1, $2, $3) RETURNING *',
+                        [uid, licensePlate, 'entry']
+                    );
+
+                    const imagePath = await captureSnapshot(uid);
+                    if (imagePath) {
+                        await db.query(
+                            'UPDATE attendance_logs SET image_path = $1 WHERE id = $2',
+                            [imagePath, insertResult.rows[0].id]
+                        );
+                    }
+
+                    const entryDataFull = {
+                        id: insertResult.rows[0].id,
+                        uid: uid,
+                        licenseplate: licensePlate,
+                        name: userInfo.name,
+                        department: userInfo.department,
+                        image_path: imagePath,
+                        datein: new Date().toISOString(),
+                        dateout: null,
+                        status: 'entry',
+                        type: 'entry_after_final',
+                        leaveInfo: null,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    broadcast(entryDataFull);
+                    //console.log("ENTRY AFTER FINAL broadcasted to dashboard");
+
+                    const esp32Response = {
+                        status: 'approved',
+                        name: userInfo.name.substring(0, 16),        
+                        department: userInfo.department.substring(0, 8),  
+                        action: 'Re-Entry'                             
+                    };
+
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
+                    //console.log("Sent RE-ENTRY approval to ESP32:", esp32Response);
                     
                 } else {
                     //console.log("Processing NEW ENTRY for:", userInfo.name);
@@ -622,6 +704,12 @@ app.get('/mqtt-status', (req, res) => {
         broker_url: process.env.MQTT_BROKER_URL || 'mqtt://mqtt:1884'
     });
 });
+// !! END OF MQTT PROTOCOL FUNCTION
+
+//------------------------------------------------------//
+//------------------------------------------------------//
+//------------------------------------------------------//
+
 
 function convertToJakartaISO(dbTimestamp) {
     if (!dbTimestamp) return null;
@@ -638,6 +726,12 @@ function convertToJakartaISO(dbTimestamp) {
     
     return dbTimestamp;
 }
+
+//----------------------------------------------------------------//
+//----------------------------------------------------------------//
+//----------------------------------------------------------------//
+
+// !! API FOR DASHBOARD EMPLOYEE (CONTAIN API USER/EMPLOYEE)
 app.get('/logs', async (req, res) => {
     try {
         const result = await db.query(`
@@ -764,8 +858,6 @@ app.get('/employee/:uid/leave-status', async (req, res) => {
 });
 app.get('/health', (req, res) => {
     res.json({
-
-        
         status: 'OK',
         websocket_clients: wss.clients.size,
         mqtt_connected: mqttClient.connected,
@@ -773,6 +865,11 @@ app.get('/health', (req, res) => {
     });
 });
 
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+
+// !! API FOR LEAVE PERMISSION RECORD EMPLOYEE FUNCTION 
 app.post('/leave-permission', async (req, res) => {
     try {
         const {
@@ -889,7 +986,13 @@ app.get('/leave-permission', async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+// !! END OF API LEAVE PERMISSION EMPLOYEE
 
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+
+// ?? JWT TOKEN
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -908,6 +1011,11 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+
+// !! API FOR AUTHENTICATION LOGIN
 app.post('/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -1053,55 +1161,31 @@ app.post('/auth/register', async (req, res) => {
         });
     }
 });
+//!! END API OF AUTHENTICATION LOGIN
 
-// API endpoint untuk mendapatkan daftar surat jalan
-// TODO: Implementasi dengan database sebenarnya
-app.get('/api/surat-jalan', async (req, res) => {
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+
+// !! API FOR SURAT JALAN 
+app.get('/api/suratjalan', async (req, res) => {
     try {
-        // Contoh data dummy - nantinya ambil dari database
-        const dummySuratJalan = [
-            { id: "SJ001", noSuratJalan: "SJ001/2025/HPC", tanggal: "2025-09-01", status: "pending" },
-            { id: "SJ002", noSuratJalan: "SJ002/2025/LOG", tanggal: "2025-09-01", status: "pending" },
-            { id: "SJ003", noSuratJalan: "SJ003/2025/PRD", tanggal: "2025-09-02", status: "completed" },
-            { id: "SJ004", noSuratJalan: "SJ004/2025/QUA", tanggal: "2025-09-02", status: "pending" },
-            { id: "SJ005", noSuratJalan: "SJ005/2025/HPC", tanggal: "2025-09-03", status: "pending" },
-        ];
-
-        // Filter hanya surat jalan yang statusnya pending jika diperlukan
-        const { status } = req.query;
-        let filteredData = dummySuratJalan;
-        
-        if (status) {
-            filteredData = dummySuratJalan.filter(sj => sj.status === status);
-        }
-
-        res.json({
-            success: true,
-            data: filteredData,
-            message: 'Data surat jalan berhasil diambil'
-        });
-
-        /* 
-        TODO: Implementasi dengan database sebenarnya seperti ini:
+        console.log('Fetching surat jalan data from database...');
         
         const query = `
-            SELECT id, no_surat_jalan, tanggal, status 
-            FROM surat_jalan 
-            WHERE status = ? OR ? = ''
-            ORDER BY tanggal DESC, id DESC
+            SELECT nosj, tanggal 
+            FROM suratjalan 
+            ORDER BY tanggal DESC
         `;
         
-        const results = await db.query(query, [status || '', status || '']);
+        const results = await db.query(query);
+        console.log('Surat jalan data fetched:', results);
+        console.log('Results rows:', results.rows);
         
-        res.json({
-            success: true,
-            data: results,
-            message: 'Data surat jalan berhasil diambil'
-        });
-        */
+        res.json(results.rows);
 
     } catch (error) {
-        console.error('Error fetching surat jalan:', error);
+        console.error('Error fetching surat jalan data:', error);
         res.status(500).json({
             success: false,
             message: 'Gagal mengambil data surat jalan',
@@ -1110,67 +1194,276 @@ app.get('/api/surat-jalan', async (req, res) => {
     }
 });
 
-// API endpoint untuk mendapatkan detail surat jalan berdasarkan ID
-app.get('/api/surat-jalan/:id', async (req, res) => {
+// API endpoint untuk menyimpan nomor surat jalan baru
+app.post('/api/suratjalan', async (req, res) => {
     try {
-        const { id } = req.params;
+        const { nosj, tanggal } = req.body;
         
-        // Contoh data dummy - nantinya ambil dari database
-        const dummySuratJalan = [
-            { id: "SJ001", noSuratJalan: "SJ001/2025/HPC", tanggal: "2025-09-01", status: "pending", supplier: "PT ABC", barang: "Material A" },
-            { id: "SJ002", noSuratJalan: "SJ002/2025/LOG", tanggal: "2025-09-01", status: "pending", supplier: "PT DEF", barang: "Material B" },
-            { id: "SJ003", noSuratJalan: "SJ003/2025/PRD", tanggal: "2025-09-02", status: "completed", supplier: "PT GHI", barang: "Material C" },
-            { id: "SJ004", noSuratJalan: "SJ004/2025/QUA", tanggal: "2025-09-02", status: "pending", supplier: "PT JKL", barang: "Material D" },
-            { id: "SJ005", noSuratJalan: "SJ005/2025/HPC", tanggal: "2025-09-03", status: "pending", supplier: "PT MNO", barang: "Material E" },
-        ];
-
-        const suratJalan = dummySuratJalan.find(sj => sj.id === id);
-        
-        if (!suratJalan) {
-            return res.status(404).json({
+        if (!nosj) {
+            return res.status(400).json({
                 success: false,
-                message: 'Surat jalan tidak ditemukan'
+                message: 'Nomor surat jalan harus diisi'
             });
         }
-
-        res.json({
-            success: true,
-            data: suratJalan,
-            message: 'Detail surat jalan berhasil diambil'
-        });
-
-        /* 
-        TODO: Implementasi dengan database sebenarnya seperti ini:
         
-        const query = `
-            SELECT * FROM surat_jalan WHERE id = ?
+        console.log('Saving new surat jalan:', { nosj, tanggal });
+        
+        // Cek apakah nomor surat jalan sudah ada
+        const checkQuery = 'SELECT nosj FROM suratjalan WHERE nosj = $1';
+        const existingResult = await db.query(checkQuery, [nosj]);
+        
+        if (existingResult.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Nomor surat jalan sudah ada'
+            });
+        }
+        
+        const insertQuery = `
+            INSERT INTO suratjalan (nosj, tanggal) 
+            VALUES ($1, $2)
         `;
         
-        const results = await db.query(query, [id]);
+        const currentDate = tanggal || new Date().toISOString().slice(0, 10);
+        await db.query(insertQuery, [nosj, currentDate]);
         
-        if (results.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Surat jalan tidak ditemukan'
-            });
-        }
+        console.log('Surat jalan saved successfully');
         
         res.json({
             success: true,
-            data: results[0],
-            message: 'Detail surat jalan berhasil diambil'
+            message: 'Nomor surat jalan berhasil disimpan',
+            data: { nosj, tanggal: currentDate }
         });
-        */
 
     } catch (error) {
-        console.error('Error fetching surat jalan detail:', error);
+        console.error('Error saving surat jalan:', error);
         res.status(500).json({
             success: false,
-            message: 'Gagal mengambil detail surat jalan',
+            message: 'Gagal menyimpan nomor surat jalan',
             error: error.message
         });
     }
 });
+// !! END OF API SURAT JALAN 
+
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+
+// !! API FOR TRUCKS 
+app.get('/api/trucks/history', async (req, res) => {
+    try {
+    const { searchTerm, status, type, dateFrom, dateTo } = req.query;
+    
+    let query = 'SELECT * FROM trucks WHERE 1=1';
+    let params = [];
+    let paramIndex = 1;
+
+    // Add search filter
+    if (searchTerm) {
+        query += ` AND (
+        platenumber ILIKE $${paramIndex} OR 
+        driver ILIKE $${paramIndex} OR 
+        supplier ILIKE $${paramIndex} OR 
+        goods ILIKE $${paramIndex}
+        )`;
+        params.push(`%${searchTerm}%`);
+        paramIndex++;
+    }
+
+    // Add status filter
+    if (status && status !== 'all') {
+        query += ` AND status = $${paramIndex}`;
+        params.push(status);
+        paramIndex++;
+    }
+
+    // Add type filter  
+    if (type && type !== 'all') {
+        query += ` AND type = $${paramIndex}`;
+        params.push(type);
+        paramIndex++;
+    }
+
+    // Add date range filter
+    if (dateFrom) {
+        query += ` AND date >= $${paramIndex}`;
+        params.push(dateFrom);
+        paramIndex++;
+    }
+
+    if (dateTo) {
+        query += ` AND date <= $${paramIndex}`;
+        params.push(dateTo);
+        paramIndex++;
+    }
+
+    query += ' ORDER BY date DESC, arrivaltime DESC';
+
+    const result = await db.query(query, params);
+    res.json(result.rows);
+    } catch (error) {
+    console.error('Error fetching truck history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST endpoint untuk membuat truck baru
+app.post('/api/trucks', async (req, res) => {
+    try {
+        const {
+            platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
+            driver, supplier, arrivaltime, eta, status, type, operation, goods,
+            descin, descout, statustruck, estimatedfinish, estimatedwaittime,
+            actualwaittime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+        } = req.body;
+
+        const query = `
+            INSERT INTO trucks (
+                platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
+                driver, supplier, arrivaltime, eta, status, type, operation, goods,
+                descin, descout, statustruck, estimatedfinish, estimatedwaittime,
+                actualwaittime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
+            ) RETURNING *
+        `;
+
+        const values = [
+            platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
+            driver, supplier, arrivaltime, eta, status, type, operation, goods,
+            descin, descout, statustruck, estimatedfinish, estimatedwaittime,
+            actualwaittime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+        ];
+
+        const result = await db.query(query, values);
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Error creating truck:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// PUT endpoint untuk update truck
+app.put('/api/trucks/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+        
+        // Build dynamic update query
+        const updateFields = Object.keys(updateData).filter(key => updateData[key] !== undefined);
+        const setClause = updateFields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+        
+        if (updateFields.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        const query = `UPDATE trucks SET ${setClause} WHERE id = $1 RETURNING *`;
+        const values = [id, ...updateFields.map(field => updateData[field])];
+
+        const result = await db.query(query, values);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Truck not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error updating truck:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// DELETE endpoint untuk menghapus truck
+app.delete('/api/trucks/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const query = 'DELETE FROM trucks WHERE id = $1 RETURNING *';
+        const result = await db.query(query, [id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Truck not found' });
+        }
+
+        res.json({ message: 'Truck deleted successfully', truck: result.rows[0] });
+    } catch (error) {
+        console.error('Error deleting truck:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// GET endpoint untuk trucks (tidak hanya history)
+app.get('/api/trucks', async (req, res) => {
+    try {
+        const { searchTerm, status, type, operation, dateFrom, dateTo } = req.query;
+        
+        let query = 'SELECT * FROM trucks WHERE 1=1';
+        let params = [];
+        let paramIndex = 1;
+
+        // Add search filter
+        if (searchTerm) {
+            query += ` AND (
+                platenumber ILIKE $${paramIndex} OR 
+                driver ILIKE $${paramIndex} OR 
+                supplier ILIKE $${paramIndex} OR 
+                goods ILIKE $${paramIndex}
+            )`;
+            params.push(`%${searchTerm}%`);
+            paramIndex++;
+        }
+
+        // Add status filter
+        if (status && status !== 'all') {
+            query += ` AND status = $${paramIndex}`;
+            params.push(status);
+            paramIndex++;
+        }
+
+        // Add type filter  
+        if (type && type !== 'all') {
+            query += ` AND type = $${paramIndex}`;
+            params.push(type);
+            paramIndex++;
+        }
+
+        // Add operation filter
+        if (operation && operation !== 'all') {
+            query += ` AND operation = $${paramIndex}`;
+            params.push(operation);
+            paramIndex++;
+        }
+
+        // Add date range filter
+        if (dateFrom) {
+            query += ` AND date >= $${paramIndex}`;
+            params.push(dateFrom);
+            paramIndex++;
+        }
+
+        if (dateTo) {
+            query += ` AND date <= $${paramIndex}`;
+            params.push(dateTo);
+            paramIndex++;
+        }
+
+        query += ' ORDER BY date DESC, arrivaltime DESC';
+
+        const result = await db.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching trucks:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// !! END OF API FOR TRUCKS
+
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+//-------------------------------------------------------//
 
 server.listen(port, () => {
     //console.log(`Server + WebSocket listening on http://192.168.4.62:${port}`);

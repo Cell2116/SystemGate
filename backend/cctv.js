@@ -1,65 +1,43 @@
-// cctv.js - CommonJS version
+// cctv.js - ES Modules version
 
-import DigestFetch from 'digest-fetch';
 import fs from 'fs';
 import path from 'path';
-import sharp from 'sharp';
 import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const CAMERA_IP = '192.168.5.84';
-const USERNAME = 'admin';
-const PASSWORD = 'hik@2025';
-const client = new DigestFetch(USERNAME, PASSWORD);
+const CAMERA_RTSP = 'rtsp://admin:hik@2025@192.168.5.101:554/Streaming/Channels/101';
+// Gunakan ffmpeg yang tersedia di sistem atau Docker container
+const isDocker = process.env.NODE_ENV === 'production' || fs.existsSync('/.dockerenv');
+const FFMPEG = isDocker ? 'ffmpeg' : "C:/Users/iotal/Downloads/ffmpeg-8.0/ffmpeg-8.0/bin/ffmpeg.exe";
 
+// === FUNGSI SNAPSHOT DARI RTSP PAKAI FFMPEG ===
 async function captureSnapshot(uid) {
-    try {
-        const url = `http://${CAMERA_IP}/ISAPI/Streaming/channels/101/picture`;
-        //console.log(`Taking MAX QUALITY snapshot for UID: ${uid}...`);
-
-        const res = await client.fetch(url, { method: 'GET' });
-
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status} - ${res.statusText}`);
-        }
-
-        const buffer = await res.arrayBuffer();
-        const fileName = `${uid}-${Date.now()}-hq.jpg`;
-        const savePath = path.join(__dirname, 'uploads', fileName);
-
+    return new Promise((resolve, reject) => {
         const uploadsDir = path.join(__dirname, 'uploads');
         if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir, { recursive: true });
         }
 
+        const fileName = `${uid}-${Date.now()}.jpg`;
+        const savePath = path.join(uploadsDir, fileName);
+
+        // Ambil 1 frame dari RTSP (optimized untuk speed)
+        const cmd = `${FFMPEG} -y -rtsp_transport tcp -i "${CAMERA_RTSP}" -frames:v 1 -q:v 2 -f image2 "${savePath}"`;
         
-        await sharp(Buffer.from(buffer))
-            .sharpen({
-                sigma: 1,     
-                flat: 1.5,       
-                jagged: 3      
-            })
-            .modulate({
-                brightness: 1.1,
-                saturation: 1.1,
-                hue: 0
-            })
-            .jpeg({ 
-                quality: 100,     
-                progressive: false,
-                mozjpeg: true
-            })
-            .toFile(savePath);
+        console.log(`🎥 Capturing with command: ${cmd}`);
 
-        //console.log('MAX QUALITY snapshot saved:', fileName);
-        return fileName;
-    } catch (err) {
-        console.error('❌ Failed to capture max quality snapshot:', err.message);
-        return null;
-    }
+        exec(cmd, { timeout: 30000 }, (error) => {
+            if (error) {
+                console.error('❌ FFmpeg capture failed:', error);
+                return reject(error);
+            }
+            console.log(`✅ Capture berhasil: ${fileName}`);
+            resolve(fileName);
+        });
+    });
 }
-
 
 export { captureSnapshot };
