@@ -63,7 +63,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 
-app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
@@ -167,7 +168,6 @@ async function handleEmployeeReturn(uid, licensePlate) {
                                 leaveReason.includes('home');
         
         if (isNoReturnLeave) {
-            // This was supposed to be final, but user is back - treat as new entry
             //console.log("User returned after final leave - treating as new entry");
             return {
                 type: 'new_entry_after_final'
@@ -268,38 +268,51 @@ mqttClient.on('message', async (topic, message) => {
 
             const today = new Date().toISOString().split('T')[0];
             
-            // Check for current attendance state - find ANY open attendance record for today
+            // Check for current attendance state - find the main entry record first
             const existingEntry = await db.query(
                 `SELECT * FROM attendance_logs 
                 WHERE uid = $1 AND DATE(datein) = $2 AND dateout IS NULL 
-                ORDER BY id DESC LIMIT 1`,
+                ORDER BY 
+                    CASE 
+                        WHEN status = 'entry' THEN 1 
+                        WHEN leave_permission_id IS NULL THEN 2
+                        ELSE 3 
+                    END, 
+                    id ASC 
+                LIMIT 1`,
                 [uid, today]
             );
 
             if (existingEntry.rows.length > 0) {
                 // =================== EXIT/LEAVE LOGIC ===================
                 const attendance = existingEntry.rows[0];
-                //console.log("Found existing entry:", attendance);
-
-                // Priority 1: Check if we need to return from a leave first
+                console.log("Found existing entry:", {
+                    id: attendance.id,
+                    status: attendance.status,
+                    leave_permission_id: attendance.leave_permission_id,
+                    user: userInfo.name
+                });
                 const returningLeavePermission = await db.query(
-                    `SELECT * FROM leave_permission 
-                    WHERE licenseplate = $1 
-                    AND date = $2
+                    `SELECT lp.*, al.id as attendance_log_id
+                    FROM leave_permission lp 
+                    JOIN attendance_logs al ON lp.id = al.leave_permission_id 
+                    WHERE lp.licenseplate = $1 
+                    AND lp.date = $2
                     AND (
-                        (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
+                        (lp.statusfromhr = 'approved' AND lp.statusfromdept = 'approved' AND lp.role = 'Staff')
                         OR
-                        (statusfromhr = 'approved' AND role = 'Head Department')
+                        (lp.statusfromhr = 'approved' AND lp.role = 'Head Department')
                     )
-                    AND actual_exittime IS NOT NULL
-                    AND actual_returntime IS NULL
-                    ORDER BY actual_exittime DESC
+                    AND lp.actual_exittime IS NOT NULL
+                    AND lp.actual_returntime IS NULL
+                    AND al.uid = $3
+                    AND al.status IN ('leave_exit')
+                    ORDER BY lp.actual_exittime DESC
                     LIMIT 1`,
-                    [licensePlate, today]
+                    [licensePlate, today, uid]
                 );
                 const returningLeave = returningLeavePermission.rows[0];
 
-                // Priority 2: Check for new leave permission to exit
                 const leavePermission = await db.query(
                     `SELECT * FROM leave_permission 
                     WHERE licenseplate = $1 
@@ -316,15 +329,14 @@ mqttClient.on('message', async (topic, message) => {
                 );
                 const leave = leavePermission.rows[0];
 
-                //Leave Return - HIGHEST PRIORITY
                 if (returningLeave) {
-                    //console.log("Processing LEAVE RETURN");
+                    //console.log("Processing LEAVE RETURN - specific attendance record");
                     const imagePathLeaveReturn = await captureSnapshot(uid);
                     
-                    // Update the attendance record that has this leave_permission_id
+                    // Update the specific attendance record using attendance_log_id
                     await db.query(
-                        'UPDATE attendance_logs SET image_path_leave_return = $1, actual_returntime = CURRENT_TIMESTAMP, status = $2 WHERE leave_permission_id = $3 AND uid = $4 AND DATE(datein) = $5',
-                        [imagePathLeaveReturn, 'leave_return', returningLeave.id, uid, today]
+                        'UPDATE attendance_logs SET image_path_leave_return = $1, actual_returntime = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
+                        [imagePathLeaveReturn, 'leave_return', returningLeave.attendance_log_id]
                     );
                     
                     await db.query(
@@ -333,8 +345,8 @@ mqttClient.on('message', async (topic, message) => {
                     );
                     
                     const updatedRecord = await db.query(
-                        'SELECT * FROM attendance_logs WHERE leave_permission_id = $1 AND uid = $2 AND DATE(datein) = $3',
-                        [returningLeave.id, uid, today]
+                        'SELECT * FROM attendance_logs WHERE id = $1',
+                        [returningLeave.attendance_log_id]
                     );
                     
                     const returnDataFull = {
@@ -361,11 +373,15 @@ mqttClient.on('message', async (topic, message) => {
 
                 //Leave Exit - SECOND PRIORITY
                 else if (leave && !leave.actual_exittime) {
-                    //console.log("Processing LEAVE EXIT - updating existing row");
+                    console.log("Processing LEAVE EXIT - handling multiple leaves", {
+                        leaveId: leave.id,
+                        currentAttendanceId: attendance.id,
+                        currentLeaveId: attendance.leave_permission_id,
+                        reason: leave.reason
+                    });
                     
                     const imagePathLeaveExit = await captureSnapshot(uid);
                     
-                    // Check if this is a "no-return" leave (sick, emergency, etc.)
                     const leaveReason = leave.reason.toLowerCase();
                     const isNoReturnLeave = leaveReason.includes('sick') || 
                                             leaveReason.includes('sakit') || 
@@ -374,92 +390,120 @@ mqttClient.on('message', async (topic, message) => {
                                             leaveReason.includes('pulang') ||
                                             leaveReason.includes('home');
                     
-                    if (isNoReturnLeave) {
-                        // For no-return leaves, close the record completely
-                        await db.query(
-                            'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, dateout = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
-                            [imagePathLeaveExit, 'leave_exit_final', leave.id, attendance.id]
+                    let attendanceRecordToUpdate;
+                    
+                    // Check if current attendance already has a different leave_permission_id
+                    if (attendance.leave_permission_id && attendance.leave_permission_id !== leave.id) {
+                        // This is a second/subsequent leave - create new attendance row using original entry data
+                        console.log("Creating new attendance row for multiple leaves", {
+                            existingLeaveId: attendance.leave_permission_id,
+                            newLeaveId: leave.id
+                        });
+                        
+                        // Find the original entry record for today to copy its datein and image_path
+                        const originalEntry = await db.query(
+                            'SELECT * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = $2 AND status = $3 ORDER BY id ASC LIMIT 1',
+                            [uid, today, 'entry']
                         );
                         
-                        // Also mark the leave as completed (no return expected)
+                        let originalData = originalEntry.rows[0] || attendance; // fallback to current if no entry found
+                        
+                        const newAttendanceResult = await db.query(
+                            'INSERT INTO attendance_logs (uid, licenseplate, datein, status, leave_permission_id, image_path_leave_exit, actual_exittime, image_path) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7) RETURNING *',
+                            [uid, licensePlate, originalData.datein, isNoReturnLeave ? 'leave_exit_final' : 'leave_exit', leave.id, imagePathLeaveExit, originalData.image_path]
+                        );
+                        attendanceRecordToUpdate = newAttendanceResult.rows[0];
+                        
+                        if (isNoReturnLeave) {
+                            // For final leaves, also set dateout
+                            await db.query(
+                                'UPDATE attendance_logs SET dateout = CURRENT_TIMESTAMP WHERE id = $1',
+                                [attendanceRecordToUpdate.id]
+                            );
+                        }
+                    } else {
+                        // This is first leave - update existing row
+                        console.log("Updating existing attendance row for first leave", {
+                            attendanceId: attendance.id,
+                            leaveId: leave.id
+                        });
+                        if (isNoReturnLeave) {
+                            await db.query(
+                                'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, dateout = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
+                                [imagePathLeaveExit, 'leave_exit_final', leave.id, attendance.id]
+                            );
+                        } else {
+                            await db.query(
+                                'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
+                                [imagePathLeaveExit, 'leave_exit', leave.id, attendance.id]
+                            );
+                        }
+                        const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
+                        attendanceRecordToUpdate = updatedRecord.rows[0];
+                    }
+                    
+                    // Update leave_permission table
+                    if (isNoReturnLeave) {
                         await db.query(
                             'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP, actual_returntime = CURRENT_TIMESTAMP WHERE id = $1',
                             [leave.id]
                         );
-                        
-                        const exitDataFull = {
-                            ...attendance,
-                            image_path_leave_exit: imagePathLeaveExit,
-                            actual_exittime: new Date().toISOString(),
-                            dateout: new Date().toISOString(),
-                            status: 'leave_exit_final',
-                            type: 'leave_exit_final',
-                            leaveInfo: {
-                                permissionId: leave.id,
-                                plannedTime: leave.exittime,
-                                isEarly: new Date() < new Date(leave.exittime),
-                                isLate: new Date() > new Date(leave.exittime),
-                                reason: leave.reason,
-                                noReturn: true
-                            },
-                            timestamp: new Date().toISOString()
-                        };
-                        broadcast(exitDataFull);
-                        mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
-                            status: 'approved',
-                            name: userInfo.name.substring(0, 16),
-                            department: userInfo.department.substring(0, 8),
-                            action: 'Leave (Final)'
-                        }));
                     } else {
-                        // Regular leave exit (expecting return)
-                        await db.query(
-                            'UPDATE attendance_logs SET image_path_leave_exit = $1, actual_exittime = CURRENT_TIMESTAMP, status = $2, leave_permission_id = $3 WHERE id = $4',
-                            [imagePathLeaveExit, 'leave_exit', leave.id, attendance.id]
-                        );
-                        
                         await db.query(
                             'UPDATE leave_permission SET actual_exittime = CURRENT_TIMESTAMP WHERE id = $1',
                             [leave.id]
                         );
-                        
-                        const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
-                        const exitDataFull = {
-                            ...updatedRecord.rows[0],
-                            type: 'leave_exit',
-                            leaveInfo: {
-                                permissionId: leave.id,
-                                plannedTime: leave.exittime,
-                                isEarly: new Date() < new Date(leave.exittime),
-                                isLate: new Date() > new Date(leave.exittime),
-                                reason: leave.reason,
-                                noReturn: false
-                            },
-                            timestamp: new Date().toISOString()
-                        };
-                        broadcast(exitDataFull);
-                        mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
-                            status: 'approved',
-                            name: userInfo.name.substring(0, 16),
-                            department: userInfo.department.substring(0, 8),
-                            action: 'Leave Exit'
-                        }));
                     }
+                    
+                    const exitDataFull = {
+                        ...attendanceRecordToUpdate,
+                        type: isNoReturnLeave ? 'leave_exit_final' : 'leave_exit',
+                        leaveInfo: {
+                            permissionId: leave.id,
+                            plannedTime: leave.exittime,
+                            isEarly: new Date() < new Date(leave.exittime),
+                            isLate: new Date() > new Date(leave.exittime),
+                            reason: leave.reason,
+                            noReturn: isNoReturnLeave
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+                    broadcast(exitDataFull);
+                    mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
+                        status: 'approved',
+                        name: userInfo.name.substring(0, 16),
+                        department: userInfo.department.substring(0, 8),
+                        action: isNoReturnLeave ? 'Leave (Final)' : 'Leave Exit'
+                    }));
                     return;
                 }
 
-                //Exit Regular - Close current open attendance record
                 else {
-                    //console.log("Processing REGULAR EXIT");
+                    console.log("Processing REGULAR EXIT - closing all open attendance");
+                    
                     const imagePathOut = await captureSnapshot(uid);
                 
-                    // Close the current open record only
-                    await db.query(
-                        'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
-                        [imagePathOut, 'exit', attendance.id]
+                    // Get all open attendance records for today
+                    const allOpenRecords = await db.query(
+                        `SELECT * FROM attendance_logs 
+                        WHERE uid = $1 AND DATE(datein) = $2 AND dateout IS NULL`,
+                        [uid, today]
                     );
                     
-                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [attendance.id]);
+                    console.log("Found open records to close:", allOpenRecords.rows.length);
+                    
+                    // Close all open records
+                    for (const record of allOpenRecords.rows) {
+                        await db.query(
+                            'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
+                            [imagePathOut, 'exit', record.id]
+                        );
+                        console.log("Closed attendance record:", record.id);
+                    }
+                    
+                    // Broadcast the main record exit
+                    const mainRecord = allOpenRecords.rows.find(r => r.status === 'entry' || r.leave_permission_id === null) || allOpenRecords.rows[0];
+                    const updatedRecord = await db.query('SELECT * FROM attendance_logs WHERE id = $1', [mainRecord.id]);
                     const exitDataFull = {
                         ...updatedRecord.rows[0],
                         type: 'exit',
@@ -498,7 +542,6 @@ mqttClient.on('message', async (topic, message) => {
                     return;
                 }
                 
-                // Check if user had a leave_exit_final today (no return expected but might come back next tap)
                 const hadFinalLeaveToday = await db.query(
                     `SELECT * FROM attendance_logs 
                     WHERE uid = $1 AND DATE(datein) = $2 AND status = 'leave_exit_final'`,
@@ -506,7 +549,6 @@ mqttClient.on('message', async (topic, message) => {
                 );
                 
                 if (hadFinalLeaveToday.rows.length > 0) {
-                    // This is a new entry after a final leave (like coming back after sick leave)
                     //console.log("User returning after final leave, creating new entry");
                 }
                 
@@ -1139,7 +1181,6 @@ app.post('/auth/register', async (req, res) => {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Insert new user
         const result = await db.query(
             'INSERT INTO userlogin (name, username, password, department, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, username, department, role',
             [name, username, hashedPassword, department, role]
@@ -1311,67 +1352,107 @@ app.get('/api/trucks/history', async (req, res) => {
 // POST endpoint untuk membuat truck baru
 app.post('/api/trucks', async (req, res) => {
     try {
+        console.log('=== RECEIVED TRUCK DATA ===', req.body);
+        
         const {
             platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
             driver, supplier, arrivaltime, eta, status, type, operation, goods,
-            descin, descout, statustruck, estimatedfinish, estimatedwaittime,
-            actualwaittime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+            descin, descout, statustruck,
+            actualwaittime, totalprocessloadingtime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil,
+            driver_photo, stnk_photo, sim_photo
         } = req.body;
+
+        console.log('=== EXTRACTED VALUES ===', {
+            platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
+            driver, supplier, arrivaltime, eta, status, type, operation, goods,
+            descin, descout, statustruck,
+            actualwaittime, totalprocessloadingtime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+        });
 
         const query = `
             INSERT INTO trucks (
                 platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
                 driver, supplier, arrivaltime, eta, status, type, operation, goods,
-                descin, descout, statustruck, estimatedfinish, estimatedwaittime,
-                actualwaittime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+                descin, descout, statustruck,
+                actualwaittime, totalprocessloadingtime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil,
+                driver_photo, stnk_photo, sim_photo
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
+                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
             ) RETURNING *
         `;
 
         const values = [
             platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
             driver, supplier, arrivaltime, eta, status, type, operation, goods,
-            descin, descout, statustruck, estimatedfinish, estimatedwaittime,
-            actualwaittime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+            descin, descout, statustruck,
+            actualwaittime, totalprocessloadingtime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil,
+            driver_photo, stnk_photo, sim_photo
         ];
 
+        console.log('=== SQL VALUES ===', values);
+        
         const result = await db.query(query, values);
+        console.log('=== DB RESULT ===', result.rows[0]);
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating truck:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Error details:', error.message);
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Internal server error', 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 
 // PUT endpoint untuk update truck
 app.put('/api/trucks/:id', async (req, res) => {
     try {
+        console.log('=== UPDATE TRUCK API CALLED ===');
         const { id } = req.params;
         const updateData = req.body;
         
+        console.log('Truck ID:', id);
+        console.log('Update data received:', updateData);
+        
         // Build dynamic update query
         const updateFields = Object.keys(updateData).filter(key => updateData[key] !== undefined);
+        console.log('Fields to update:', updateFields);
+        
         const setClause = updateFields.map((field, index) => `${field} = $${index + 2}`).join(', ');
         
         if (updateFields.length === 0) {
+            console.log('❌ No fields to update');
             return res.status(400).json({ error: 'No fields to update' });
         }
 
         const query = `UPDATE trucks SET ${setClause} WHERE id = $1 RETURNING *`;
         const values = [id, ...updateFields.map(field => updateData[field])];
+        
+        console.log('SQL Query:', query);
+        console.log('SQL Values:', values);
 
         const result = await db.query(query, values);
         
         if (result.rows.length === 0) {
+            console.log('❌ Truck not found with ID:', id);
             return res.status(404).json({ error: 'Truck not found' });
         }
 
+        console.log('✅ Truck updated successfully');
+        console.log('Updated truck data:', result.rows[0]);
+        
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Error updating truck:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('💥 Error updating truck:', error);
+        console.error('💥 Error message:', error.message);
+        console.error('💥 Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Internal server error',
+            message: error.message 
+        });
     }
 });
 
@@ -1459,6 +1540,57 @@ app.get('/api/trucks', async (req, res) => {
     }
 });
 
+// API endpoint untuk upload foto truck
+app.post('/api/trucks/upload-photo', async (req, res) => {
+    try {
+        const { photoData, photoType, plateNumber } = req.body;
+        
+        if (!photoData || !photoType || !plateNumber) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Photo data, type, and plate number are required' 
+            });
+        }
+
+        // Create trucks upload directory if it doesn't exist
+        const trucksUploadDir = path.join(__dirname, 'uploads', 'trucks');
+        if (!fs.existsSync(trucksUploadDir)) {
+            fs.mkdirSync(trucksUploadDir, { recursive: true });
+        }
+
+        // Generate filename with timestamp and plate number
+        const timestamp = Date.now();
+        const sanitizedPlate = plateNumber.replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `${sanitizedPlate}-${timestamp}-${photoType}.jpg`;
+        const filePath = path.join(trucksUploadDir, fileName);
+
+        // Remove data URL prefix if present (data:image/jpeg;base64,)
+        const base64Data = photoData.replace(/^data:image\/[a-z]+;base64,/, '');
+        
+        // Save the file
+        fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+        
+        // Return the relative path for database storage
+        const relativePath = `trucks/${fileName}`;
+        
+        console.log(`✅ Truck photo saved: ${relativePath}`);
+        
+        res.json({
+            success: true,
+            message: 'Photo uploaded successfully',
+            filePath: relativePath
+        });
+
+    } catch (error) {
+        console.error('❌ Error uploading truck photo:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to upload photo',
+            error: error.message 
+        });
+    }
+});
+
 // !! END OF API FOR TRUCKS
 
 //-------------------------------------------------------//
@@ -1466,7 +1598,7 @@ app.get('/api/trucks', async (req, res) => {
 //-------------------------------------------------------//
 
 server.listen(port, () => {
-    //console.log(`Server + WebSocket listening on http://192.168.4.62:${port}`);
-    //console.log(`WebSocket endpoint: ws://192.168.4.62:${port}`);
-    //console.log(`Image uploads: http://192.168.4.62:${port}/uploads/`);
+    //console.log(`Server + WebSocket listening on http://192.168.4.50:${port}`);
+    //console.log(`WebSocket endpoint: ws://192.168.4.50:${port}`);
+    //console.log(`Image uploads: http://192.168.4.50:${port}/uploads/`);
 });

@@ -35,8 +35,8 @@ interface LoginStore{
   setUser: (user: UserLogin | null) => void;
 }
 
-// Configure axios base URL
-const API_BASE_URL = "http://192.168.4.62:3000";
+// axios base URL
+const API_BASE_URL = "http://192.168.4.50:3000";
 axios.defaults.baseURL = API_BASE_URL;
 
 export const useLoginStore = create <LoginStore>((set, get) => ({

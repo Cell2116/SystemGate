@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
+import { utcToIndonesianTime } from "../../lib/timezone";
 
 export default function clock(){
   const [time, setTime] = useState(new Date());
 
   useEffect(()=>{
-    const timer = setInterval(()=> setTime(new Date()), 1000);
+    const timer = setInterval(()=> {
+      // Mendapatkan waktu Indonesia (UTC+7)
+      const now = new Date();
+      const indonesianTime = utcToIndonesianTime(now);
+      setTime(indonesianTime);
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
 

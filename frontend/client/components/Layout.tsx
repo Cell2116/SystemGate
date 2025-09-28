@@ -28,32 +28,29 @@ import {
 } from "lucide-react";
 
 
-import {roleAccess} from "../authentication/accessControl.ts";
+import {roleAccess, filterChildrenByRole, hasMenuAccess} from "../authentication/accessControl.ts";
 import {useUser} from "../authentication/userContext.tsx";
 import { useEffect, useRef } from "react";
 import NotificationCard from "../components/dashboard/notification.tsx"
 import { useAudio } from "@/hooks/useAudio";
+import Information from "./dashboard/information.tsx";
 
-// Ambil jumlah notifikasi approval yang belum diproses
 function usePendingApprovalCount() {
   const leavePermissions = useDashboardStore(state => state.leavePermissions);
   const { role } = useUser();
   if (!role) return 0;
   if (role === "HR") {
     return leavePermissions.filter((e: any) => {
-      // Exclude group members (they have "Group with [name]" in reason and are already approved)
       const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
       return e.statusFromHR === "pending" && !isGroupMember;
     }).length;
   } else if (role === "Head Department") {
     return leavePermissions.filter((e: any) => {
-      // Exclude group members (they have "Group with [name]" in reason and are already approved)
       const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
       return e.statusFromDepartment === "pending" && !isGroupMember;
     }).length;
   } else if (role === "Director") {
     return leavePermissions.filter((e: any) => {
-      // Exclude group members (they have "Group with [name]" in reason and are already approved)
       const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
       return e.statusFromDirector === "pending" && !isGroupMember;
     }).length;
@@ -61,7 +58,6 @@ function usePendingApprovalCount() {
   return 0;
 }
 
-// Hook untuk memantau perubahan count dan mainkan sound
 function useNotificationSound() {
   const count = usePendingApprovalCount();
   const { playDing } = useAudio();
@@ -69,16 +65,14 @@ function useNotificationSound() {
   const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
-    // Skip sound on initial load
     if (isInitialLoadRef.current) {
       prevCountRef.current = count;
       isInitialLoadRef.current = false;
       return;
     }
 
-    // Play ding sound only when count increases
     if (count > prevCountRef.current && count > 0) {
-      playDing(); // Menggunakan simple ding sound
+      playDing();
     }
 
     prevCountRef.current = count;
@@ -105,7 +99,7 @@ const navigation = [
         key: "loading",
         name: (
           <span>
-            Loading / <span className="text-green-600 font-semibold italic">Angkut</span>
+            Loading / <span className="text-green-600 font-semibold italic">Muat</span>
           </span>
         ), 
         href: "/loadingtrucks"
@@ -122,7 +116,7 @@ const navigation = [
       { key: "scan", name: "Scan", href: "/scan"},
     ]
   },
-  { name: "History Management",
+  { name: "History Operation",
     href: "/history",
     icon: FileClock, 
     children:[
@@ -136,10 +130,28 @@ const navigation = [
 //console.log("Layout.tsx file loaded");
 
 export default function Layout() {
-  const {role} = useUser();
+  const {role, name, department} = useUser();
 
   //console.log("ROLE:", role); 
-  const filteredNavigation = navigation.filter(item => roleAccess[item.name as keyof typeof roleAccess]?.includes(role));
+  const filteredNavigation = navigation
+    .filter(item => hasMenuAccess(item.name, role, name, department))
+    .map(item => {
+      // Filter children menu berdasarkan role jika ada
+      if (item.children) {
+        return {
+          ...item,
+          children: filterChildrenByRole(item.name, item.children, role, name, department)
+        };
+      }
+      return item;
+    })
+    .filter(item => {
+      // Hapus menu parent jika tidak ada children yang bisa diakses
+      if (item.children) {
+        return item.children.length > 0;
+      }
+      return true;
+    });
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState(() => {
@@ -391,6 +403,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      <Information/>
     </div>
   );
 }

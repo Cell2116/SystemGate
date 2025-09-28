@@ -4,6 +4,9 @@ import UserLeavePage from "../pages/UserLeave"
 import HRLeavePage from "../pages/HRLeave"
 import DirectorLeavePage from "../pages/DirectorLeave"
 import DepartmentLeavePage from "./DepartmentLeave"
+// import DepartmentLeavePage from "./DepartmentLeaveRefactored"
+// import DepartmentLeavePage from "../pages/DepartmentLeave.refactor"
+// import DepartmentLeavePage from "../pages/DepartmentLeaveRefactor2"
 import { useEffect } from "react"
 import { initWebSocket } from "@/lib/ws"
 
@@ -26,7 +29,7 @@ export default function LeavePermission(){
       return <DirectorLeavePage/>
     case "Head Department":
       return <DepartmentLeavePage/>
-      default:
+      // default:
       // return <p>Unauthorized</p>;
       // return <UserLeavePage/>
   }

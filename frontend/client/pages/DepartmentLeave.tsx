@@ -728,7 +728,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                         checked={isGroupLeave}
                         onChange={(e) => setIsGroupLeave(e.target.checked)}
                         className="rounded border-gray-300"
-                        required={formData.reasonType !== "Sick"}
                         disabled={formData.reasonType === "Sick"}
                       />
                       <Label htmlFor="groupLeave" className="text-sm font-medium">
@@ -751,7 +750,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                           value={colleagueSearch}
                           onChange={(e) => setColleagueSearch(e.target.value)}
                           className="w-full h-8 text-sm px-3 border border-gray-300 rounded-md"
-                          required={formData.reasonType !== "Sick"}
                           disabled={formData.reasonType === "Sick"}
                         />
                         
@@ -1329,41 +1327,6 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
             </div>
           )}
-
-          {/* Summary Cards
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pending Approval</p>
-                  <p className="text-2xl font-bold text-yellow-600">{getPendingDepartmentEntries().length}</p>
-                </div>
-                <Eye className="w-8 h-8 text-yellow-600" />
-              </div>
-            </div>
-            
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Approved</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {getDepartmentEntries().filter(e => getOverallStatus(e) === 'approved').length}
-                  </p>
-                </div>
-                <Send className="w-8 h-8 text-green-600" />
-              </div>
-            </div>
-
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Requests</p>
-                  <p className="text-2xl font-bold text-blue-600">{getDepartmentEntries().length}</p>
-                </div>
-                <Building className="w-8 h-8 text-blue-600" />
-              </div>
-            </div>
-          </div> */}
         </div>
       </div>
     </div>

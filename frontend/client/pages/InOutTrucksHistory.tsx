@@ -1,4 +1,6 @@
-  // State untuk filter collapsible di mobile
+// TODO There is a bug responsive for mobile IP 11 PRO, the pagination is only showing half content
+
+// State untuk filter collapsible di mobile
 import { useState, useEffect } from "react";
 import { ReactNode, CSSProperties } from "react";
 import { useDashboardStore } from "../store/dashboardStore";
@@ -81,7 +83,7 @@ export default function TruckHistory() {
   // Fetch truck history data
   const fetchTruckHistory = async () => {
     try {
-      const response = await fetch('http://192.168.4.62:3000/api/trucks/history');
+      const response = await fetch('http://192.168.4.50:3000/api/trucks/history');
       if (!response.ok) {
         throw new Error('Failed to fetch truck history');
       }
@@ -373,9 +375,6 @@ export default function TruckHistory() {
                   <option value="all">All Departments</option>
                   <option value="HPC">HPC</option>
                   <option value="PT">PT</option>
-                  <option value="Logistics">Logistics</option>
-                  <option value="Production">Production</option>
-                  <option value="Warehouse">Warehouse</option>
                 </select>
               </div>
 
@@ -392,10 +391,8 @@ export default function TruckHistory() {
                 >
                   <option value="all">All Types</option>
                   <option value="Container">Container</option>
-                  <option value="Wing Box">Wing Box</option>
                   <option value="Wingbox">Wingbox</option>
                   <option value="Tronton">Tronton</option>
-                  <option value="Dump Truck">Dump Truck</option>
                   <option value="Dumptruck">Dumptruck</option>
                   <option value="Colt">Colt</option>
                   <option value="Fuso">Fuso</option>
@@ -510,6 +507,9 @@ export default function TruckHistory() {
                         Plate Number
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Supplier
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Arrival Time
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -540,6 +540,9 @@ export default function TruckHistory() {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-blue-600">
                           {record.platenumber || 'No plate'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-purple-700">
+                          {record.supplier || '-'}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
                           {record.arrivaltime ? formatDateTime(record.arrivaltime) : '-'}
@@ -693,15 +696,15 @@ export default function TruckHistory() {
                 <div className="space-y-4">
                   <h3 className="font-semibold text-gray-900">Truck Information</h3>
                   <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Plate Number:</span> {selectedRecord.platenumber || 'N/A'}</div>
-                    <div><span className="font-medium">Ticket Number:</span> {selectedRecord.noticket || 'N/A'}</div>
-                    <div><span className="font-medium">Driver:</span> {selectedRecord.driver || 'N/A'}</div>
-                    <div><span className="font-medium">NIK Driver:</span> {selectedRecord.nikdriver || 'N/A'}</div>
-                    <div><span className="font-medium">Telp Driver:</span> {selectedRecord.tlpdriver || 'N/A'}</div>
-                    <div><span className="font-medium">Department:</span> {selectedRecord.department || 'N/A'}</div>
-                    <div><span className="font-medium">Jenis Mobil:</span> {selectedRecord.jenismobil || 'N/A'}</div>
-                    <div><span className="font-medium">Type:</span> {selectedRecord.type || 'N/A'}</div>
-                    <div><span className="font-medium">Status:</span> {selectedRecord.status || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Plate Number:</span> {selectedRecord.platenumber || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Ticket Number:</span> {selectedRecord.noticket || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Driver:</span> {selectedRecord.driver || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">NIK Driver:</span> {selectedRecord.nikdriver || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Telp Driver:</span> {selectedRecord.tlpdriver || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Department:</span> {selectedRecord.department || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Jenis Mobil:</span> {selectedRecord.jenismobil || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Type:</span> {selectedRecord.type || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Status:</span> {selectedRecord.status || 'N/A'}</div>
                   </div>
                 </div>
 
@@ -709,12 +712,12 @@ export default function TruckHistory() {
                 <div className="space-y-4">
                   <h3 className="font-semibold text-gray-900">Shipment Information</h3>
                   <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Supplier:</span> {selectedRecord.supplier || 'N/A'}</div>
-                    <div><span className="font-medium">Goods:</span> {selectedRecord.goods || 'N/A'}</div>
-                    <div><span className="font-medium">No SJ:</span> {selectedRecord.nosj || 'N/A'}</div>
-                    <div><span className="font-medium">Tanggal SJ:</span> {selectedRecord.tglsj || 'N/A'}</div>
-                    <div><span className="font-medium">Armada:</span> {selectedRecord.armada || 'N/A'}</div>
-                    <div><span className="font-medium">Kelengkapan:</span> {selectedRecord.kelengkapan || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Supplier:</span> {selectedRecord.supplier || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Goods:</span> {selectedRecord.goods || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">No SJ:</span> {selectedRecord.nosj || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Tanggal SJ:</span> {selectedRecord.tglsj || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Armada:</span> {selectedRecord.armada || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Kelengkapan:</span> {selectedRecord.kelengkapan || 'N/A'}</div>
                   </div>
                 </div>
 
@@ -722,22 +725,22 @@ export default function TruckHistory() {
                 <div className="space-y-4">
                   <h3 className="font-semibold text-gray-900">Timing Information</h3>
                   <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Arrival Time:</span> {selectedRecord.arrivaltime ? formatDateTime(selectedRecord.arrivaltime) : 'N/A'}</div>
-                    <div><span className="font-medium">ETA:</span> {selectedRecord.eta || 'N/A'}</div>
-                    <div><span className="font-medium">Start Loading:</span> {selectedRecord.startloadingtime ? formatDateTime(selectedRecord.startloadingtime) : 'N/A'}</div>
-                    <div><span className="font-medium">Finish Time:</span> {selectedRecord.finishtime ? formatDateTime(selectedRecord.finishtime) : 'N/A'}</div>
-                    <div><span className="font-medium">Estimated Finish:</span> {selectedRecord.estimatedfinish ? formatDateTime(selectedRecord.estimatedfinish) : 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Arrival Time:</span> {selectedRecord.arrivaltime ? formatDateTime(selectedRecord.arrivaltime) : 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">ETA:</span> {selectedRecord.eta || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Start Loading:</span> {selectedRecord.startloadingtime ? formatDateTime(selectedRecord.startloadingtime) : 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Finish Time:</span> {selectedRecord.finishtime ? formatDateTime(selectedRecord.finishtime) : 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Estimated Finish:</span> {selectedRecord.estimatedfinish ? formatDateTime(selectedRecord.estimatedfinish) : 'N/A'}</div>
                   </div>
                 </div>
 
                 {/* Additional Info */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-900">Additional Information</h3>
+                  <h3 className="font-bold text-gray-900">Additional Information</h3>
                   <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Description In:</span> {selectedRecord.descin || 'N/A'}</div>
-                    <div><span className="font-medium">Description Out:</span> {selectedRecord.descout || 'N/A'}</div>
-                    <div><span className="font-medium">Status Truck:</span> {selectedRecord.statustruck || 'N/A'}</div>
-                    <div><span className="font-medium">Date:</span> {selectedRecord.date || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Description In:</span> {selectedRecord.descin || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Description Out:</span> {selectedRecord.descout || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Status Truck:</span> {selectedRecord.statustruck || 'N/A'}</div>
+                    <div><span className="font-semibold text-slate-600">Date:</span> {selectedRecord.date || 'N/A'}</div>
                   </div>
                 </div>
               </div>

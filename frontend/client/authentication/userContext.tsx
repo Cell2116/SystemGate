@@ -5,17 +5,27 @@ type Role = "Security" | "HR" | "Staff" | "Head Department" | "Director" | "Supe
 interface UserContextType {
   role: Role;
   setRole: (role: Role) => void;
+  name: string;
+  setName: (name: string) => void;
+  department: string;
+  setDepartment: (department: string) => void;
 }
 
-const defaultRole: Role = "Staff"; 
+const defaultRole: Role = "Staff";
+const defaultName = "";
+const defaultDepartment = "";
 const UserContext = createContext<UserContextType | undefined>(undefined);
 //console.log("userContext Mounted");
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRoleState] = useState<Role>(defaultRole);
+  const [name, setNameState] = useState<string>(defaultName);
+  const [department, setDepartmentState] = useState<string>(defaultDepartment);
 
   useEffect(() => {
     //console.log("User Provide mounted");
     const storedRole = localStorage.getItem("userRole");
+    const storedName = localStorage.getItem("userName");
+    const storedDepartment = localStorage.getItem("userDepartment");
     const normalized = storedRole;
     if (
       normalized === "Security" ||
@@ -27,15 +37,25 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     ) {
       setRoleState(normalized);
     }
+    if (storedName) setNameState(storedName);
+    if (storedDepartment) setDepartmentState(storedDepartment);
   }, []);
 
   const setRole = (newRole: Role) => {
     setRoleState(newRole);
     localStorage.setItem("userRole", newRole);
   };
+  const setName = (newName: string) => {
+    setNameState(newName);
+    localStorage.setItem("userName", newName);
+  };
+  const setDepartment = (newDepartment: string) => {
+    setDepartmentState(newDepartment);
+    localStorage.setItem("userDepartment", newDepartment);
+  };
 
   return (
-    <UserContext.Provider value={{ role, setRole }}>
+    <UserContext.Provider value={{ role, setRole, name, setName, department, setDepartment }}>
       {children}
     </UserContext.Provider>
   );

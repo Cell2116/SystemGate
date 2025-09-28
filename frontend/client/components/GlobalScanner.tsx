@@ -12,7 +12,6 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
         let scanTimeout: NodeJS.Timeout;
         
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
-            // Ignore if user is typing in an input field
             const activeElement = document.activeElement;
             const isTypingInInput = activeElement && (
                 activeElement.tagName === 'INPUT' || 
@@ -20,17 +19,12 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
                 (activeElement as HTMLElement).contentEditable === 'true'
             );
             
-            // Skip if user is actively typing in form fields
             if (isTypingInInput) {
                 return;
-            }
-            
-            // Clear existing timeout
+            }            
             if (scanTimeout) {
                 clearTimeout(scanTimeout);
             }
-            
-            // Handle Enter key (scanner typically sends this)
             if (e.key === 'Enter' && scanBuffer.length > 0) {
                 e.preventDefault();
                 processScan(scanBuffer);
@@ -38,21 +32,18 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
                 return;
             }
             
-            // Handle Escape to clear buffer
             if (e.key === 'Escape') {
                 setScanBuffer("");
                 return;
             }
             
-            // Accumulate characters for scanner input
-            if (e.key.length === 1 && e.key.match(/[a-zA-Z0-9]/)) { // Only alphanumeric
+            if (e.key.length === 1 && e.key.match(/[a-zA-Z0-9]/)) { 
                 e.preventDefault();
                 const newBuffer = scanBuffer + e.key;
                 setScanBuffer(newBuffer);
                 
-                // Auto-process after 100ms of no input (scanner speed)
                 scanTimeout = setTimeout(() => {
-                    if (newBuffer.length > 2) { // Minimum scan length
+                    if (newBuffer.length > 2) { 
                         processScan(newBuffer);
                         setScanBuffer("");
                     }
@@ -60,7 +51,7 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
             }
         };
         
-        // Add global event listener
+        // Global Listenrr
         document.addEventListener('keydown', handleGlobalKeyDown, true);
         
         // Cleanup

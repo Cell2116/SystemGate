@@ -73,7 +73,6 @@ export default function UserLeavePage(){
     outsideReason: "",
   });
 
-  // Load user from localStorage and fetch leave permissions
   useEffect(() => {
     let mounted = true;
     let unsubscribeDataChange: (() => void) | null = null;
@@ -99,13 +98,13 @@ export default function UserLeavePage(){
 
         if (storedUser && storedRole) {
           const parsedUser = JSON.parse(storedUser);
-          console.log("Parsed user data:", parsedUser); // Debug log
+          console.log("Parsed user data:", parsedUser); 
           setCurrentUser({
             name: parsedUser.name,
             department: parsedUser.department,
             role: parsedUser.role,
             uid: parsedUser.uid,
-            licenseplate: parsedUser.licenseplate || parsedUser.licensePlate || "" // Try both field names
+            licenseplate: parsedUser.licenseplate || parsedUser.licensePlate || "" 
           });
         } else {
           console.error("No user data found in localStorage");
@@ -119,7 +118,7 @@ export default function UserLeavePage(){
 
     loadUserFromStorage();
     fetchLeavePermission();
-    fetchUsers(); // Fetch users to get license plate data
+    fetchUsers();
 
     return () => {
       mounted = false;
@@ -127,7 +126,6 @@ export default function UserLeavePage(){
     };
   }, [fetchLeavePermission, fetchUsers]);
 
-  // Get license plate from users data if not available in localStorage
   useEffect(() => {
     if (currentUser && users.length > 0 && !currentUser.licenseplate) {
       const userFromDB = users.find(user => 
@@ -143,31 +141,29 @@ export default function UserLeavePage(){
     }
   }, [currentUser, users]);
 
-  // Load available colleagues from all departments (not just same department)
   useEffect(() => {
     if (currentUser && users.length > 0) {
       const colleagues = users.filter(user => 
-        user.name !== currentUser.name // Exclude current user, allow all departments
+        user.name !== currentUser.name 
       );
       setAvailableColleagues(colleagues);
     }
   }, [currentUser, users]);
 
-  // Update form data when current user changes
   useEffect(() => {
     if (currentUser) {
-      console.log("Current user license plate:", currentUser.licenseplate); // Debug log
+      console.log("Current user license plate:", currentUser.licenseplate); 
       setFormData(prev => ({
         ...prev,
         name: currentUser.name,
         department: currentUser.department,
         role: currentUser.role,
-        licensePlate: currentUser.licenseplate || "No license plate found", // Show message if empty
+        licensePlate: currentUser.licenseplate || "No license plate found", 
       }));
     }
   }, [currentUser]);
 
-  // Get user's own leave requests (filtered by hidden entries)
+  // Get user's own leave requests
   const getUserLeaveRequests = () => {
     if (!currentUser) return [];
     return leavePermissions.filter(entry => 
@@ -206,7 +202,7 @@ export default function UserLeavePage(){
     );
   };
 
-  // Get all processed entries (including hidden ones)
+  // Get All Processed Data
   const getAllProcessedUserEntries = () => {
     if (!currentUser) return [];
     return leavePermissions.filter(entry => 
@@ -245,7 +241,6 @@ export default function UserLeavePage(){
     setFieldErrors({});
     setShowSuccessMessage(false);
     
-    // Validation checks with individual field errors
     const errors: {[key: string]: string} = {};
     
     if (!currentUser) {
@@ -275,7 +270,6 @@ export default function UserLeavePage(){
       errors.returnTime = "Please enter a return time";
     }
     
-    // If there are errors, show them and return
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -294,10 +288,7 @@ export default function UserLeavePage(){
     String(now.getMinutes()).padStart(2, '0') + ':' +
     String(now.getSeconds()).padStart(2, '0');
     
-    // Create leave requests for current user and selected colleagues
     const leaveRequests = [];
-    
-    // Add current user's request
     const currentUserEntry = {
       name: currentUser.name,
       uid: currentUser.uid,
@@ -324,7 +315,6 @@ export default function UserLeavePage(){
     };
     leaveRequests.push(currentUserEntry);
     
-    // Add colleagues' requests if group leave - they don't need separate approval
     if (isGroupLeave && selectedColleagues.length > 0) {
       selectedColleagues.forEach(colleague => {
         const colleagueEntry = {
@@ -337,30 +327,26 @@ export default function UserLeavePage(){
           exitTime: formData.exitTime,
           returnTime: formData.reasonType === "Sick" ? "" : formData.returnTime,
           reason: `${reasonValue} (Group with ${currentUser.name})`,
-          approval: "approved", // Auto-approved as part of group
-          statusFromDepartment: "approved", // Auto-approved
-          statusFromHR: "approved", // Auto-approved
-          statusFromDirector: "approved", // Auto-approved
+          approval: "approved", 
+          statusFromDepartment: "approved",
+          statusFromHR: "approved", 
+          statusFromDirector: "approved",
           submittedAt: formatted,
           actual_exittime: null,
           actual_returntime: null,
-          groupLeader: currentUser.name, // Track who is the group leader
-          isGroupMember: true // Flag to identify group members
+          groupLeader: currentUser.name, 
+          isGroupMember: true 
         };
         leaveRequests.push(colleagueEntry);
       });
     }
 
     try {
-      // Submit all leave requests
       for (const request of leaveRequests) {
         await addLeavePermission(request);
       }
-      
       await fetchLeavePermission();
       setIsOpen(false);
-      
-      // Reset form
       setFormData({
         name: currentUser.name,
         licensePlate: currentUser.licenseplate,
@@ -383,21 +369,15 @@ export default function UserLeavePage(){
         `Group leave request submitted successfully for ${leaveRequests.length} people!` : 
         "Leave request submitted successfully!";
       
-      // Show success message instead of alert
       setSuccessMessage(groupMessage);
       setShowSuccessMessage(true);
-      
-      // Hide success message after 3 seconds
       setTimeout(() => {
         setShowSuccessMessage(false);
       }, 3000);
     } catch (error) {
       console.error("Error adding leave permission:", error);
-      // Show error message instead of alert
       setSuccessMessage("Failed to submit leave request. Please try again.");
       setShowSuccessMessage(true);
-      
-      // Hide error message after 3 seconds
       setTimeout(() => {
         setShowSuccessMessage(false);
       }, 3000);
@@ -405,12 +385,9 @@ export default function UserLeavePage(){
   };
 
   const handleInputChange = (field: string, value: string) => {
-    // Prevent editing of read-only fields
     if (field === "licensePlate" || field === "name" || field === "department" || field === "role") {
       return;
-    }
-    
-    // Clear field error when user starts typing
+    }    
     if (fieldErrors[field]) {
       setFieldErrors(prev => {
         const newErrors = { ...prev };
@@ -419,7 +396,6 @@ export default function UserLeavePage(){
       });
     }
     
-    // Clear return time when sick is selected
     if (field === "reasonType" && value === "Sick") {
       setFormData(prev => ({ ...prev, [field]: value, returnTime: "" }));
       // Also clear returnTime error if it exists
@@ -435,13 +411,10 @@ export default function UserLeavePage(){
     }
   };
 
-  // Helper function to get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   };
-
-  // Helper function to get tomorrow's date
   const getTomorrowDate = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -611,14 +584,12 @@ export default function UserLeavePage(){
                                 No colleagues available
                               </p>
                             ) : (
-                              // Filter colleagues based on search
                               (() => {
                                 const filtered = availableColleagues.filter(colleague =>
                                   colleague.name.toLowerCase().includes(colleagueSearch.toLowerCase()) ||
                                   colleague.department.toLowerCase().includes(colleagueSearch.toLowerCase())
                                 );
                                 
-                                // Group filtered colleagues by department
                                 return Object.entries(
                                   filtered.reduce((acc, colleague) => {
                                     const dept = colleague.department;

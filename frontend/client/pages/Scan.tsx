@@ -9,6 +9,8 @@
 //     )
 // }
 
+// TODO Make it Responsive for mobile 
+// TODO Fix Resize the component
 import Clock2 from "../components/dashboard/clock"
 import { PackageOpen, Scan as ScanIcon, Truck, Package } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
@@ -17,6 +19,7 @@ import { useScannerStore } from "../store/scannerStore"
 
 export default function Scan(){
     const scanInputRef = useRef<HTMLInputElement>(null);
+    const [countdown, setCountdown] = useState<number | null>(null);
     
     // Use global scanner store
     const { 
@@ -26,6 +29,7 @@ export default function Scan(){
         isScanning, 
         scanBuffer,
         scanHistory,
+        lastTruckUpdate,
         clearScan,
         processScan
     } = useScannerStore();
@@ -36,6 +40,42 @@ export default function Scan(){
             scanInputRef.current.focus();
         }
     }, []);
+
+    // Auto-clear functionality after successful scan
+    useEffect(() => {
+        let countdownInterval: NodeJS.Timeout;
+        let autoClearTimeout: NodeJS.Timeout;
+
+        if (scannedData && (scanResult || lastTruckUpdate)) {
+            // Start countdown from 5 seconds
+            setCountdown(5);
+            
+            // Update countdown every second
+            countdownInterval = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev === null || prev <= 1) {
+                        return null;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            // Clear scan data after 5 seconds
+            autoClearTimeout = setTimeout(() => {
+                clearScan();
+                setCountdown(null);
+            }, 5000);
+        }
+
+        return () => {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            if (autoClearTimeout) {
+                clearTimeout(autoClearTimeout);
+            }
+        };
+    }, [scannedData, scanResult, lastTruckUpdate, clearScan]);
 
     return(
         <div className="relative min-h-screen p-3 overflow-y-auto">
@@ -52,6 +92,11 @@ export default function Scan(){
                         🔍 Scanning: {scanBuffer}...
                     </div>
                 )}
+                {/* {countdown !== null && (
+                    <div className="mt-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs inline-block animate-pulse">
+                        🕒 Auto-clear in {countdown}s
+                    </div>
+                )} */}
                 <div className="mt-1">
                     <span className="text-xs text-green-600 font-medium">
                         ✓ Global Scanner Active - Works from any page
@@ -93,20 +138,32 @@ export default function Scan(){
                         <div className="text-center mb-3">
                             {isScanning ? (
                                 <p className="text-lg font-semibold text-blue-600">Processing scan...</p>
-                            ) : scanResult ? (
+                            ) : scanResult || lastTruckUpdate ? (
                                 <div>
                                     <p className="text-lg font-bold text-gray-800 mb-1">Scan Successful!</p>
-                                    <p className={`text-sm font-semibold ${
-                                        scanResult === 'loading' ? 'text-blue-600' : 'text-green-600'
-                                    }`}>
-                                        Operation: {scanResult === 'loading' ? 'LOADING (CU)' : 'UNLOADING (SU)'}
-                                    </p>
+                                    {scanResult && (
+                                        <p className={`text-sm font-semibold ${
+                                            scanResult === 'loading' ? 'text-blue-600' : 'text-green-600'
+                                        }`}>
+                                            Operation: {scanResult === 'loading' ? 'LOADING (CU)' : 'UNLOADING (SU)'}
+                                        </p>
+                                    )}
+                                    {lastTruckUpdate && (
+                                        <p className="text-sm font-semibold text-purple-600">
+                                            Truck Status Updated: {lastTruckUpdate.newStatus}
+                                        </p>
+                                    )}
                                     <p className="text-xs text-gray-500 mt-1">Scanned at: {lastScanTime}</p>
+                                    {countdown !== null && (
+                                        <p className="text-xs text-blue-600 mt-1 animate-pulse">
+                                            Auto-clearing in {countdown} seconds...
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                                 <div>
                                     <p className="text-base font-semibold text-gray-600 mb-1">Ready to Scan</p>
-                                    <p className="text-sm text-gray-500">Point Ultron scanner at truck QR code</p>
+                                    {/* <p className="text-sm text-gray-500">Point Ultron scanner at truck QR code</p> */}
                                 </div>
                             )}
                         </div>
@@ -135,13 +192,16 @@ export default function Scan(){
                         )}
 
                         {/* Clear Button */}
-                        {(scannedData || scanResult) && (
+                        {(scannedData || scanResult || lastTruckUpdate) && (
                             <div className="text-center mt-2">
                                 <button 
-                                    onClick={clearScan} 
+                                    onClick={() => {
+                                        clearScan();
+                                        setCountdown(null);
+                                    }}
                                     className="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors"
                                 >
-                                    Clear & Scan Again
+                                    {countdown !== null ? `Clear Now (${countdown}s)` : 'Clear & Scan Again'}
                                 </button>
                             </div>
                         )}
@@ -177,23 +237,26 @@ export default function Scan(){
                     {/* Loading Box (CU) */}
                     <div className={`
                         bg-white border-2 rounded-lg p-3 shadow-md transition-all duration-300
-                        ${scanResult === 'loading' 
+                        ${(scanResult === 'loading' || (lastTruckUpdate && lastTruckUpdate.operation === 'muat'))
                             ? 'border-blue-500 bg-blue-50 transform scale-105 shadow-lg' 
                             : 'border-gray-300 hover:border-blue-300'}
                     `}>
                         <div className="text-center">
                             <div className={`
                                 inline-flex p-2 rounded-full mb-2
-                                ${scanResult === 'loading' ? 'bg-blue-200' : 'bg-gray-200'}
+                                ${(scanResult === 'loading' || (lastTruckUpdate && lastTruckUpdate.operation === 'muat'))
+                                    ? 'bg-blue-200' : 'bg-gray-200'}
                             `}>
                                 <Truck className={`
                                     w-5 h-5
-                                    ${scanResult === 'loading' ? 'text-blue-600' : 'text-gray-600'}
+                                    ${(scanResult === 'loading' || (lastTruckUpdate && lastTruckUpdate.operation === 'muat'))
+                                        ? 'text-blue-600' : 'text-gray-600'}
                                 `} />
                             </div>
                             <h3 className={`
                                 text-base font-bold mb-1
-                                ${scanResult === 'loading' ? 'text-blue-600' : 'text-gray-600'}
+                                ${(scanResult === 'loading' || (lastTruckUpdate && lastTruckUpdate.operation === 'muat'))
+                                    ? 'text-blue-600' : 'text-gray-600'}
                             `}>
                                 LOADING
                             </h3>
@@ -201,10 +264,30 @@ export default function Scan(){
                             <p className="text-xs text-gray-500 mb-2">
                                 Truck is being loaded with goods
                             </p>
-                            {scanResult === 'loading' && (
+                            {scanResult === 'loading' && !lastTruckUpdate && (
                                 <div className="p-2 bg-blue-100 rounded text-xs">
                                     <p className="text-blue-800 font-semibold">✓ Loading Detected</p>
                                     <p className="text-blue-600 truncate">Truck: {scannedData}</p>
+                                </div>
+                            )}
+                            {lastTruckUpdate && lastTruckUpdate.operation === 'muat' && (
+                                <div className="p-2 bg-blue-100 rounded text-xs space-y-1">
+                                    <p className="text-blue-800 font-semibold">🚛 Truck Status Updated</p>
+                                    <div className="space-y-1">
+                                        <p className="text-blue-700"><span className="font-medium">Ticket:</span> {lastTruckUpdate.ticketNumber}</p>
+                                        <p className="text-blue-700"><span className="font-medium">Plate:</span> {lastTruckUpdate.plateNumber}</p>
+                                        <p className="text-blue-700">
+                                            <span className="font-medium">Status:</span> 
+                                            <span className={`ml-1 px-2 py-1 rounded text-xs font-semibold ${
+                                                lastTruckUpdate.newStatus === 'Loading' ? 'bg-yellow-100 text-yellow-800' :
+                                                lastTruckUpdate.newStatus === 'Finished' ? 'bg-green-100 text-green-800' :
+                                                'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {lastTruckUpdate.newStatus}
+                                            </span>
+                                        </p>
+                                        <p className="text-blue-600 text-xs">Updated: {new Date(lastTruckUpdate.timestamp).toLocaleString()}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -213,23 +296,26 @@ export default function Scan(){
                     {/* Unloading Box (SU) */}
                     <div className={`
                         bg-white border-2 rounded-lg p-3 shadow-md transition-all duration-300
-                        ${scanResult === 'unloading' 
+                        ${(scanResult === 'unloading' || (lastTruckUpdate && lastTruckUpdate.operation === 'bongkar'))
                             ? 'border-green-500 bg-green-50 transform scale-105 shadow-lg' 
                             : 'border-gray-300 hover:border-green-300'}
                     `}>
                         <div className="text-center">
                             <div className={`
                                 inline-flex p-2 rounded-full mb-2
-                                ${scanResult === 'unloading' ? 'bg-green-200' : 'bg-gray-200'}
+                                ${(scanResult === 'unloading' || (lastTruckUpdate && lastTruckUpdate.operation === 'bongkar'))
+                                    ? 'bg-green-200' : 'bg-gray-200'}
                             `}>
                                 <Package className={`
                                     w-5 h-5
-                                    ${scanResult === 'unloading' ? 'text-green-600' : 'text-gray-600'}
+                                    ${(scanResult === 'unloading' || (lastTruckUpdate && lastTruckUpdate.operation === 'bongkar'))
+                                        ? 'text-green-600' : 'text-gray-600'}
                                 `} />
                             </div>
                             <h3 className={`
                                 text-base font-bold mb-1
-                                ${scanResult === 'unloading' ? 'text-green-600' : 'text-gray-600'}
+                                ${(scanResult === 'unloading' || (lastTruckUpdate && lastTruckUpdate.operation === 'bongkar'))
+                                    ? 'text-green-600' : 'text-gray-600'}
                             `}>
                                 UNLOADING
                             </h3>
@@ -237,10 +323,30 @@ export default function Scan(){
                             <p className="text-xs text-gray-500 mb-2">
                                 Truck is being unloaded of goods
                             </p>
-                            {scanResult === 'unloading' && (
+                            {scanResult === 'unloading' && !lastTruckUpdate && (
                                 <div className="p-2 bg-green-100 rounded text-xs">
                                     <p className="text-green-800 font-semibold">✓ Unloading Detected</p>
                                     <p className="text-green-600 truncate">Truck: {scannedData}</p>
+                                </div>
+                            )}
+                            {lastTruckUpdate && lastTruckUpdate.operation === 'bongkar' && (
+                                <div className="p-2 bg-green-100 rounded text-xs space-y-1">
+                                    <p className="text-green-800 font-semibold">🚛 Truck Status Updated</p>
+                                    <div className="space-y-1">
+                                        <p className="text-green-700"><span className="font-medium">Ticket:</span> {lastTruckUpdate.ticketNumber}</p>
+                                        <p className="text-green-700"><span className="font-medium">Plate:</span> {lastTruckUpdate.plateNumber}</p>
+                                        <p className="text-green-700">
+                                            <span className="font-medium">Status:</span> 
+                                            <span className={`ml-1 px-2 py-1 rounded text-xs font-semibold ${
+                                                lastTruckUpdate.newStatus === 'Loading' ? 'bg-yellow-100 text-yellow-800' :
+                                                lastTruckUpdate.newStatus === 'Finished' ? 'bg-green-100 text-green-800' :
+                                                'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {lastTruckUpdate.newStatus}
+                                            </span>
+                                        </p>
+                                        <p className="text-green-600 text-xs">Updated: {new Date(lastTruckUpdate.timestamp).toLocaleString()}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>

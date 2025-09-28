@@ -19,11 +19,11 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const {setRole} = useUser();
+  const {setRole, setName, setDepartment} = useUser();
   const navigate = useNavigate();
   const { login, loading, error: storeError, clearError } = useLoginStore();
 
-  const validRoles = ["Security", "HR", "User", "Head Department", "Director", "Super User"] as const;
+  const validRoles = ["Security", "HR", "Staff", "Head Department", "Director", "Super User"] as const;
   type Role = typeof validRoles[number];
 
   const handleLogin = async () => {
@@ -39,8 +39,10 @@ export default function LoginPage() {
       const result = await login({ username: username.trim(), password });
       
       if (result.success && result.user) {
-        const normalizedRole = result.user.role === "Staff" ? "User" : result.user.role;
+        const normalizedRole = result.user.role === "Staff" ? "Staff" : result.user.role;
         setRole(normalizedRole as Role);
+        setName(result.user.name);
+        setDepartment(result.user.department);
 
         // Navigate based on role
         switch (normalizedRole) {

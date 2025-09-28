@@ -76,15 +76,17 @@ create table trucks (
   descin VARCHAR(200), 
   descout VARCHAR(200), 
   statustruck VARCHAR(50), 
-  estimatedfinish TIMESTAMP, 
-  estimatedwaittime TIMESTAMP, 
-  actualwaittime TIMESTAMP, 
+  totalprocessloadingtime INTERVAL,  
+  actualwaittime INTERVAL, 
   startloadingtime TIMESTAMP, 
   finishtime TIMESTAMP, 
   date date,
   armada VARCHAR(50), 
   kelengkapan VARCHAR(50), 
-  jenismobil VARCHAR(50)
+  jenismobil VARCHAR(50),
+  driver_photo VARCHAR(255),
+  stnk_photo VARCHAR(255),
+  sim_photo VARCHAR(255)
 );  
 
 COPY users(name, uid, role, department, licenseplate) FROM '/docker-entrypoint-initdb.d/DK4.csv' DELIMITER ';' CSV HEADER;
@@ -109,29 +111,101 @@ INSERT INTO suratjalan (nosj, tanggal) VALUES
 ('SJ-25093-001', '2025-09-03');
 
 INSERT INTO trucks (
-  platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj, driver, supplier,
-  arrivaltime, eta, status, type, operation, goods, descin, descout, statustruck, estimatedfinish,
-  estimatedwaittime, actualwaittime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+  platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj, driver, supplier, 
+  arrivaltime, eta, status, type, operation, goods, descin, descout, statustruck, 
+  totalprocessloadingtime, actualwaittime, startloadingtime, finishtime, date, armada, 
+  kelengkapan, jenismobil, driver_photo, stnk_photo, sim_photo
 ) VALUES
-('B1234CD', 'TCK001', 'Logistics', 'DR001', '081234567890', 'SJ001', '2025-09-01', 'Andi', 'PT Sumber Makmur',
- '2025-09-01 08:00:00', '09:00', 'Waiting', 'Inbound', 'bongkar', 'Cement', 'Truck arrived at gate', 'Waiting for loading', 'Queue',
- '2025-09-01 12:00:00', '2025-09-01 10:00:00', '2025-09-01 10:15:00', '2025-09-01 10:20:00', '2025-09-01 11:50:00', '2025-09-01', 'Hino', 'Complete', 'Tronton'),
+-- 1
+('B 1234 CD', 'NT001', 'HPC', '3172011111110001', '081234567890', 'SJ001', '2025-09-10', 'Andi Saputra', 'PT Indo Cargo',
+ '2025-09-10 08:10:00', '2 jam', 'Waiting', 'Inbound', 'bongkar', 'Semen', 'Masuk gerbang 08:05', 'Menuju gudang A', 'Waiting',
+ '02:00:00'::interval, '00:50:00'::interval, '2025-09-10 09:00:00', '2025-09-10 11:00:00', '2025-09-10', 'Armada A',
+ 'lengkap', 'Container', 'driver1.jpg', 'stnk1.jpg', 'sim1.jpg'),
 
-('B5678EF', 'TCK002', 'Production', 'DR002', '081298765432', 'SJ002', '2025-09-02', 'Budi', 'PT Sentosa',
- '2025-09-02 07:45:00', '08:30', 'Loading', 'Outbound', 'muat', 'Steel', 'Arrived warehouse', 'Loading in progress', 'Loading',
- '2025-09-02 11:30:00', '2025-09-02 08:30:00', '2025-09-02 09:00:00', '2025-09-02 09:10:00', '2025-09-02 11:00:00', '2025-09-02', 'Isuzu', 'Incomplete', 'Wingbox'),
+-- 2
+('B 5678 EF', 'NT002', 'PT', '3172011111110002', '081298765432', 'SJ002', '2025-09-11', 'Budi Santoso', 'PT Logistik Jaya',
+ '2025-09-11 07:45:00', '3 jam', 'Loading', 'Outbound', 'muat', 'Besi Baja', 'Masuk gerbang 07:40', 'Proses muat', 'Loading',
+ '03:05:00'::interval, '00:30:00'::interval, '2025-09-11 08:15:00', '2025-09-11 11:20:00', '2025-09-11', 'Armada B',
+ 'lengkap', 'Wingbox', 'driver2.jpg', 'stnk2.jpg', 'sim2.jpg'),
 
-('B9101GH', 'TCK003', 'Warehouse', 'DR003', '081255544433', 'SJ003', '2025-09-03', 'Cahyo', 'PT Berkah',
- '2025-09-03 09:10:00', '10:00', 'Waiting', 'Inbound', 'bongkar', 'Sand', 'Arrived at warehouse', 'Waiting schedule', 'Queue',
- '2025-09-03 13:00:00', '2025-09-03 11:00:00', '2025-09-03 11:20:00', '2025-09-03 11:30:00', '2025-09-03 12:45:00', '2025-09-03', 'Mitsubishi', 'Complete', 'Tronton'),
+-- 3
+('B 9012 GH', 'NT003', 'HPC', '3172011111110003', '082112345678', 'SJ003', '2025-09-12', 'Cahyo Nugroho', 'PT Sumber Makmur',
+ '2025-09-12 09:20:00', '1.5 jam', 'Finished', 'Inbound', 'bongkar', 'Pupuk', 'Masuk gerbang 09:15', 'Selesai 11:00', 'done',
+ '01:20:00'::interval, '00:15:00'::interval, '2025-09-12 09:35:00', '2025-09-12 10:55:00', '2025-09-12', 'Armada C',
+ 'kurang', 'Dumptruck', 'driver3.jpg', 'stnk3.jpg', 'sim3.jpg'),
 
-('B2233IJ', 'TCK004', 'Logistics', 'DR004', '081288899900', 'SJ004', '2025-09-04', 'Dedi', 'PT Jaya Abadi',
- '2025-09-04 08:30:00', '09:15', 'Finished', 'Outbound', 'muat', 'Coal', 'Checked in', 'Left site', 'Completed',
- '2025-09-04 12:30:00', '2025-09-04 09:30:00', '2025-09-04 09:40:00', '2025-09-04 09:50:00', '2025-09-04 11:40:00', '2025-09-04', 'Hino', 'Complete', 'Dumptruck'),
+-- 4
+('B 3456 IJ', 'NT004', 'PT', '3172011111110004', '082245678901', 'SJ004', '2025-09-13', 'Dedi Kurniawan', 'PT Sentosa',
+ '2025-09-13 10:00:00', '2 jam', 'Waiting', 'Outbound', 'muat', 'Batu Bara', 'Masuk gerbang 09:55', 'Menunggu loading', 'Waiting',
+ '02:20:00'::interval, '00:30:00'::interval, '2025-09-13 10:30:00', '2025-09-13 12:50:00', '2025-09-13', 'Armada D',
+ 'lengkap', 'Colt', 'driver4.jpg', 'stnk4.jpg', 'sim4.jpg'),
 
-('B3344KL', 'TCK005', 'Production', 'DR005', '081277766655', 'SJ005', '2025-09-05', 'Eko', 'PT Bintang',
- '2025-09-05 07:50:00', '08:20', 'Waiting', 'Inbound', 'bongkar', 'Limestone', 'At main gate', 'Queued for unloading', 'Queue',
- '2025-09-05 11:50:00', '2025-09-05 09:00:00', '2025-09-05 09:10:00', '2025-09-05 09:15:00', '2025-09-05 11:20:00', '2025-09-10', 'Fuso', 'Complete', 'Wingbox');
+-- 5
+('B 7890 KL', 'NT005', 'HPC', '3172011111110005', '083312345678', 'SJ005', '2025-09-14', 'Eko Prasetyo', 'PT Bina Kargo',
+ '2025-09-14 08:40:00', '2.5 jam', 'Waiting', 'Inbound', 'bongkar', 'Gula', 'Masuk gerbang 08:35', 'Menuju gudang B', 'Waiting',
+ '02:10:00'::interval, '00:20:00'::interval, '2025-09-14 09:00:00', '2025-09-14 11:10:00', '2025-09-14', 'Armada E',
+ 'lengkap', 'Fuso', 'driver5.jpg', 'stnk5.jpg', 'sim5.jpg'),
+
+-- 6
+('B 1122 MN', 'NT006', 'PT', '3172011111110006', '083398765432', 'SJ006', '2025-09-15', 'Fajar Ramadhan', 'PT Logistik Prima',
+ '2025-09-15 07:50:00', '3 jam', 'Loading', 'engkel', 'muat', 'Beras', 'Masuk gerbang 07:45', 'Sedang muat', 'Loading',
+ '03:20:00'::interval, '00:30:00'::interval, '2025-09-15 08:20:00', '2025-09-15 11:40:00', '2025-09-15', 'Armada F',
+ 'kurang', 'Container', 'driver6.jpg', 'stnk6.jpg', 'sim6.jpg'),
+
+-- 7
+('B 3344 OP', 'NT007', 'HPC', '3172011111110007', '081311122233', 'SJ007', '2025-09-16', 'Gilang Permana', 'PT Multi Cargo',
+ '2025-09-16 09:15:00', '1.5 jam', 'Finished', 'pickup', 'bongkar', 'Pakan Ternak', 'Masuk gerbang 09:10', 'Proses selesai', 'done',
+ '01:10:00'::interval, '00:20:00'::interval, '2025-09-16 09:35:00', '2025-09-16 10:45:00', '2025-09-16', 'Armada G',
+ 'lengkap', 'Wingbox', 'driver7.jpg', 'stnk7.jpg', 'sim7.jpg'),
+
+-- 8
+('B 5566 QR', 'NT008', 'PT', '3172011111110008', '081399988877', 'SJ008', '2025-09-17', 'Hariyanto', 'PT Cargo Nusantara',
+ '2025-09-17 10:30:00', '2 jam', 'Waiting', 'tronton', 'muat', 'Kayu', 'Masuk gerbang 10:25', 'Menunggu muat', 'Waiting',
+ '02:15:00'::interval, '00:20:00'::interval, '2025-09-17 10:50:00', '2025-09-17 13:05:00', '2025-09-17', 'Armada H',
+ 'lengkap', 'Dumptruck', 'driver8.jpg', 'stnk8.jpg', 'sim8.jpg'),
+
+-- 9
+('B 7788 ST', 'NT009', 'HPC', '3172011111110009', '082211122233', 'SJ009', '2025-09-18', 'Imam Setiawan', 'PT Fast Cargo',
+ '2025-09-18 07:30:00', '2.5 jam', 'Waiting', 'engkel', 'bongkar', 'Pipa Besi', 'Masuk gerbang 07:25', 'Menuju area bongkar', 'Waiting',
+ '02:25:00'::interval, '00:30:00'::interval, '2025-09-18 08:00:00', '2025-09-18 10:25:00', '2025-09-18', 'Armada I',
+ 'kurang', 'Colt', 'driver9.jpg', 'stnk9.jpg', 'sim9.jpg'),
+
+-- 10
+('B 9900 UV', 'NT010', 'PT', '3172011111110010', '082266677788', 'SJ010', '2025-09-19', 'Joko Widodo', 'PT Prima Transport',
+ '2025-09-19 08:00:00', '3 jam', 'Loading', 'fuso', 'muat', 'Minyak Goreng', 'Masuk gerbang 07:55', 'Proses loading', 'Loading',
+ '03:00:00'::interval, '00:25:00'::interval, '2025-09-19 08:25:00', '2025-09-19 11:25:00', '2025-09-19', 'Armada J',
+ 'lengkap', 'Fuso', 'driver10.jpg', 'stnk10.jpg', 'sim10.jpg'),
+
+-- 11
+('B 2233 WX', 'NT011', 'HPC', '3172011111110011', '081322233344', 'SJ011', '2025-09-20', 'Kurniawan', 'PT Sumber Daya',
+ '2025-09-20 09:10:00', '1.5 jam', 'Finished', 'engkel', 'bongkar', 'Keramik', 'Masuk gerbang 09:05', 'Selesai 10:40', 'done',
+ '01:25:00'::interval, '00:25:00'::interval, '2025-09-20 09:35:00', '2025-09-20 11:00:00', '2025-09-20', 'Armada K',
+ 'lengkap', 'History Operation', 'driver11.jpg', 'stnk11.jpg', 'sim11.jpg'),
+
+-- 12
+('B 4455 YZ', 'NT012', 'PT', '3172011111110012', '081366677799', 'SJ012', '2025-09-21', 'Lukman Hakim', 'PT Cargo Cepat',
+ '2025-09-21 07:50:00', '2 jam', 'Waiting', 'pickup', 'muat', 'Aluminium', 'Masuk gerbang 07:45', 'Menunggu loading', 'Waiting',
+ '02:15:00'::interval, '00:25:00'::interval, '2025-09-21 08:15:00', '2025-09-21 10:30:00', '2025-09-21', 'Armada L',
+ 'kurang', 'Container', 'driver12.jpg', 'stnk12.jpg', 'sim12.jpg'),
+
+-- 13
+('B 6677 ZA', 'NT013', 'HPC', '3172011111110013', '082277788899', 'SJ013', '2025-09-22', 'Mulyadi', 'PT Makmur Bersama',
+ '2025-09-22 08:30:00', '2.5 jam', 'Waiting', 'tronton', 'bongkar', 'Gandum', 'Masuk gerbang 08:25', 'Menuju gudang C', 'Waiting',
+ '02:25:00'::interval, '00:30:00'::interval, '2025-09-22 09:00:00', '2025-09-22 11:25:00', '2025-09-22', 'Armada M',
+ 'lengkap', 'Wingbox', 'driver13.jpg', 'stnk13.jpg', 'sim13.jpg'),
+
+-- 14
+('B 8899 BC', 'NT014', 'PT', '3172011111110014', '083311122233', 'SJ014', '2025-09-23', 'Nugraha', 'PT Transportasi Jaya',
+ '2025-09-23 07:40:00', '3 jam', 'Loading', 'engkel', 'muat', 'Kertas', 'Masuk gerbang 07:35', 'Proses muat', 'Loading',
+ '02:55:00'::interval, '00:30:00'::interval, '2025-09-23 08:10:00', '2025-09-23 11:05:00', '2025-09-23', 'Armada N',
+ 'kurang', 'Dumptruck', 'driver14.jpg', 'stnk14.jpg', 'sim14.jpg'),
+
+-- 15
+('B 4455 DE', 'NT015', 'HPC', '3172011111110015', '083344455566', 'SJ015', '2025-09-24', 'Oscar Pranata', 'PT Berkah Abadi',
+ '2025-09-24 09:00:00', '1.5 jam', 'Finished', 'pickup', 'bongkar', 'Tepung', 'Masuk gerbang 08:55', 'Selesai 10:30', 'done',
+ '01:15:00'::interval, '00:10:00'::interval, '2025-09-24 09:10:00', '2025-09-24 10:25:00', '2025-09-24', 'Armada O',
+ 'lengkap', 'Colt', 'driver15.jpg', 'stnk15.jpg', 'sim15.jpg');
+
 -- -- Dummy users
 -- INSERT INTO users (name, uid, licenseplate, department, role) VALUES
 -- ('Andi Wijaya',     'UID001', 'B 1234 ABC', 'Engineering', 'Staff'),
@@ -142,8 +216,9 @@ INSERT INTO trucks (
 -- ('Marcello',        'CD131D06', 'D 1235 AD', 'IT',     'Staff'),
 -- ('Test 2',          '9B023306', 'D 1234 AD', 'IT',     'Head Department');
 
--- INSERT INTO userlogin (name, username, password, department, role) VALUES
--- ('Security',     'Security', 'security123', 'Security', 'Security'),
+INSERT INTO userlogin (name, username, password, department, role) VALUES
+('Security',     'Security', 'security123', 'Security', 'Security'),
+('MARCELLO OCTAVYO ANUGRAHANTO',     'cello', 'cello123', 'IT', 'Staff');
 
 
 -- ATTENDANCE_LOGS
@@ -153,23 +228,23 @@ INSERT INTO attendance_logs (uid, licenseplate, image_path, datein, dateout, sta
 -- ('UID003', 'F9876XYZ', 'UID003-in.jpg', '2025-08-03 07:55:00', NULL, 'in');
 
 -- LEAVE_PERMISSION
-INSERT INTO leave_permission (
-  name, uid, licenseplate, department, role, date, exittime, returntime, reason,
-  approval, statusfromhr, statusfromdept, statusfromdirector
-) VALUES
-(
-  'Andi Wijaya', 'UID001', 'B1234ABC', 'Engineering', 'Staff',
-  '2025-08-03', '2025-08-03 10:00:00', '2025-08-03 12:00:00',
-  'Ke dokter gigi', 'approved', 'approved', 'approved', 'pending'
-),
-(
-  'Budi Santoso', 'UID002', 'D5678DEF', 'HR', 'Staff',
-  '2025-08-02', '2025-08-02 14:30:00', '2025-08-02 16:00:00',
-  'Ada urusan keluarga', 'pending', 'pending', 'approved', 'pending'
-),
-(
-  'Clara Sari', 'UID003', 'F9876XYZ', 'Finance', 'Head Department',
-  '2025-08-01', '2025-08-01 09:00:00', '2025-08-01 11:00:00',
-  'Meeting eksternal', 'rejected', 'approved', 'rejected', 'rejected'
-)
-ON CONFLICT DO NOTHING;
+-- INSERT INTO leave_permission (
+--   name, uid, licenseplate, department, role, date, exittime, returntime, reason,
+--   approval, statusfromhr, statusfromdept, statusfromdirector
+-- ) VALUES
+-- (
+--   'Andi Wijaya', 'UID001', 'B1234ABC', 'Engineering', 'Staff',
+--   '2025-08-03', '2025-08-03 10:00:00', '2025-08-03 12:00:00',
+--   'Ke dokter gigi', 'approved', 'approved', 'approved', 'pending'
+-- ),
+-- (
+--   'Budi Santoso', 'UID002', 'D5678DEF', 'HR', 'Staff',
+--   '2025-08-02', '2025-08-02 14:30:00', '2025-08-02 16:00:00',
+--   'Ada urusan keluarga', 'pending', 'pending', 'approved', 'pending'
+-- ),
+-- (
+--   'Clara Sari', 'UID003', 'F9876XYZ', 'Finance', 'Head Department',
+--   '2025-08-01', '2025-08-01 09:00:00', '2025-08-01 11:00:00',
+--   'Meeting eksternal', 'rejected', 'approved', 'rejected', 'rejected'
+-- )
+-- ON CONFLICT DO NOTHING;

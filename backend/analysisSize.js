@@ -7,7 +7,6 @@ function getFolderSize(folderPath) {
   if (!fs.existsSync(folderPath)) return 0;
   const stats = fs.statSync(folderPath);
 
-  // kalau file biasa → langsung return size
   if (!stats.isDirectory()) {
     return stats.size;
   }

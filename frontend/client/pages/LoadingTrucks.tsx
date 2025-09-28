@@ -7,7 +7,11 @@
 //         description="This page will be use for seeing Loading Trucks of the Trucks from Internal or External."
 //         />
 //     )
-// }
+// }\
+
+// TODO create a button print on detail
+// TODO Make it Responsive for mobile 
+
 
 import Clock2 from "../components/dashboard/clock"
 import { PackageOpen, Eye, Edit, Save, X, Search } from "lucide-react"
@@ -16,14 +20,15 @@ import { useDashboardStore } from "@/store/dashboardStore"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { useTrucksWithFetch, TruckRecord } from "../store/truckStore"
+import { useFormatTime } from "@/hooks/trucks/useFormatTime"
 
-export default function LoadingTrucks(){
+export default function LoadingTrucks() {
     // State untuk filtering
     const [selectedStatus, setSelectedStatus] = useState<"all" | "Waiting" | "Loading" | "Finished">("all");
-    
+    const { formatTimeForInput, formatTimeForDatabase } = useFormatTime();
     // State untuk search
     const [searchTerm, setSearchTerm] = useState("");
-    
+
     // State untuk modal dan editing
     const [selectedTruck, setSelectedTruck] = useState<TruckRecord | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -33,7 +38,7 @@ export default function LoadingTrucks(){
     // State untuk rekomendasi surat jalan (data dari database)
     const [suratJalanRecommendations, setSuratJalanRecommendations] = useState<string[]>([]);
     const [showSuratJalanDropdown, setShowSuratJalanDropdown] = useState(false);
-    
+
     const formatIsoForDisplay = (input?: string | null) => {
         if (!input) return '';
         if (typeof input !== 'string') return String(input);
@@ -41,6 +46,45 @@ export default function LoadingTrucks(){
         s = s.replace(/\.\d+Z?$/, '');
         s = s.replace(/Z$/, '');
         return s;
+    };
+
+    // Helper function untuk format INTERVAL data
+    const formatIntervalDisplay = (interval?: string | number | null | any) => {
+        console.log('formatIntervalDisplay input:', interval, 'type:', typeof interval);
+        if (!interval) return '-';
+        // Handle object case (PostgreSQL interval objects)
+        if (typeof interval === 'object' && interval !== null) {
+            console.log('Object detected:', interval);
+            // Handle PostgreSQL interval object
+            if (interval.minutes !== undefined || interval.hours !== undefined || interval.seconds !== undefined) {
+                const hours = interval.hours || 0;
+                const minutes = interval.minutes || 0;
+                const seconds = interval.seconds || 0;
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}`;
+            }
+            // Handle other object formats
+            if (interval.toString && typeof interval.toString === 'function') {
+                const stringValue = interval.toString();
+                console.log('Object toString:', stringValue);
+                if (stringValue !== '[object Object]') {
+                    return stringValue;
+                }
+            }
+            return '-';
+        }
+        if (typeof interval === 'string') {
+            if (interval.includes(':')) {
+                // Format INTERVAL (HH:MM:SS)
+                return interval;
+            }
+        }
+
+        if (typeof interval === 'number') {
+            // Format number (minutes) - legacy data
+            return `${interval} minutes`;
+        }
+
+        return String(interval);
     };
 
     const {
@@ -86,13 +130,13 @@ export default function LoadingTrucks(){
     }, [isEditModalOpen]);
 
     // Calculate counts untuk setiap status
-    const pendingCount = trucks.filter(truck => 
+    const pendingCount = trucks.filter(truck =>
         truck.status === "Waiting" || truck.status === "pending"
     ).length;
-    const loadingCount = trucks.filter(truck => 
+    const loadingCount = trucks.filter(truck =>
         truck.status === "Loading" || truck.status === "loading"
     ).length;
-    const finishedCount = trucks.filter(truck => 
+    const finishedCount = trucks.filter(truck =>
         truck.status === "Finished" || truck.status === "finished"
     ).length;
 
@@ -159,27 +203,59 @@ export default function LoadingTrucks(){
     const handleSaveEdit = async () => {
         if (editFormData) {
             try {
+                console.log('=== LOADING TRUCKS SAVE EDIT ===');
+                console.log('Edit form data:', editFormData);
+                const cleanedEditData = { ...editFormData };
+                // delete cleanedEditData.estimatedTime;
+                delete cleanedEditData.quantity;
+                delete cleanedEditData.unit;
+
+                (['arrivalTime', 'startLoadingTime', 'finishTime', 'eta', 'tglsj', 'date'] as (keyof TruckRecord)[]).forEach(field => {
+                    if (cleanedEditData[field] === "") (cleanedEditData as any)[field] = null;
+                });
+
+                console.log('Cleaned edit data:', cleanedEditData);
+
                 // Simpan nomor surat jalan baru ke database jika ada
-                if (editFormData.nosj && editFormData.nosj.trim()) {    
-                    await saveSuratJalanToDatabase(editFormData.nosj.trim());
+                if (cleanedEditData.nosj && cleanedEditData.nosj.trim()) {
+                    console.log('Saving surat jalan:', cleanedEditData.nosj.trim());
+                    await saveSuratJalanToDatabase(cleanedEditData.nosj.trim().toUpperCase());
                 }
-                
-                await updateTruckAPI(editFormData.id, editFormData);
+
+                console.log('Calling updateTruckAPI with ID:', cleanedEditData.id);
+                await updateTruckAPI(cleanedEditData.id, cleanedEditData);
+                console.log('Update successful!');
+
                 setIsEditModalOpen(false);
                 setEditFormData(null);
                 setSuratJalanRecommendations([]); // Clear recommendations
                 setShowSuratJalanDropdown(false);
             } catch (error) {
                 console.error('Error updating truck:', error);
+                // console.error('Error details:', error.response?.data);
+                // console.error('Error status:', error.response?.status);
+                // alert(`Error updating truck: ${error.response?.data?.error || error.message}`);
             }
         }
     };
 
-    const handleFormChange = (field: keyof TruckRecord, value: string) => {
+    const handleFormChange = (field: keyof TruckRecord, value: string | null | undefined) => {
         if (editFormData) {
+            const safeValue = typeof value === 'string' ? value : '';
+            let processedValue = safeValue;
+            if (field === 'nosj') {
+                processedValue = safeValue.trim().toUpperCase();
+            }
+            // if (field === 'arrivalTime' || field === 'startLoadingTime' || field === 'finishTime') {
+            //     const existingValue = editFormData[field];
+            //     processedValue = formatTimeForDatabase(
+            //         safeValue,
+            //         String(existingValue ?? '')
+            //     );
+            // }
             setEditFormData({
                 ...editFormData,
-                [field]: value
+                [field]: processedValue
             });
         }
     };
@@ -207,7 +283,7 @@ export default function LoadingTrucks(){
         return (
             <div className="relative h-[calc(80vh-1rem)] p-3">
                 <div className="absolute right-1 top-1">
-                    <Clock2/>
+                    <Clock2 />
                 </div>
                 <div className="flex items-center justify-center h-64">
                     <div className="text-lg">Loading trucks data from database...</div>
@@ -220,7 +296,7 @@ export default function LoadingTrucks(){
         return (
             <div className="relative h-[calc(80vh-1rem)] p-3">
                 <div className="absolute right-1 top-1">
-                    <Clock2/>
+                    <Clock2 />
                 </div>
                 <div className="flex flex-col items-center justify-center h-64">
                     <div className="text-red-600 mb-4">Error loading trucks: {error}</div>
@@ -235,18 +311,20 @@ export default function LoadingTrucks(){
     // Filter trucks berdasarkan search term dan status
     const filteredTrucks = trucks.filter(truck => {
         // Filter berdasarkan search term
-        const matchesSearch = !searchTerm || 
+        const matchesSearch = !searchTerm ||
             truck.plateNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             truck.driver?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            truck.goods?.toLowerCase().includes(searchTerm.toLowerCase());
-        
+            truck.goods?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            truck.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
+
+
         // Filter berdasarkan status
-        const matchesStatus = selectedStatus === "all" || 
+        const matchesStatus = selectedStatus === "all" ||
             truck.status === selectedStatus ||
             (selectedStatus === "Waiting" && (truck.status === "pending" || truck.status === "Waiting")) ||
             (selectedStatus === "Loading" && (truck.status === "loading" || truck.status === "Loading")) ||
             (selectedStatus === "Finished" && (truck.status === "finished" || truck.status === "Finished"));
-        
+
         return matchesSearch && matchesStatus;
     });
 
@@ -264,7 +342,7 @@ export default function LoadingTrucks(){
             {
                 id: 2,
                 label: "Loading",
-                status: "Loading" as const, 
+                status: "Loading" as const,
                 color: "bg-blue-500",
                 borderColor: "border-blue-500",
                 count: (<span>{loadingCount} <span className="text-sm opacity-70 italic">Truck</span></span>),
@@ -274,7 +352,7 @@ export default function LoadingTrucks(){
                 id: 3,
                 label: "Finished",
                 status: "Finished" as const,
-                color: "bg-green-500", 
+                color: "bg-green-500",
                 borderColor: "border-green-500",
                 count: (<span>{finishedCount} <span className="text-sm opacity-70 italic">Truck</span></span>),
                 isActive: selectedStatus === "Finished"
@@ -291,47 +369,43 @@ export default function LoadingTrucks(){
                     {/* Progress line */}
                     <div className="absolute top-4 left-0 w-full h-0.5 bg-gray-200 z-0"></div>
                     <div className="absolute top-4 left-0 w-full h-0.5 bg-blue-500 z-0"></div>
-                    
+
                     {steps.map((step, index) => (
-                        <div 
-                            key={step.id} 
+                        <div
+                            key={step.id}
                             className="flex flex-col items-center relative z-10 cursor-pointer group"
                             onClick={() => handleStepClick(step.status)}
                         >
                             {/* Step circle */}
-                            <div className={`w-8 h-8 rounded-full ${step.color} border-4 ${
-                                step.isActive ? 'border-gray-800' : 'border-white'
-                            } shadow-lg flex items-center justify-center transition-all duration-200 group-hover:scale-110 ${
-                                step.isActive ? 'ring-2 ring-gray-400' : ''
-                            }`}>
+                            <div className={`w-8 h-8 rounded-full ${step.color} border-4 ${step.isActive ? 'border-gray-800' : 'border-white'
+                                } shadow-lg flex items-center justify-center transition-all duration-200 group-hover:scale-110 ${step.isActive ? 'ring-2 ring-gray-400' : ''
+                                }`}>
                                 <span className="text-white font-bold text-sm">{step.id}</span>
                             </div>
-                            
+
                             {/* Step label */}
                             <div className="mt-2 text-center">
-                                <p className={`text-sm font-medium ${
-                                    step.isActive ? 'text-gray-900 font-bold' : 'text-gray-700'
-                                }`}>
+                                <p className={`text-sm font-medium ${step.isActive ? 'text-gray-900 font-bold' : 'text-gray-700'
+                                    }`}>
                                     {step.label}
                                 </p>
-                                <p className={`text-lg font-bold ${step.color.replace('bg-', 'text-')} ${
-                                    step.isActive ? 'text-xl' : ''
-                                }`}>
+                                <p className={`text-lg font-bold ${step.color.replace('bg-', 'text-')} ${step.isActive ? 'text-xl' : ''
+                                    }`}>
                                     {step.count}
                                 </p>
                             </div>
                         </div>
                     ))}
                 </div>
-                
+
                 {/* Filter indicator */}
                 <div className="text-center mt-4">
                     {selectedStatus === "all" ? (
                         <p className="text-sm text-gray-500">Showing all trucks</p>
                     ) : (
                         <p className="text-sm text-gray-700">
-                            Showing <span className="font-semibold">{selectedStatus}</span> trucks 
-                            <button 
+                            Showing <span className="font-semibold">{selectedStatus}</span> trucks
+                            <button
                                 onClick={() => setSelectedStatus("all")}
                                 className="ml-2 text-blue-600 hover:text-blue-800 text-xs underline"
                             >
@@ -344,18 +418,18 @@ export default function LoadingTrucks(){
         );
     };
 
-    return(
+    return (
         <div className="relative h-[calc(80vh-1rem)] p-3">
             <div className="absolute right-1 top-1">
-                <Clock2/>
+                <Clock2 />
             </div>
-            
+
             {/* Header */}
             <div className="mb-4">
                 <div className="flex items-center gap-3 mb-4">
-                    <h1 className="text-2xl font-bold text-gray-800">Loading Trucks (Muat)</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">Loading Trucks / <span className="text-green-600 italic opacity-75">Muat</span></h1>
                 </div>
-                
+
                 {/* Progress Bar */}
                 <ProgressBar />
             </div>
@@ -385,7 +459,7 @@ export default function LoadingTrucks(){
                         </button>
                     )}
                 </div>
-                
+
                 {/* Search Results Summary */}
                 {searchTerm && (
                     <div className="mt-2 text-sm text-gray-600">
@@ -397,9 +471,9 @@ export default function LoadingTrucks(){
 
             {/* Truck Table */}
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto xl:h-[50vh] sm:h-[50vh] overflow-y-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Plate Number
@@ -410,8 +484,11 @@ export default function LoadingTrucks(){
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Goods
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Operation
+                                </th> */}
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Supplier
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
@@ -427,7 +504,7 @@ export default function LoadingTrucks(){
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-gray-200 h-[20vh]">
                             {filteredTrucks.map((truck) => (
                                 <tr key={truck.id} className="hover:bg-gray-50">
                                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -440,16 +517,15 @@ export default function LoadingTrucks(){
                                         {truck.goods}
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                            Muat
+                                        <span className="inline-flex text-xs font-semibold text-purple-600">
+                                            {truck.supplier}
                                         </span>
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap">
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                            truck.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :
+                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${truck.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :
                                             truck.status === 'Loading' ? 'bg-blue-100 text-blue-800' :
-                                            'bg-green-100 text-green-800'
-                                        }`}>
+                                                'bg-green-100 text-green-800'
+                                            }`}>
                                             {truck.status.toUpperCase()}
                                         </span>
                                     </td>
@@ -484,7 +560,7 @@ export default function LoadingTrucks(){
                         </tbody>
                     </table>
                 </div>
-                
+
                 {/* No data message */}
                 {filteredTrucks.length === 0 && (
                     <div className="text-center py-8">
@@ -566,11 +642,10 @@ export default function LoadingTrucks(){
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Status</label>
-                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                        selectedTruck.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :
+                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${selectedTruck.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :
                                         selectedTruck.status === 'Loading' ? 'bg-blue-100 text-blue-800' :
-                                        'bg-green-100 text-green-800'
-                                    }`}>
+                                            'bg-green-100 text-green-800'
+                                        }`}>
                                         {selectedTruck.status.toUpperCase()}
                                     </span>
                                 </div>
@@ -585,10 +660,6 @@ export default function LoadingTrucks(){
                                     <p className="text-sm text-gray-900">{selectedTruck.eta || '-'}</p>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-gray-500">Estimated Finish</label>
-                                    <p className="text-sm text-gray-900">{formatIsoForDisplay(selectedTruck.estimatedFinish) || '-'}</p>
-                                </div>
-                                <div>
                                     <label className="text-sm font-medium text-gray-500">Start Loading Time</label>
                                     <p className="text-sm text-gray-900">{formatIsoForDisplay(selectedTruck.startLoadingTime) || '-'}</p>
                                 </div>
@@ -597,12 +668,12 @@ export default function LoadingTrucks(){
                                     <p className="text-sm text-gray-900">{formatIsoForDisplay(selectedTruck.finishTime) || '-'}</p>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-gray-500">Estimated Wait Time</label>
-                                    <p className="text-sm text-gray-900">{selectedTruck.estimatedWaitTime ?? '-'} minutes</p>
+                                    <label className="text-sm font-medium text-gray-500">Total Process Loading Time</label>
+                                    <p className="text-sm text-gray-900">{formatIntervalDisplay(selectedTruck.totalProcessLoadingTime)}</p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Actual Wait Time</label>
-                                    <p className="text-sm text-gray-900">{selectedTruck.actualWaitTime || '-'} minutes</p>
+                                    <p className="text-sm text-gray-900">{formatIntervalDisplay(selectedTruck.actualWaitTime)}</p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Truck Status</label>
@@ -692,10 +763,10 @@ export default function LoadingTrucks(){
                                 <div className="relative">
                                     <div className="flex justify-between items-center mb-1">
                                         <label className="block text-sm font-medium text-gray-700">
-                                            Nomor Surat Jalan 
-                                            <span className="text-blue-600 text-xs ml-1">Rekomendasi dari Database</span>
+                                            Nomor Surat Jalan
+                                            {/* <span className="text-blue-600 text-xs ml-1">Rekomendasi dari Database</span> */}
                                         </label>
-                                        <button
+                                        {/* <button
                                             type="button"
                                             onClick={() => {
                                                 console.log('🔄 Manual refresh recommendations');
@@ -704,29 +775,38 @@ export default function LoadingTrucks(){
                                             className="text-xs text-blue-600 hover:text-blue-800 underline"
                                         >
                                             🔄 Refresh
-                                        </button>
+                                        </button> */}
                                     </div>
                                     <div className="relative">
                                         <input
                                             type="text"
-                                            value={editFormData.nosj}
-                                            onChange={(e) => handleFormChange('nosj', e.target.value)}
-                                            onFocus={() => {
-                                                console.log('🎯 Input focused, showing dropdown');
-                                                console.log('📊 Current recommendations:', suratJalanRecommendations);
-                                                console.log('🔍 Recommendations count:', suratJalanRecommendations.length);
-                                                setShowSuratJalanDropdown(true);
-                                                
-                                                // Load recommendations if not already loaded
-                                                if (suratJalanRecommendations.length === 0) {
-                                                    console.log('🔄 No recommendations found, loading...');
-                                                    loadSuratJalanRecommendations();
-                                                }
+                                            value={editFormData.nosj || ""}
+                                            onChange={(e) => {
+                                                const value = e.target.value.trim().toUpperCase();
+                                                handleFormChange('nosj', value);
+                                            }
+                                            }
+                                            onBlur={(e) => {
+                                                const value = e.target.value.trim().toUpperCase();
+                                                handleFormChange('nosj', value);
                                             }}
+                                            // onFocus={() => {
+                                            //     console.log('🎯 Input focused, showing dropdown');
+                                            //     console.log('📊 Current recommendations:', suratJalanRecommendations);
+                                            //     console.log('🔍 Recommendations count:', suratJalanRecommendations.length);
+                                            //     setShowSuratJalanDropdown(true);
+
+                                            //     // Load recommendations if not already loaded
+                                            //     if (suratJalanRecommendations.length === 0) {
+                                            //         console.log('🔄 No recommendations found, loading...');
+                                            //         loadSuratJalanRecommendations();
+                                            //     }
+                                            // }}
+                                            style={{ textTransform: 'uppercase' }}
                                             className="surat-jalan-input w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Ketik atau pilih dari rekomendasi..."
+                                            placeholder="Contoh: SJ/VII/2093/UB"
                                         />
-                                        {showSuratJalanDropdown && (
+                                        {/* {showSuratJalanDropdown && (
                                             <div className="surat-jalan-dropdown absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
                                                 <div className="p-2 bg-blue-50 border-b text-xs font-medium text-blue-700">
                                                     Rekomendasi:
@@ -758,21 +838,21 @@ export default function LoadingTrucks(){
                                                     ✕ Tutup Rekomendasi
                                                 </button>
                                             </div>
-                                        )}
+                                        )} */}
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">
+                                    {/* <p className="text-xs text-gray-500 mt-1">
                                         Rekomendasi berdasarkan data historis dari database
                                         <span className="ml-2 text-blue-500">
                                             ({suratJalanRecommendations.length} data tersedia)
                                         </span>
-                                    </p>
+                                    </p> */}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                                     <select
                                         value={editFormData.department}
                                         onChange={(e) => handleFormChange('department', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     >
                                         <option value="HPC">HPC</option>
                                         <option value="PT">PT</option>
@@ -783,24 +863,14 @@ export default function LoadingTrucks(){
                                     <select
                                         value={editFormData.status}
                                         onChange={(e) => handleFormChange('status', e.target.value as "pending" | "loading" | "finished")}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     >
                                         <option value="pending">Pending</option>
                                         <option value="loading">Loading</option>
                                         <option value="finished">Finished</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                    <select
-                                        value={editFormData.type}
-                                        onChange={(e) => handleFormChange('type', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="internal">Internal</option>
-                                        <option value="external">External</option>
-                                    </select>
-                                </div>
+                                
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Goods</label>
                                     <input
@@ -825,9 +895,10 @@ export default function LoadingTrucks(){
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Arrival Time</label>
                                     <input
                                         type="time"
-                                        value={editFormData.arrivalTime}
+                                        value={formatTimeForInput(editFormData?.arrivalTime) || ""}
                                         onChange={(e) => handleFormChange('arrivalTime', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 border border-gray-300 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled
                                     />
                                 </div>
                                 <div>
@@ -836,25 +907,8 @@ export default function LoadingTrucks(){
                                         type="time"
                                         value={editFormData.eta || ''}
                                         onChange={(e) => handleFormChange('eta', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Finish</label>
-                                    <input
-                                        type="time"
-                                        value={editFormData.estimatedFinish || ''}
-                                        onChange={(e) => handleFormChange('estimatedFinish', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Wait Time (minutes)</label>
-                                    <input
-                                        type="number"
-                                        value={editFormData.estimatedWaitTime}
-                                        onChange={(e) => handleFormChange('estimatedWaitTime', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 border border-gray-30 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled
                                     />
                                 </div>
                                 <div>
@@ -862,7 +916,7 @@ export default function LoadingTrucks(){
                                     <select
                                         value={editFormData.statustruck}
                                         onChange={(e) => handleFormChange('statustruck', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     >
                                         <option value="kosong">Kosong</option>
                                         <option value="isi">Isi</option>
@@ -885,6 +939,17 @@ export default function LoadingTrucks(){
                                         onChange={(e) => handleFormChange('jenismobil', e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                    <select
+                                        value={editFormData.type}
+                                        onChange={(e) => handleFormChange('type', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="internal">Internal</option>
+                                        <option value="external">External</option>
+                                    </select>
                                 </div>
                             </div>
                             <div className="md:col-span-2 space-y-4">

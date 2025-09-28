@@ -17,6 +17,7 @@ WORKDIR /app
 
 # Install ffmpeg
 RUN apk add --no-cache ffmpeg
+# RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
 
 # Set ffmpeg path for the application
 ENV FFMPEG_PATH=ffmpeg

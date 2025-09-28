@@ -58,7 +58,7 @@ export default function TruckAPITest() {
             <div className="bg-gray-50 p-4 rounded-lg mb-6">
                 <h3 className="font-medium mb-2">API Configuration:</h3>
                 <ul className="text-sm space-y-1">
-                    <li><strong>Base URL:</strong> http://192.168.4.62:3000</li>
+                    <li><strong>Base URL:</strong> http://192.168.4.50:3000</li>
                     <li><strong>Endpoint:</strong> /api/trucks/history</li>
                     <li><strong>Method:</strong> GET</li>
                     <li><strong>Dummy Data:</strong> Disabled (using real API)</li>

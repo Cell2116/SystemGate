@@ -1,9 +1,9 @@
 import { useScannerStore } from '../store/scannerStore';
 
 export const ScannerIndicator = () => {
-    const { scanBuffer, scannedData, lastScanTime } = useScannerStore();
+    const { scanBuffer, scannedData, lastScanTime, lastTruckUpdate } = useScannerStore();
 
-    if (!scanBuffer && !scannedData) return null;
+    if (!scanBuffer && !scannedData && !lastTruckUpdate) return null;
 
     return (
         <div className="fixed top-4 right-4 z-50 max-w-sm">
@@ -20,13 +20,36 @@ export const ScannerIndicator = () => {
             
             {/* Last Scan Result */}
             {scannedData && !scanBuffer && (
-                <div className="bg-green-100 border border-green-400 text-green-800 px-3 py-2 rounded-lg shadow-lg">
+                <div className="bg-green-100 border border-green-400 text-green-800 px-3 py-2 rounded-lg shadow-lg mb-2">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-green-600 rounded-full"></div>
                         <span className="text-sm font-medium">Last Scan</span>
                     </div>
                     <div className="text-xs font-mono mt-1 truncate">{scannedData}</div>
                     <div className="text-xs text-green-600 mt-1">{lastScanTime}</div>
+                </div>
+            )}
+
+            {/* Truck Status Update */}
+            {lastTruckUpdate && (
+                <div className="bg-blue-100 border border-blue-400 text-blue-800 px-3 py-2 rounded-lg shadow-lg">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                        <span className="text-sm font-medium">Truck Updated</span>
+                    </div>
+                    <div className="text-xs mt-1">
+                        <div className="font-mono truncate">{lastTruckUpdate.plateNumber}</div>
+                        <div className="flex justify-between">
+                            <span>{lastTruckUpdate.operation.toUpperCase()}</span>
+                            <span className={`px-1 rounded text-xs font-semibold ${
+                                lastTruckUpdate.newStatus === 'Loading' ? 'bg-yellow-200 text-yellow-800' :
+                                lastTruckUpdate.newStatus === 'Finished' ? 'bg-green-200 text-green-800' :
+                                'bg-gray-200 text-gray-800'
+                            }`}>
+                                {lastTruckUpdate.newStatus}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
