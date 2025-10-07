@@ -82,7 +82,7 @@
 //   // Fetch truck history data
 //   const fetchTruckHistory = async () => {
 //     try {
-//       const response = await fetch('http://192.168.10.27:3000/api/trucks/history');
+//       const response = await fetch('http://192.168.4.108:3000/api/trucks/history');
 //       if (!response.ok) {
 //         throw new Error('Failed to fetch truck history');
 //       }

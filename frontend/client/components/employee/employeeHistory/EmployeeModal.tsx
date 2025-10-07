@@ -76,10 +76,10 @@ export default function EmployeeModal({
                                     <div className="text-center">
                                         <p className="text-sm font-medium mb-2">Entry</p>
                                         <img
-                                            src={`http://192.168.10.27:3000/uploads/${selectedRecord.image_path}`}
+                                            src={`http://192.168.4.108:3000/uploads/${selectedRecord.image_path}`}
                                             alt="Entry"
                                             className="w-full h-24 object-cover rounded border cursor-pointer"
-                                            onClick={() => setModalImage(`http://192.168.10.27:3000/uploads/${selectedRecord.image_path}`)}
+                                            onClick={() => setModalImage(`http://192.168.4.108:3000/uploads/${selectedRecord.image_path}`)}
                                         />
                                     </div>
                                 )}
@@ -87,10 +87,10 @@ export default function EmployeeModal({
                                     <div className="text-center">
                                         <p className="text-sm font-medium mb-2">Exit</p>
                                         <img
-                                            src={`http://192.168.10.27:3000/uploads/${selectedRecord.image_path_out}`}
+                                            src={`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_out}`}
                                             alt="Exit"
                                             className="w-full h-24 object-cover rounded border cursor-pointer"
-                                            onClick={() => setModalImage(`http://192.168.10.27:3000/uploads/${selectedRecord.image_path_out}`)}
+                                            onClick={() => setModalImage(`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_out}`)}
                                         />
                                     </div>
                                 )}
@@ -98,10 +98,10 @@ export default function EmployeeModal({
                                     <div className="text-center">
                                         <p className="text-sm font-medium mb-2">Leave Exit</p>
                                         <img
-                                            src={`http://192.168.10.27:3000/uploads/${selectedRecord.image_path_leave_exit}`}
+                                            src={`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_leave_exit}`}
                                             alt="Leave Exit"
                                             className="w-full h-24 object-cover rounded border cursor-pointer"
-                                            onClick={() => setModalImage(`http://192.168.10.27:3000/uploads/${selectedRecord.image_path_leave_exit}`)}
+                                            onClick={() => setModalImage(`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_leave_exit}`)}
                                         />
                                     </div>
                                 )}
@@ -109,10 +109,10 @@ export default function EmployeeModal({
                                     <div className="text-center">
                                         <p className="text-sm font-medium mb-2">Leave Return</p>
                                         <img
-                                            src={`http://192.168.10.27:3000/uploads/${selectedRecord.image_path_leave_return}`}
+                                            src={`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_leave_return}`}
                                             alt="Leave Return"
                                             className="w-full h-24 object-cover rounded border cursor-pointer"
-                                            onClick={() => setModalImage(`http://192.168.10.27:3000/uploads/${selectedRecord.image_path_leave_return}`)}
+                                            onClick={() => setModalImage(`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_leave_return}`)}
                                         />
                                     </div>
                                 )}

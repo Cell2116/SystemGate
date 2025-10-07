@@ -116,7 +116,7 @@ interface TruckStore {
 }
 
 // Base URL API (Not in ENV Yet, SOON....)
-const API_BASE_URL = "http://192.168.10.27:3000";
+const API_BASE_URL = "http://192.168.4.108:3000";
 const USE_DUMMY_DATA = false;
 
 // Helper function untuk mengkonversi PostgreSQL INTERVAL object ke string

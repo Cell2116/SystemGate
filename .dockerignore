@@ -26,6 +26,7 @@ coverage
 *.tmp
 *.tmp.*
 log.txt
+uploads
 
 .DS_Store
 node_modules

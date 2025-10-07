@@ -2197,8 +2197,8 @@ app.post('/api/trucks/upload-photo', async (req, res) => {
 //-------------------------------------------------------//
 
 server.listen(port, () => {
-    console.log(`\n🚀 Server + WebSocket listening on http://192.168.10.27:${port}`);
-    console.log(`📡 WebSocket endpoint: ws://192.168.10.27:${port}`);
-    console.log(`📁 Image uploads: http://192.168.10.27:${port}/uploads/`);
+    console.log(`\n🚀 Server + WebSocket listening on http://192.168.4.108:${port}`);
+    console.log(`📡 WebSocket endpoint: ws://192.168.4.108:${port}`);
+    console.log(`📁 Image uploads: http://192.168.4.108:${port}/uploads/`);
     console.log(`⏰ Hikvision polling will start in 2 seconds...\n`);
 });
