@@ -40,7 +40,7 @@ export default function Information() {
                                 <span className="font-semibold italic text-green-700"> User</span>
                             </p>
                             <p>
-                                <strong>Estimated Maintenance: </strong> 30 Minutes
+                                <strong>Estimated Maintenance: </strong> Until the next information.
                             </p>
                         </div>
                     </DialogDescription>

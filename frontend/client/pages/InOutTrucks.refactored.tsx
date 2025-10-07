@@ -1,6 +1,4 @@
 //TODO Make it Responsive for Mobile
-
-
 import { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "../components/ui/dialog";
@@ -18,6 +16,7 @@ import { useTicketGeneration } from "../hooks/trucks/useTicketGeneration";
 import { useTruckSubmission } from "../hooks/trucks/useTruckSubmission";
 import { TruckFormData, OperationType } from "../types/truck.types";
 import { INITIAL_FORM_DATA } from "../constants/truck.constants";
+import { TrucksQueue } from "@/components/trucks/table/TruckQueueTable";
 
 // Import komponen form yang sudah direfactor
 import { 
@@ -31,6 +30,7 @@ import {
 } from "../components/trucks/forms/steps";
 
 import { AnalyticsDialog } from "../components/trucks/analytics/AnalyticsDialog";
+import { CardDashboardTruck, OperationStatsCard } from "@/components/trucks/cardDashboard/CardDashboardTruck";
 
 export default function InOutTrucks() {
   const [isOpen, setIsOpen] = useState(false);
@@ -190,9 +190,9 @@ export default function InOutTrucks() {
             See all the trucks operations today.
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
+        {/* <div className="mt-4 sm:mt-0">
           <Clock2 />
-        </div>
+        </div> */}
       </div>
 
       {/* Button */}
@@ -397,433 +397,21 @@ export default function InOutTrucks() {
         {/* Left Half - 6 Cards Total */}
         <div className="w-1/2 flex flex-col gap-4">
           {/* Top Row: Loading and Unloading Cards (2 cards) */}
-          <div className="flex flex-row gap-4 h-1/2">
-            {/* Loading Trucks Card */}
-            <div className="w-1/2">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="font-bold text-lg justify-center items-left">
-                  <div className="flex flex-row gap-2 font-bold items-center">
-                    <div className="w-7 h-7 rounded-full bg-green-200 flex items-center justify-center border">
-                      <ArrowRight className="text-green-600 font-bold w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <span className="text-sm text-green-800">
-                        {" "}
-                        Loading Trucks / {" "} 
-                        <span className="italic opacity-70">
-                          Muat {" "}
-                        </span>
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {" "}
-                        Operations Trucks{" "}
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardTitle>
-                  <div className=" flex flex-col text-center">
-                    <div className="text-[1.5em] text-green-600 font-bold">
-                      {muatStats.total}
-                    </div>
-                    <div className="text-sm text-slate-400">Trucks Today</div>
-                  </div>
-                </CardTitle>
-                <CardContent>
-                  {/* Card Content */}
-                  <div className="flex flex-row justify-center items-center mt-3 space-x-2">
-                    <Card className="bg-yellow-100 w-[4vw] h-[6vh] flex justify-center items-center">
-                      <div className="flex flex-col text-center">
-                        <span className="text-yellow-600 text-xs font-bold pb-1">
-                          {muatStats.pending}
-                        </span>
-                        <span className="text-yellow-600 text-xs pb-1">
-                          Pending
-                        </span>
-                      </div>
-                    </Card>
-                    <Card className="bg-blue-100 w-[4vw] h-[6vh] flex justify-center items-center">
-                      <div className="flex flex-col text-center">
-                        <span className="text-blue-600 text-xs font-bold pb-1">
-                          {muatStats.loading}
-                        </span>
-                        <span className="text-blue-600 text-xs pb-1">
-                          Loading
-                        </span>
-                      </div>
-                    </Card>
-                    <Card className="bg-green-100 w-[4vw] h-[6vh] flex justify-center items-center">
-                      <div className="flex flex-col text-center">
-                        <span className="text-green-600 text-xs font-bold pb-1">
-                          {muatStats.finished}
-                        </span>
-                        <span className="text-green-600 text-xs pb-1">
-                          Finished
-                        </span>
-                      </div>
-                    </Card>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <OperationStatsCard 
+            muatStats={muatStats}
+            bongkarStats={bongkarStats}
+          />
 
-            {/* Unloading Trucks Card */}
-            <div className="w-1/2">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="font-bold text-lg justify-center items-left">
-                  <div className="flex flex-row gap-2 font-bold items-center">
-                    <div className="w-7 h-7 rounded-full bg-red-200 flex items-center justify-center border">
-                      <ArrowLeft className="text-red-600 font-bold w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <span className="text-sm text-red-800">
-                        {" "}
-                        Unloading Trucks / {" "}
-                        <span className="italic opacity-70">
-                          Bongkar {" "}
-                        </span>
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {" "}
-                        Operations Trucks{" "}
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardTitle>
-                  <div className=" flex flex-col text-center pa-3">
-                    <div className="text-[1.5em] text-red-600 font-bold">
-                      {bongkarStats.total}
-                    </div>
-                    <div className="text-sm text-slate-400">Trucks Today</div>
-                  </div>
-                </CardTitle>
-                <CardContent>
-                  {/* Card Content */}
-                  <div className="flex justify-center items-center mt-3 space-x-2">
-                    <Card className="bg-yellow-100 w-[4vw] h-[6vh] flex justify-center items-center">
-                      <div className="flex flex-col text-center">
-                        <span className="text-yellow-600 text-xs font-bold pb-1">
-                          {bongkarStats.pending}
-                        </span>
-                        <span className="text-yellow-600 text-xs pb-1">
-                          Pending
-                        </span>
-                      </div>
-                    </Card>
-                    <Card className="bg-blue-100 w-[4vw] h-[6vh] flex justify-center items-center">
-                      <div className="flex flex-col text-center">
-                        <span className="text-blue-600 text-xs font-bold pb-1">
-                          {bongkarStats.loading}
-                        </span>
-                        <span className="text-blue-600 text-xs pb-1">
-                          Loading
-                        </span>
-                      </div>
-                    </Card>
-                    <Card className="bg-green-100 w-[4vw] h-[6vh] flex justify-center items-center">
-                      <div className="flex flex-col text-center">
-                        <span className="text-green-600 text-xs font-bold pb-1">
-                          {bongkarStats.finished}
-                        </span>
-                        <span className="text-green-600 text-xs pb-1">
-                          Finished
-                        </span>
-                      </div>
-                    </Card>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Bottom Row: 4 Cards - Internal, External, HPC, PT */}
-          <div className="flex flex-row gap-2 h-1/2">
-            {/* Internal Trucks Card */}
-            <div className="w-1/4">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="flex-shrink-0 pb-1">
-                  <div className="flex flex-row gap-1 font-bold items-center">
-                    <div className="w-5 h-5 rounded-full bg-green-200 flex items-center justify-center border">
-                      <TruckIcon className="text-green-600 font-bold w-3 h-3" />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <span className="text-xs text-green-800"> Internal</span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {" "}
-                        Alkindo's{" "}
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardTitle className="flex-shrink-0 pb-1">
-                  <div className="flex flex-col text-center">
-                    <div className="text-lg text-green-600 font-bold">
-                      {getTypeStats("Inbound")}
-                    </div>
-                    <div className="text-xs text-slate-400">Today</div>
-                  </div>
-                </CardTitle>
-                <CardContent className="flex-1 flex items-center justify-center p-2">
-                  <div className="w-full h-8 bg-green-50 rounded flex items-center justify-center border border-green-200">
-                    <span className="text-green-600 text-xs font-medium">
-                      Internal
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* External Trucks Card */}
-            <div className="w-1/4">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="flex-shrink-0 pb-1">
-                  <div className="flex flex-row gap-1 font-bold items-center">
-                    <div className="w-5 h-5 rounded-full bg-blue-200 flex items-center justify-center border">
-                      <TruckIcon className="text-blue-600 font-bold w-3 h-3" />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <span className="text-xs text-blue-800"> External </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {" "}
-                        Vendor's{" "}
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardTitle className="flex-shrink-0 pb-1">
-                  <div className="flex flex-col text-center">
-                    <div className="text-lg text-blue-600 font-bold">
-                      {getTypeStats("Outbound")}
-                    </div>
-                    <div className="text-xs text-slate-400">Today</div>
-                  </div>
-                </CardTitle>
-                <CardContent className="flex-1 flex items-center justify-center p-2">
-                  <div className="w-full h-8 bg-blue-50 rounded flex items-center justify-center border border-blue-200">
-                    <span className="text-blue-600 text-xs font-medium">
-                      External
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Department HPC */}
-            <div className="w-1/4">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="flex-shrink-0 pb-1">
-                  <div className="flex flex-row gap-1 font-bold items-center">
-                    <div className="w-5 h-5 rounded-full bg-purple-200 flex items-center justify-center border">
-                      <span className="text-purple-600 font-bold text-xs">
-                        H
-                      </span>
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <span className="text-xs text-purple-800">
-                        {" "}
-                        Dept. HPC{" "}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {" "}
-                        Destination{" "}
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardTitle className="flex-shrink-0 pb-1">
-                  <div className="flex flex-col text-center">
-                    <div className="text-lg text-purple-600 font-bold">
-                      {getDepartmentStats("HPC")}
-                    </div>
-                    <div className="text-xs text-slate-400">Today</div>
-                  </div>
-                </CardTitle>
-                <CardContent className="flex-1 flex items-center justify-center p-2">
-                  <div className="w-full h-8 bg-purple-50 rounded flex items-center justify-center border border-purple-200">
-                    <span className="text-purple-600 text-xs font-medium">
-                      HPC
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Department PT */}
-            <div className="w-1/4">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="flex-shrink-0 pb-1">
-                  <div className="flex flex-row gap-1 font-bold items-center">
-                    <div className="w-5 h-5 rounded-full bg-orange-200 flex items-center justify-center border">
-                      <span className="text-orange-600 font-bold text-xs">
-                        P
-                      </span>
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <span className="text-xs text-orange-800">
-                        {" "}
-                        Dept. PT{" "}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {" "}
-                        Destination{" "}
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardTitle className="flex-shrink-0 pb-1">
-                  <div className="flex flex-col text-center">
-                    <div className="text-lg text-orange-600 font-bold">
-                      {getDepartmentStats("PT")}
-                    </div>
-                    <div className="text-xs text-slate-400">Today</div>
-                  </div>
-                </CardTitle>
-                <CardContent className="flex-1 flex items-center justify-center p-2">
-                  <div className="w-full h-8 bg-orange-50 rounded flex items-center justify-center border border-orange-200">
-                    <span className="text-orange-600 text-xs font-medium">
-                      PT
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          {/* Bottom Row: 4 Cards - Internal + External, PBPG, HPC, PT */}
+          <CardDashboardTruck 
+            getTypeStats={getTypeStats}
+            getDepartmentStats={getDepartmentStats}
+          />
         </div>
 
         {/* Right Half - Trucks in Queue */}
-        <div className="w-1/2 xl:h-full">
-          <Card className="h-full flex flex-col">
-            <CardHeader className="font-bold text-lg justify-center items-center">
-              <div className="flex flex-row gap-2 font-bold items-center">
-                <div className="flex flex-col justify-center">
-                  <span className="text-sm text-blue-800">
-                    {" "}
-                    Trucks in Queue / {" "}
-                    <span className="italic opacity-70">
-                      Antrian Truk {" "}
-                    </span>
-                  </span>
-                </div>
-                <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center border">
-                  <Logs className="text-blue-600 font-bold w-4 h-4" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Card Content */}
-              <div className="flex flex-row justify-center items-center space-x-12">
-                <div className="lg:max-h-[20em] 2xl:max-h-80 overflow-x-auto overflow-y-auto scrollbar-hide">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs md:text-xs">Id</TableHead>
-                        <TableHead className="text-xs md:text-xs">
-                          Plate/Driver
-                        </TableHead>
-                        <TableHead className="text-xs md:text-xs">
-                          Supplier
-                        </TableHead>
-                        <TableHead className="text-xs md:text-xs">
-                          Operation
-                        </TableHead>
-                        <TableHead className="text-xs md:text-xs">
-                          Truck Status
-                        </TableHead>
-                        <TableHead className="text-xs md:text-xs">
-                          Progress
-                        </TableHead>
-                        <TableHead className="text-xs md:text-xs">
-                          Goods
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {trucks
-                        .filter(
-                          (truck) =>
-                            truck.status === "Waiting" ||
-                            truck.status === "Loading",
-                        )
-                        .sort((a, b) => {
-                          // Loading First then the Waiting status
-                          if (a.status !== b.status) {
-                            if (a.status === "Loading") return -1;
-                            if (b.status === "Loading") return 1;
-                          }
-                          // Sorting by id 
-                          return a.id.localeCompare(b.id);
-                        })
-                        .map((truck) => (
-                          <TableRow key={truck.id}>
-                            <TableCell>
-                              {" "}
-                              <div className="text-xs">{truck.id}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-semibold text-xs">
-                                  {truck.plateNumber}
-                                </div>
-                                <div className="font-light text-xs">
-                                  {truck.driver}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs">{truck.supplier}</div>
-                            </TableCell>
-                            <TableCell>
-                              {truck.operation === "bongkar" && (
-                                <div className="rounded-full flex bg-red-100 text-red-700 text-xs font-bold px-2 py-1 w-fit mx-auto">
-                                  <ArrowLeft className="w-3 h-3 mr-1" />
-                                  Bongkar
-                                </div>
-                              )}
-                              {truck.operation === "muat" && (
-                                <div className="rounded-full flex bg-green-100 text-green-700 text-xs font-bold px-2 py-1 w-fit mx-auto">
-                                  <ArrowRight className="w-3 h-3 mr-1" />
-                                  Muat
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {truck.type === "Inbound" && (
-                                <div className="rounded-full flex bg-green-50 text-green-500 text-xs font-bold px-2 py-1 w-fit mx-auto">
-                                  Internal
-                                </div>
-                              )}
-                              {truck.type === "Outbound" && (
-                                <div className="rounded-full flex bg-red-50 text-red-500 text-xs font-bold px-2 py-1 w-fit mx-auto">
-                                  External
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {truck.status === "Waiting" && (
-                                <div className="rounded-full flex bg-yellow-100 text-yellow-700 font-bold text-xs px-2 py-1 w-fit mx-auto">
-                                  {truck.status.charAt(0).toUpperCase() +
-                                    truck.status.slice(1)}
-                                </div>
-                              )}
-                              {truck.status === "Loading" && (
-                                <div className="rounded-full flex bg-blue-100 text-blue-700 font-bold text-xs px-2 py-1 w-fit mx-auto">
-                                  {truck.status.charAt(0).toUpperCase() +
-                                    truck.status.slice(1)}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs">{truck.goods}</div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="w-1/2 h-full">
+          <TrucksQueue/>
         </div>
       </div>
 

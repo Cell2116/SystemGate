@@ -29,7 +29,7 @@ export function useTicketGeneration({
       operation === "bongkar"
         ? `SU${department}${today}`
         : `CU${department}${today}`;
-
+        
     if (isPreview) {
       // Untuk preview barcode, gunakan nomor berikutnya yang akan diasSsign
       const existingTicketsToday = trucks.filter(
@@ -50,7 +50,7 @@ export function useTicketGeneration({
       return `${ticketPrefix}${formattedNumber}`;
     }
 
-    return ticketPrefix; // Return prefix for actual generation
+    return ticketPrefix; 
   };
 
   // Generate ticket prefix for actual database storage
@@ -63,16 +63,13 @@ export function useTicketGeneration({
       : `CU${formData.department}${today}`;
   }, [operationType, formData.department]);
 
-  // Generate actual ticket number with sequential numbering
   const generateActualTicketNumber = () => {
     if (!ticketPrefix) return "";
 
-    // Filter existing trucks yang match dengan prefix hari ini
     const existingTicketsToday = trucks.filter(
       (truck) => truck.noticket && truck.noticket.startsWith(ticketPrefix),
     );
 
-    // Generate nomor urut berikutnya
     let nextNumber = 1;
     if (existingTicketsToday.length > 0) {
       // Extract nomor urut dari tiket yang ada
@@ -85,12 +82,10 @@ export function useTicketGeneration({
       nextNumber = Math.max(...existingNumbers) + 1;
     }
 
-    // Format nomor dengan leading zeros (2 digit)
     const formattedNumber = nextNumber.toString().padStart(2, "0");
     return `${ticketPrefix}${formattedNumber}`;
   };
 
-  // Update preview ticket when conditions change
   useEffect(() => {
     if (
       (formStep === 4 && operationType === "bongkar") ||
@@ -103,9 +98,7 @@ export function useTicketGeneration({
       );
       setPreviewTicketNumber(ticketNumber);
 
-      // Generate barcode
       if (ticketNumber && formData.department) {
-        // Use setTimeout to ensure DOM is ready
         setTimeout(() => {
           try {
             JsBarcode("#barcode", ticketNumber, {

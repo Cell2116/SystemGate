@@ -29,6 +29,7 @@ export const INITIAL_FORM_DATA: TruckFormData = {
 export const DEPARTMENT_OPTIONS = [
     { value: "HPC", label: "HPC" },
     { value: "PT", label: "PT" },
+    { value: "PBPG", label: "PBPG" },
 ];
 
 export const TRUCK_TYPE_OPTIONS = [
@@ -66,5 +67,6 @@ export const VALIDATION_MESSAGES = {
         "Mohon lengkapi data pengemudi, plat nomor, dan foto yang diperlukan.",
     MUAT_STEP_2:
         "Mohon lengkapi jenis barang, quantity, unit, department, dan deskripsi barang keluar.",
+    TIMBANG_STEP_1: "Mohon lengkapi data pengemudi, plat nomor, dan foto yang diperlukan.",
     DEFAULT: "Mohon lengkapi seluruh data form yang dibutuhkan.",
 };

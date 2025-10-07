@@ -193,6 +193,10 @@ export default function DirectorLeavePage() {
       statusFromDirector: action,
       approval: updatedEntry.approval
     });
+    
+    // Refresh data after approval
+    await fetchLeavePermission();
+    
     setIsDetailsOpen(false);
   };
 

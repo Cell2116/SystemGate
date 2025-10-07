@@ -9,7 +9,7 @@ export default function clock(){
       // Mendapatkan waktu Indonesia (UTC+7)
       const now = new Date();
       const indonesianTime = utcToIndonesianTime(now);
-      setTime(indonesianTime);
+      setTime(now);
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -27,7 +27,7 @@ export default function clock(){
     weekday: 'long'
   });
   return(
-        <div className="bg-gray-600 bg-opacity-5 shadow-md rounded-xl p-2 w-full max-w-sm ">
+        <div className="bg-gray-100 bg-opacity-5 rounded-xl p-2 w-full max-w-sm ">
     <span>
       <span className="text-xs mb-0 md:text-sm xl:text-sm font-semibold text-gray-500 md:mb-2 xl:mb-2">{formattedDate} | </span>
       <span className="text-xs mb-0 md:text-sm xl:text-sm font-semibold text-black-600 md:mb-2 xl:mb-2">{formattedTime}</span>

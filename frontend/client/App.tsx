@@ -5,16 +5,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
-import LoadingTrucks from "./pages/LoadingTrucks";
-import UnloadingTrucks from "./pages/UnloadingTrucks";
+// import LoadingTrucks from "./pages/LoadingTrucks";
+import LoadingTrucks from "./pages/LoadingTrucks.refactored";
+import UnloadingTrucks from "./pages/UnloadingTrucks.refactored";
+// import UnloadingTrucks from "./pages/UnloadingTrucks";
 import Scan from "./pages/Scan";
 
 import NotFound from "./pages/NotFound";
-import EmployeeHistory  from "./pages/EmployeeHistory";
+// import EmployeeHistory  from "./pages/EmployeeHistory";
+import EmployeeHistory  from "./pages/EmployeeHistory.refactored";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 // import InOutTrucks from "./pages/InOutTrucks";
 import InOutTrucks from "./pages/InOutTrucks.refactored";
-import InOutTrucksHistory from "./pages/InOutTrucksHistory";
+// import InOutTrucksHistory from "./pages/InOutTrucksHistory";
+import InOutTrucksHistory from "./pages/InOutTrucksHistory.refactored";
 import LeavePermission from "./pages/LeavePermission";
 import Login from "./pages/Login";
 import ProtectedRoute from "./authentication/protectedRoute";
@@ -26,6 +30,7 @@ import { InstallPrompt } from "./components/InstallPrompt";
 import { NetworkStatus } from "./components/NetworkStatus";
 import GlobalScanner from "./components/GlobalScanner";
 import ScannerIndicator from "./components/ScannerIndicator";
+import TruckQueuePage from "./pages/TruckQueuePage";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +67,7 @@ const App = () => {
                 <Route path="/loadingtrucks" element={<LoadingTrucks />} />
                 <Route path="/unloadingtrucks" element={<UnloadingTrucks />} />
                 <Route path="/scan" element={<Scan />} />
+                <Route path="/truck-queue" element={<TruckQueuePage />} />
 
               </Route>
               <Route path="*" element={<NotFound />} />

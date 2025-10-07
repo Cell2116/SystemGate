@@ -35,9 +35,11 @@ export interface TruckRecord {
     eta?: string;
     status:
         | "Waiting"
+        | "Weighing"
         | "Loading"
         | "Finished"
         | "pending"
+        | "weighing"
         | "loading"
         | "finished";
     type: "Inbound" | "Outbound" | "internal" | "external";
@@ -56,6 +58,9 @@ export interface TruckRecord {
     kelengkapan: string;
     jenismobil: string;
     quantity?: string;
+    driver_photo?: string;
+    sim_photo?: string;
+    stnk_photo?: string;
     unit?: string;
     driverPhoto?: string;
     stnkPhoto?: string;
@@ -111,7 +116,7 @@ interface TruckStore {
 }
 
 // Base URL API (Not in ENV Yet, SOON....)
-const API_BASE_URL = "http://192.168.4.50:3000";
+const API_BASE_URL = "http://192.168.10.27:3000";
 const USE_DUMMY_DATA = false;
 
 // Helper function untuk mengkonversi PostgreSQL INTERVAL object ke string
@@ -182,9 +187,9 @@ const transformTruckFromDB = (dbTruck: any): TruckRecord => {
         jenismobil: dbTruck.jenismobil || "",
         quantity: dbTruck.quantity || "",
         unit: dbTruck.unit || "",
-        driverPhoto: dbTruck.driver_photo || "",
-        stnkPhoto: dbTruck.stnk_photo || "",
-        simPhoto: dbTruck.sim_photo || "",
+        driver_photo: dbTruck.driver_photo || "",
+        sim_photo: dbTruck.sim_photo || "",
+        stnk_photo: dbTruck.stnk_photo || "",
     };
     
     console.log('Converted actualWaitTime:', result.actualWaitTime);
@@ -331,9 +336,9 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 armada: data.armada,
                 kelengkapan: data.kelengkapan,
                 jenismobil: data.jenismobil,
-                driver_photo: data.driverPhoto || null,
-                stnk_photo: data.stnkPhoto || null,
-                sim_photo: data.simPhoto || null,
+                driver_photo: data.driver_photo || null,
+                sim_photo: data.sim_photo || null,
+                stnk_photo: data.stnk_photo || null,
             };
 
             console.log("=== STORE SENDING TO BACKEND ===", dbData);
@@ -437,6 +442,12 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 dbUpdates.kelengkapan = cleanedUpdates.kelengkapan;
             if (cleanedUpdates.jenismobil !== undefined)
                 dbUpdates.jenismobil = cleanedUpdates.jenismobil;
+            if (cleanedUpdates.driver_photo !== undefined)
+                dbUpdates.driver_photo = cleanedUpdates.driver_photo;
+            if (cleanedUpdates.sim_photo !== undefined)
+                dbUpdates.sim_photo = cleanedUpdates.sim_photo;
+            if (cleanedUpdates.stnk_photo !== undefined)
+                dbUpdates.stnk_photo = cleanedUpdates.stnk_photo;
             // Note: quantity and unit fields don't exist in database schema
             
             console.log('=== FINAL DB UPDATES ===');

@@ -1,5 +1,4 @@
 
-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -432,69 +431,65 @@ export default function UserLeavePage(){
   const userLeaveRequests = getUserLeaveRequests();
 
   return(
-    <div className="h-screen overflow-hidden flex flex-col space-y-4 p-2">
+    <div className="h-screen overflow-hidden flex flex-col space-y-2 sm:space-y-4 p-2 sm:p-4">
       <div className="z-10 sticky top-0 pb-2">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Leave Permission Request</h1>
-            <p className="mt-1 text-sm text-gray-500">
+        <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-center sm:text-left">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Leave Permission Request</h1>
+            <p className="mt-1 text-xs sm:text-sm text-gray-500 px-2 sm:px-0">
               Have an urgent business outside the company? Write a request letter.
             </p>
           </div>
-          <div className="mt-4 sm:mt-0">
-            <Clock2 />
-          </div>
         </div>
-        
       </div>
-      <div className="w-full max-w-6xl mx-auto bg-white shadow-2xl rounded-t-3xl overflow-hidden h-full flex flex-col">
-        <div className="bg-blue-500 text-white flex items-center justify-between w-full py-2">
-          <div className="w-1/3"/>
-          <h2 className="text-center w-1/3 text-xl font-bold">Leave Request History</h2>
-          <div className="w-1/3 flex justify-end items-center gap-2 pr-3">
+      <div className="w-full max-w-6xl mx-auto bg-white shadow-lg sm:shadow-2xl rounded-t-2xl sm:rounded-t-3xl overflow-hidden h-full flex flex-col">
+        <div className="bg-blue-500 text-white flex items-center justify-between w-full py-2 sm:py-3">
+          <h2 className="text-left text-sm sm:text-lg lg:text-xl font-bold px-2 sm:px-4">Leave Request History</h2>
+          <div className="flex justify-end items-center gap-1 sm:gap-2 pr-2 sm:pr-3">
             {/* Clear Table and Show All buttons */}
             <Button
               size="sm"
               onClick={handleShowAll}
-              className="group relative px-3 py-1 text-xs font-medium bg-white border border-white/30 text-black hover:bg-white/50 hover:border-white/70 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+              className="group relative px-2 py-1 sm:px-3 text-xs font-medium bg-white border border-white/30 text-black hover:bg-white/50 hover:border-white/70 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
             >
-              <RefreshCw className="w-3 h-3 mr-1 group-hover:rotate-180 transition-transform duration-300" />
-              Show All
+              <RefreshCw className="w-3 h-3 sm:mr-1 group-hover:rotate-180 transition-transform duration-300" />
+              <span className="hidden sm:inline">Show All</span>
             </Button>
             <Button
               size="sm"
               onClick={handleCleanTable}
-              className="group relative px-3 py-1 text-xs font-medium bg-white border border-white/30 text-black hover:bg-white/50 hover:border-white/70 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+              className="group relative px-2 py-1 sm:px-3 text-xs font-medium bg-white border border-white/30 text-black hover:bg-white/50 hover:border-white/70 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
             >
-              <Sparkles className="w-3 h-3 mr-1 group-hover:rotate-12 transition-transform duration-300" />
-              Clear
+              <Sparkles className="w-3 h-3 sm:mr-1 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="hidden sm:inline">Clear</span>
             </Button>
             <div>
               <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogTrigger asChild>
                   <Button 
-                    size="lg" 
-                    className="group relative px-4 font-semibold bg-white hover:bg-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                    size="sm"
+                    className="group relative px-2 py-1 sm:px-4 sm:py-2 font-semibold bg-white hover:bg-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                   >
-                    <DoorOpen className="text-black"/>
+                    <DoorOpen className="text-black w-4 h-4 sm:w-5 sm:h-5"/>
                   </Button>
                 </DialogTrigger>
                 
-                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
-                  <DialogHeader className="space-y-3">
-                    <DialogTitle className="text-2xl font-bold text-center">
+                <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto bg-card/95 border-border/50 mx-2">
+                  <DialogHeader className="space-y-2 sm:space-y-3">
+                    <DialogTitle className="text-lg sm:text-xl lg:text-2xl font-bold text-center">
                       Leave Request Registration
                     </DialogTitle>
-                    <DialogDescription className="text-center text-muted-foreground">
+                    <DialogDescription className="text-center text-muted-foreground text-sm">
                       Please fill in all required information for the entry log.
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <div className="space-y-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="name" className="text-sm font-medium">
-                          Name
+                          Nama / {""}
+                          <span className="italic text-xs opacity-45">Name</span>
                         </Label>
                         <Input
                           id="name"
@@ -508,7 +503,8 @@ export default function UserLeavePage(){
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="licensePlate" className="text-sm font-medium">
-                          License Plate
+                          Plat Nomor / {""}
+                          <span className="italic text-xs opacity-45">License Plate</span>
                         </Label>
                         <Input
                           id="licensePlate"
@@ -533,19 +529,21 @@ export default function UserLeavePage(){
                           className="rounded border-gray-300"
                         />
                         <Label htmlFor="groupLeave" className="text-sm font-medium">
-                          Cross-Department Group Leave (Invite colleagues from any department)
+                          Undang Teman / {""}
+                          <span className="italic text-xs opacity-45">Cross-Department Group Leave</span>
                         </Label>
                       </div>
                       
                       {isGroupLeave && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium">
-                            Select Colleagues from Any Department
+                            Pilih teman dari departemen mana saja / {""}
+                            <span className="italic text-xs opacity-45">Select Colleagues from Any Department</span>
                           </Label>
                           
                           {/* Search input */}
                           <Input
-                            placeholder="Search colleagues by name or department..."
+                            placeholder="Cari berdasarkan nama..."
                             value={colleagueSearch}
                             onChange={(e) => setColleagueSearch(e.target.value)}
                             className="h-8 text-sm"
@@ -560,7 +558,7 @@ export default function UserLeavePage(){
                               onClick={() => setSelectedColleagues([])}
                               className="h-6 px-2"
                             >
-                              Clear All
+                              Hapus Semua
                             </Button>
                             <Button
                               type="button"
@@ -574,11 +572,11 @@ export default function UserLeavePage(){
                               }}
                               className="h-6 px-2"
                             >
-                              Select My Dept
+                              Departemen saya 
                             </Button>
                           </div>
                           
-                          <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-2 bg-gray-50">
+                          <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-2 border-blue-600 bg-gray-50">
                             {availableColleagues.length === 0 ? (
                               <p className="text-sm text-gray-500 text-center py-2">
                                 No colleagues available
@@ -655,7 +653,8 @@ export default function UserLeavePage(){
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="department" className="text-sm font-medium">
-                          Department
+                          Departemen / {""}
+                          <span className="italic text-xs opacity-45">Department</span>
                         </Label>
                         <Input
                           id="department"
@@ -669,7 +668,8 @@ export default function UserLeavePage(){
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="date" className="text-sm font-medium">
-                          Date
+                          Tanggal / {""}
+                          <span className="italic text-xs opacity-45">Date</span>
                         </Label>
                         <div className="space-y-2">
                           <Input
@@ -692,7 +692,7 @@ export default function UserLeavePage(){
                               onClick={() => handleInputChange("date", getTodayDate())}
                               className="text-xs px-2 py-1 h-7"
                             >
-                              Today
+                              Hari ini
                             </Button>
                             <Button
                               type="button"
@@ -701,38 +701,17 @@ export default function UserLeavePage(){
                               onClick={() => handleInputChange("date", getTomorrowDate())}
                               className="text-xs px-2 py-1 h-7"
                             >
-                              Tomorrow
+                              Besok
                             </Button>
                           </div>
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="returnTime" className="text-sm font-medium">
-                          Return Time {formData.reasonType === "Sick" && <span className="text-gray-500">(Not required for sick leave)</span>}
-                        </Label>  
-                        <Input
-                          id="returnTime"
-                          type="time"
-                          value={formData.returnTime}
-                          onChange={(e) => handleInputChange("returnTime", e.target.value)}
-                          className={`h-10 border-border/50 focus:border-primary ${
-                            formData.reasonType === "Sick" 
-                              ? "bg-gray-100 text-gray-500 cursor-not-allowed" 
-                              : ""
-                          } ${fieldErrors.returnTime ? 'border-red-500 focus:border-red-500' : ''}`}
-                          required={formData.reasonType !== "Sick"}
-                          disabled={formData.reasonType === "Sick"}
-                          placeholder={formData.reasonType === "Sick" ? "Not required for Sick" : undefined}
-                        />
-                        {fieldErrors.returnTime && (
-                          <p className="text-red-500 text-xs mt-1">{fieldErrors.returnTime}</p>
-                        )}
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="exitTime" className="text-sm font-medium">
-                          Exit Time
+                          Jam Keluar / {""}
+                          <span className="italic text-xs opacity-45">Exit Time</span>
                         </Label>
                         <Input
                           id="exitTime"
@@ -745,10 +724,34 @@ export default function UserLeavePage(){
                           <p className="text-red-500 text-xs mt-1">{fieldErrors.exitTime}</p>
                         )}
                       </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="returnTime" className="text-sm font-medium">
+                          Jam Kembali / {""}
+                          <span className="italic text-xs opacity-45">Return Time {""}</span>
+                          {formData.reasonType === "Sick" && <span className="text-blue-500">(Tidak Perlu)</span>}
+                      </Label>
+                      <Input
+                        id="returnTime"
+                        type="time"
+                        value={formData.returnTime}
+                        onChange={(e) => handleInputChange("returnTime", e.target.value)}
+                        className={`h-10 border-border/50 focus:border-primary ${formData.reasonType === "Sick"
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : ""
+                          } ${fieldErrors.returnTime ? 'border-red-500 focus:border-red-500' : ''}`}
+                        required={formData.reasonType !== "Sick"}
+                        disabled={formData.reasonType === "Sick"}
+                        placeholder={formData.reasonType === "Sick" ? "Not required for Sick" : undefined}
+                      />
+                      {fieldErrors.returnTime && (
+                        <p className="text-red-500 text-xs mt-1">{fieldErrors.returnTime}</p>
+                      )}
+                    </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="reasonType" className="text-sm font-medium">
-                        Type of Leave
+                        Jenis Izin  / {""}
+                        <span className="italic text-xs opacity-45">Type of Leave</span>
                       </Label>
                       <Select 
                         value={formData.reasonType} 
@@ -758,9 +761,15 @@ export default function UserLeavePage(){
                           <SelectValue placeholder="Select reason type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="PT">Plant</SelectItem>
-                          <SelectItem value="Sick">Sick</SelectItem>
-                          <SelectItem value="Outside">Outside (Specify below)</SelectItem>
+                          <SelectItem value="PT">Plant / {""}
+                            <span className="italic text-xs opacity-45">PT</span>
+                          </SelectItem>
+                          <SelectItem value="Sick">Sick / {""}
+                            <span className="italic text-xs opacity-45">Sick</span>
+                          </SelectItem>
+                          <SelectItem value="Outside">Keluar / {""}
+                            <span className="italic text-xs opacity-45">Outside</span>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       {fieldErrors.reasonType && (
@@ -771,11 +780,12 @@ export default function UserLeavePage(){
                     {formData.reasonType === "Outside" && (
                       <div className="space-y-2">
                         <Label htmlFor="outsideReason" className="text-sm font-medium">
-                          Specify Reason
+                          Alasan Izin Keluar / {""}
+                          <span className="italic text-xs opacity-45">Specify Reason</span>
                         </Label>
                         <Input
                           id="outsideReason"
-                          placeholder="Enter specific reason..."
+                          placeholder="Masukan alasan..."
                           value={formData.outsideReason}
                           onChange={(e) => handleInputChange("outsideReason", e.target.value)}
                           className={`h-10 border-border/50 focus:border-primary ${fieldErrors.outsideReason ? 'border-red-500 focus:border-red-500' : ''}`}
@@ -787,24 +797,26 @@ export default function UserLeavePage(){
                       </div>
                     )}
                     
-                    <DialogFooter className="gap-3 sm:gap-2">
+                    <DialogFooter className="gap-2 sm:gap-3 flex-col sm:flex-row">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setIsOpen(false)}
-                        className="flex-1 sm:flex-none"
+                        className="w-full sm:w-auto order-2 sm:order-1"
                       >
                         Cancel
                       </Button>
                       <Button 
                         onClick={handleSubmit} 
-                        className="flex-1 sm:flex-none group"
+                        className="w-full sm:w-auto group order-1 sm:order-2"
                       >
                         <Send className="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-200" />
-                        {isGroupLeave ? 
-                          `Send Group Request (${selectedColleagues.length + 1} people)` : 
-                          "Send Request"
-                        }
+                        <span className="text-xs sm:text-sm">
+                          {isGroupLeave ? 
+                            `Send Group Request (${selectedColleagues.length + 1})` : 
+                            "Send Request"
+                          }
+                        </span>
                       </Button>
                     </DialogFooter>
                   </div>
@@ -814,20 +826,20 @@ export default function UserLeavePage(){
           </div>
         </div>
 
-        <div className="flex-1 px-4 py-2">
-          <div className="h-[35rem] overflow-x-auto scrollbar-hide">
-            <table className="w-full text-sm text-center">
+        <div className="flex-1 px-2 sm:px-4 py-2">
+          <div className="h-[30rem] sm:h-[35rem] overflow-x-auto scrollbar-hide">
+            <table className="w-full text-xs sm:text-sm text-center min-w-[800px]">
               <thead className="sticky top-0 bg-blue-50">
                 <tr className="border-b">
-                  <th className="py-2">Name</th>
-                  <th>License Plate</th>
-                  <th>Date</th>
-                  <th>Exit Time</th>
-                  <th>Return Time</th>
-                  <th>Reason</th>
-                  <th>Approval</th>
-                  <th>Approval Progress</th>
-                  <th></th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[80px]">Name</th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[100px]">License Plate</th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[80px]">Date</th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[80px]">Exit Time</th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[80px]">Return Time</th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[120px]">Reason</th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[80px]">Approval</th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[120px]">Approval Progress</th>
+                  <th className="py-2 px-1 sm:px-2 min-w-[80px]"></th>
                 </tr>
               </thead>
               <tbody>
@@ -864,46 +876,46 @@ export default function UserLeavePage(){
                 
                 {userLeaveRequests.map((entry, i) => (
                   <tr key={entry.id || i} className="border-b hover:bg-gray-100">
-                    <td className="py-2">{entry.name}</td>
-                    <td>{entry.licensePlate}</td>
-                    <td>{entry.date}</td>
-                    <td>{entry.exitTime}</td>
-                    <td>{!entry.returnTime || entry.reason === "Sick" ? "N/A (Sick Leave)" : entry.returnTime}</td>
-                    <td className="max-w-xs truncate" title={entry.reason}>
+                    <td className="py-2 px-1 sm:px-2 text-xs sm:text-sm">{entry.name}</td>
+                    <td className="py-2 px-1 sm:px-2 text-xs sm:text-sm font-mono">{entry.licensePlate}</td>
+                    <td className="py-2 px-1 sm:px-2 text-xs sm:text-sm">{entry.date}</td>
+                    <td className="py-2 px-1 sm:px-2 text-xs sm:text-sm">{entry.exitTime}</td>
+                    <td className="py-2 px-1 sm:px-2 text-xs sm:text-sm">{!entry.returnTime || entry.reason === "Sick" ? "N/A" : entry.returnTime}</td>
+                    <td className="py-2 px-1 sm:px-2 max-w-xs truncate text-xs sm:text-sm" title={entry.reason}>
                       {entry.reason?.includes("Group leave") ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                          👥 Group Leave
+                        <span className="inline-flex items-center px-1 sm:px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                          👥 <span className="hidden sm:inline ml-1">Group</span>
                         </span>
                       ) : (
-                        entry.reason
+                        <span className="truncate block max-w-[100px] sm:max-w-none">{entry.reason}</span>
                       )}
                     </td>
-                    <td>
+                    <td className="py-2 px-1 sm:px-2">
                       {calculateOverallApproval(entry) === "approved" && (
                         <div className="flex items-center justify-center text-green-600">
-                          <CircleCheck className="w-5 h-5"/>
+                          <CircleCheck className="w-4 h-4 sm:w-5 sm:h-5"/>
                         </div>
                       )}  
                       {calculateOverallApproval(entry) === "rejected" && (
                         <div className="flex items-center justify-center text-red-600">
-                          <XCircle className="w-5 h-5"/>
+                          <XCircle className="w-4 h-4 sm:w-5 sm:h-5"/>
                         </div>
                       )}  
                       {calculateOverallApproval(entry) === "pending" && (
                         <div className="flex items-center justify-center text-yellow-600">
-                          <Clock className="w-5 h-5"/>
+                          <Clock className="w-4 h-4 sm:w-5 sm:h-5"/>
                         </div>
                       )}  
                     </td>
-                    <td className="text-xs flex flex-col space-y-1 ">
-                      <div className="flex items-center justify-center space-x-1 ">
-                        <div className={`w-3 h-3 rounded-full ${
+                    <td className="py-2 px-1 sm:px-2 text-xs flex flex-col space-y-1">
+                      <div className="flex items-center justify-center space-x-1">
+                        <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
                           entry.statusFromDepartment === 'approved' ? 'bg-green-500' :
                           entry.statusFromDepartment === 'rejected' ? 'bg-red-500' :
                           'bg-yellow-500'
                         }`} title={`Department: ${entry.statusFromDepartment}`} />
-                        <div className="w-2 h-0.5 bg-gray-300 mx-1" />
-                        <div className={`w-3 h-3 rounded-full ${
+                        <div className="w-1 sm:w-2 h-0.5 bg-gray-300 mx-1" />
+                        <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
                           entry.statusFromHR === 'approved' ? 'bg-green-500' :
                           entry.statusFromHR === 'rejected' ? 'bg-red-500' :
                           'bg-yellow-500'
@@ -927,31 +939,32 @@ export default function UserLeavePage(){
                         </span>
                       </div>
                     </td>
-                    <td>
+                    <td className="py-2 px-1 sm:px-2">
                       <div>
                         <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
                           <DialogTrigger asChild>
                             <Button 
                             variant="outline"
                             onClick={() => setSelectedEntry(entry)}
-                            className="group px-1 py-1 text-sm font-medium border-2 hover:bg-red-400 hover:text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                            className="group px-1 py-1 text-xs sm:text-sm font-medium border-2 hover:bg-red-400 hover:text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                             >
-                              Detail
+                              <span className="hidden sm:inline">Detail</span>
+                              <span className="sm:hidden">•••</span>
                             </Button>
                           </DialogTrigger>
                           
                           <DialogContent
                             onOpenAutoFocus={(e) => e.preventDefault()}
                             onCloseAutoFocus={(e) => e.preventDefault()}
-                            className="sm:max-w-4xl max-h-[90h] overflow-y-auto bg-card/95 border-border/50"
+                            className="sm:max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto bg-card/95 border-border/50 mx-2"
                           >
                             {selectedEntry && (
                               <>
                                 <DialogHeader>
-                                  <DialogTitle>Details of Your Request</DialogTitle>
-                                  <DialogDescription>Is it anything wrong?</DialogDescription>
+                                  <DialogTitle className="text-lg sm:text-xl">Details of Your Request</DialogTitle>
+                                  <DialogDescription className="text-sm">Is it anything wrong?</DialogDescription>
                                 </DialogHeader>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                                   <div>
                                     <span className="text-muted-foreground">Name:</span>
                                     <p>{selectedEntry.name}</p>

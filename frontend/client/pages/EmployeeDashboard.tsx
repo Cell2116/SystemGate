@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { initWebSocket, onMessage, closeWebSocket, getConnectionStatus, onConnectionChange, onDataChange } from "@/lib/ws";
 import { useAudio } from "@/hooks/useAudio";
@@ -67,22 +67,45 @@ export default function EmployeeDashboard() {
     addLeavePermission,
   } = useDashboardStore();
 
-  // Filter: hanya tampilkan data yang BELUM 24 jam ATAU BELUM keluar
-  const now = new Date();
-  const filteredRecords = records.filter((record: ExtendedAttendance) => {
-    const dateIn = new Date(record.datein);
-    const isLessThan24h = (now.getTime() - dateIn.getTime()) < 24 * 60 * 60 * 1000;
-    const notExited = !record.dateout && !record.actual_returntime;
-    // Tampilkan jika masih <24 jam ATAU belum keluar
-    return isLessThan24h || notExited;
-  });
+  // Function to get the last activity timestamp for sorting
+  const getLastActivity = (record: ExtendedAttendance) => {
+    const timestamps = [
+      new Date(record.datein).getTime(),
+      record.dateout ? new Date(record.dateout).getTime() : 0,
+      record.actual_exittime ? new Date(record.actual_exittime).getTime() : 0,
+      record.actual_returntime ? new Date(record.actual_returntime).getTime() : 0
+    ].filter(t => t > 0);
+    
+    return Math.max(...timestamps);
+  };
+
+  // Filter and sort records with memoization for performance
+  const sortedAndFilteredRecords = useMemo(() => {
+    const now = new Date();
+    
+    // Filter: hanya tampilkan data yang BELUM 24 jam ATAU BELUM keluar
+    const filtered = records.filter((record: ExtendedAttendance) => {
+      const dateIn = new Date(record.datein);
+      const isLessThan24h = (now.getTime() - dateIn.getTime()) < 24 * 60 * 60 * 1000;
+      const notExited = !record.dateout && !record.actual_returntime;
+      // Tampilkan jika masih <24 jam ATAU belum keluar
+      return isLessThan24h || notExited;
+    });
+    
+    // Sort by last activity (most recent first)
+    return [...filtered].sort((a, b) => {
+      const lastActivityA = getLastActivity(a);
+      const lastActivityB = getLastActivity(b);
+      return lastActivityB - lastActivityA;
+    });
+  }, [records]);
 
   const recordsCountRef = useRef(0);
   
   // Monitor perubahan jumlah records untuk memainkan suara
   // Disabled karena audio sudah dimainkan di onMessage untuk setiap tap card action
   // useEffect(() => {
-  //   const currentCount = filteredRecords.length;
+  //   const currentCount = sortedAndFilteredRecords.length;
   //   
   //   // Jika ada penambahan record baru (count bertambah)
   //   if (recordsCountRef.current > 0 && currentCount > recordsCountRef.current) {
@@ -91,7 +114,7 @@ export default function EmployeeDashboard() {
   //   }
   //   
   //   recordsCountRef.current = currentCount;
-  // }, [filteredRecords, playDingDongBell]);
+  // }, [sortedAndFilteredRecords, playDingDongBell]);
   const formatCustomDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return null;
     
@@ -125,7 +148,7 @@ export default function EmployeeDashboard() {
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return null;
   const formatted = date.toLocaleString("id-ID", {
-    timeZone: "Asia/Jakarta",
+    timeZone: "UTC",
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -345,11 +368,11 @@ export default function EmployeeDashboard() {
                 <span>{status.text}</span>
               </div>
               <div className="text-xs text-gray-500">
-                {filteredRecords.length} records
+                {sortedAndFilteredRecords.length} records
               </div>
-              <div className="w-fit">
+              {/* <div className="w-fit">
               <Clock2 />
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -399,11 +422,15 @@ export default function EmployeeDashboard() {
             )}
             
             {/* Records List */}
-            {filteredRecords.map((record: ExtendedAttendance, index) => (
+            {sortedAndFilteredRecords.map((record: ExtendedAttendance, index) => {
+              // Check if this is the most recent activity
+              const isLatestActivity = index === 0;
+              
+              return (
               <Card 
                 key={`${record.uid}-${record.id}-${index}`}
                 className={`w-full transition-all duration-500 hover:shadow-md ${
-                  index === 0 ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                  isLatestActivity ? 'ring-2 ring-blue-500 bg-blue-50' : ''
                 }`}
               >
                 <CardContent className="p-4">
@@ -419,14 +446,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path 
-                            ? `http://192.168.4.50:3000/uploads/${record.image_path}` 
+                            ? `http://192.168.10.27:3000/uploads/${record.image_path}` 
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="entry"
                           className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
                           onClick={() => {
                             if (record.image_path)
-                              setModalImage(`http://192.168.4.50:3000/uploads/${record.image_path}`);
+                              setModalImage(`http://192.168.10.27:3000/uploads/${record.image_path}`);
                           }}
                         />
                       </div>
@@ -438,14 +465,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_out
-                            ? `http://192.168.4.50:3000/uploads/${record.image_path_out}`
+                            ? `http://192.168.10.27:3000/uploads/${record.image_path_out}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="exit"
                           className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_out)
-                              setModalImage(`http://192.168.4.50:3000/uploads/${record.image_path_out}`);
+                              setModalImage(`http://192.168.10.27:3000/uploads/${record.image_path_out}`);
                           }}
                         />
                       </div>
@@ -458,14 +485,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_exit
-                            ? `http://192.168.4.50:3000/uploads/${record.image_path_leave_exit}`
+                            ? `http://192.168.10.27:3000/uploads/${record.image_path_leave_exit}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_exit"
                           className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_exit)
-                              setModalImage(`http://192.168.4.50:3000/uploads/${record.image_path_leave_exit}`);
+                              setModalImage(`http://192.168.10.27:3000/uploads/${record.image_path_leave_exit}`);
                           }}
                         />
                       </div>
@@ -476,14 +503,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_return
-                            ? `http://192.168.4.50:3000/uploads/${record.image_path_leave_return}`
+                            ? `http://192.168.10.27:3000/uploads/${record.image_path_leave_return}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_return"
                           className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_return)
-                              setModalImage(`http://192.168.4.50:3000/uploads/${record.image_path_leave_return}`);
+                              setModalImage(`http://192.168.10.27:3000/uploads/${record.image_path_leave_return}`);
                           }}
                         />
                       </div>
@@ -507,9 +534,9 @@ export default function EmployeeDashboard() {
                           record.status === 'leave_return' ? 'LEAVE RETURN' :
                           record.status?.toUpperCase() || 'UNKNOWN'}
                         </span>
-                        {index === 0 && (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            LATEST
+                        {isLatestActivity && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 animate-pulse">
+                            LATEST ACTIVITY
                           </span>
                         )}
                       </div>
@@ -615,7 +642,8 @@ export default function EmployeeDashboard() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
           </CardContent>
         </Card>
       </div>

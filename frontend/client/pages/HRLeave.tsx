@@ -411,50 +411,48 @@ export default function HR() {
   };
 
   return (
-    <div className="max-h-screen from-primary/5 via-background to-accent/20 p-3">
+    <div className="max-h-screen from-primary/5 via-background to-accent/20 p-2 sm:p-3">
       <div className="z-10 sticky top-0 pb-2">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between justify-center items-center">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Leave Permission Request (HR Side)</h1>
-            <p className="mt-1 text-sm text-gray-500">
+        <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between justify-center items-center">
+          <div className="text-center sm:text-left">
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900">Leave Permission Request (HR Side)</h1>
+            <p className="mt-1 text-xs sm:text-sm text-gray-500 px-2 sm:px-0">
               Welcome HR Management, Review leave requests with role-based approval workflow.
             </p>
-          </div>
-          <div className="mt-4 justify-center items-center w-fit sm:mt-0">
-            <Clock2 />
           </div>
         </div>  
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 flex items-center justify-center pt-3 px-4">
-        <div className="max-w-6xl md:w-[80vw] xl:w-[80vw] 2xl:w-[80vw] mx-auto text-center space-y-4">
+      <div className="relative z-10 flex items-center justify-center pt-2 sm:pt-3 px-2 sm:px-4">
+        <div className="max-w-6xl w-full sm:w-[90vw] md:w-[80vw] xl:w-[80vw] 2xl:w-[80vw] mx-auto text-center space-y-3 sm:space-y-4">
           {/* Button entry and Pending */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-center justify-center">
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
                 <Button
                   size="sm"
-                  className="group relative px-2 py-2 text-sm font-medium bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                  className="group relative px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 w-full sm:w-auto"
                 >
-                  <Plus className="w-2 h-2 mr-2 group-hover:rotate-90 transition-transform duration-300" />
-                  Add New Entry
-                  <Zap className="w-2 h-2 ml-2 group-hover:scale-110 transition-transform duration-300" />
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                  <span className="hidden sm:inline">Add New Entry</span>
+                  <span className="sm:hidden">Add Entry</span>
+                  <Zap className="w-3 h-3 sm:w-4 sm:h-4 ml-2 group-hover:scale-110 transition-transform duration-300" />
                 </Button>
               </DialogTrigger>
               
-              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
-                <DialogHeader className="space-y-3">
-                  <DialogTitle className="text-2xl font-bold text-center">
+              <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto bg-card/95 border-border/50 mx-2">
+                <DialogHeader className="space-y-2 sm:space-y-3">
+                  <DialogTitle className="text-lg sm:text-xl lg:text-2xl font-bold text-center">
                     Leave Request Registration
                   </DialogTitle>
-                  <DialogDescription className="text-center text-muted-foreground">
+                  <DialogDescription className="text-center text-muted-foreground text-xs sm:text-sm">
                     Please fill in all required information for the entry log.
                   </DialogDescription>
                 </DialogHeader>
                 
-                <form onSubmit={handleSubmit} className="space-y-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 py-2 sm:py-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <EmployeeAutocomplete
                         id="name"
@@ -482,7 +480,7 @@ export default function HR() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Autocomplete
                         id="department"
@@ -758,24 +756,26 @@ export default function HR() {
                     </div>
                   </div>
 
-                  <DialogFooter className="gap-3 sm:gap-2">
+                  <DialogFooter className="gap-2 sm:gap-3 flex-col sm:flex-row">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsOpen(false)}
-                      className="flex-1 sm:flex-none"
+                      className="w-full sm:w-auto order-2 sm:order-1"
                     >
                       Cancel
                     </Button>
                     <Button 
                       type="submit" 
-                      className="flex-1 sm:flex-none group"
+                      className="w-full sm:w-auto group order-1 sm:order-2"
                     >
                       <Send className="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-200" />
-                      {isGroupLeave ? 
-                        `Submit Group Entry (${selectedColleagues.length + 1} people)` : 
-                        "Submit Entry"
-                      }
+                      <span className="text-xs sm:text-sm">
+                        {isGroupLeave ? 
+                          `Submit Group (${selectedColleagues.length + 1})` : 
+                          "Submit Entry"
+                        }
+                      </span>
                     </Button>
                   </DialogFooter>
                 </form>
@@ -788,15 +788,16 @@ export default function HR() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="group relative px-2 py-2 text-sm font-semibold border-2 hover:bg-primary hover:text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                  className="group relative px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold border-2 hover:bg-primary hover:text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 w-full sm:w-auto"
                 >
-                  <Eye className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                  View Waiting ({getPendingHREntries().length})
+                  <Eye className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                  <span className="hidden sm:inline">View Waiting ({getPendingHREntries().length})</span>
+                  <span className="sm:hidden">Waiting ({getPendingHREntries().length})</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
-                <DialogHeader className="space-y-3">
-                  <DialogTitle className="text-2xl font-bold text-center">
+              <DialogContent className="sm:max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto bg-card/95 border-border/50 mx-2">
+                <DialogHeader className="space-y-2 sm:space-y-3">
+                  <DialogTitle className="text-lg sm:text-xl lg:text-2xl font-bold text-center">
                     Waiting HR Approval
                   </DialogTitle>
                   <DialogDescription className="text-center text-muted-foreground">
@@ -1049,44 +1050,44 @@ export default function HR() {
           {/* Recent Processed Entries Table */}
           {(getProcessedEntries().length > 0 || getAllProcessedEntries().length > 0) && (
             <div className="max-w-6xl mx-auto">
-              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-4 shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex-1"></div>
-                  <h3 className="text-lg font-semibold text-center flex-1">Processed Leave Requests</h3>
-                  <div className="flex-1 flex justify-end gap-2">
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-2 sm:p-4 shadow-lg">
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-3 sm:mb-4 space-y-2 sm:space-y-0">
+                  <div className="flex-1 hidden sm:block"></div>
+                  <h3 className="text-base sm:text-lg font-semibold text-center flex-1">Processed Leave Requests</h3>
+                  <div className="flex-1 flex justify-center sm:justify-end gap-1 sm:gap-2">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={handleShowAll}
-                      className="group relative px-3 py-2 text-sm font-medium border-2 hover:bg-primary/10 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                      className="group relative px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm font-medium border-2 hover:bg-primary/10 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
                     >
-                      <RefreshCw className="w-4 h-4 md:w-4 md:h-4 md:mr-2 group-hover:rotate-180 transition-transform duration-300" />
-                      Show All
+                      <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2 group-hover:rotate-180 transition-transform duration-300" />
+                      <span className="hidden sm:inline">Show All</span>
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={handleCleanTable}
-                      className="group relative px-3 py-2 text-sm font-medium border-2 hover:bg-secondary/80 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                      className="group relative px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm font-medium border-2 hover:bg-secondary/80 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
                     >
-                      <Sparkles className="w-4 h-4 md:w-4 md:h-4 md:mr-2 group-hover:rotate-12 transition-transform duration-300" />
-                      Clear
+                      <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2 group-hover:rotate-12 transition-transform duration-300" />
+                      <span className="hidden sm:inline">Clear</span>
                     </Button>
                   </div>
                 </div>
-                <div className="block w-screen max-w-full overflow-x-auto overflow-y-auto h-[60vh] scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
-                  <Table className="min-w-max">
+                <div className="w-full overflow-x-auto overflow-y-auto h-[50vh] sm:h-[60vh] scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <Table className="min-w-[800px] w-full">
                     <TableHeader>
                       <TableRow className="sticky top-0 bg-white z-10">
-                        <TableHead>Name</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Exit</TableHead>
-                        <TableHead>Return</TableHead>
-                        <TableHead>Overall Status</TableHead>
-                        <TableHead>Approval Progress</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2">Name</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2">Role</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2">Department</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2">Date</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2">Exit</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2">Return</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2">Overall Status</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2">Approval Progress</TableHead>
+                        <TableHead className="text-xs sm:text-sm px-1 sm:px-2 text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1108,53 +1109,54 @@ export default function HR() {
                       )}
                       {getProcessedEntries().map((entry) => (
                         <TableRow key={entry.id}>
-                          <TableCell className="font-medium">{entry.name}</TableCell>
-                          <TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm px-1 sm:px-2">{entry.name}</TableCell>
+                          <TableCell className="text-xs sm:text-sm px-1 sm:px-2">
                             <div className="flex items-center">
                               {entry.role === "Head Department" ? (
-                                <Crown className="w-4 h-4 mr-1 text-yellow-600" />
+                                <Crown className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-yellow-600" />
                               ) : (
-                                <User className="w-4 h-4 mr-1 text-blue-600" />
+                                <User className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-600" />
                               )}
-                              <span className="text-sm">{entry.role}</span>
+                              <span className="text-xs sm:text-sm truncate max-w-20 sm:max-w-none">{entry.role}</span>
                             </div>
                           </TableCell>
-                          <TableCell>{entry.department}</TableCell>
-                          <TableCell>{entry.date}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm px-1 sm:px-2 truncate max-w-24 sm:max-w-none">{entry.department}</TableCell>
+                          <TableCell className="text-xs sm:text-sm px-1 sm:px-2">{entry.date}</TableCell>
+                          <TableCell className="text-xs sm:text-sm px-1 sm:px-2">
                             <div className="flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
+                              <Clock className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
                               {entry.exitTime}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm px-1 sm:px-2">
                             <div className="flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
-                              {entry.returnTime || 'Not set'}
+                              <Clock className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
+                              <span className="truncate max-w-16 sm:max-w-none">{entry.returnTime || 'Not set'}</span>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                          <TableCell className="text-xs sm:text-sm px-1 sm:px-2">
+                            <div className={`inline-flex px-1 py-1 sm:px-2 rounded-full text-xs font-medium ${
                               getOverallStatus(entry) === 'approved' ? 'bg-green-100 text-green-800' :
                               getOverallStatus(entry) === 'rejected' ? 'bg-red-100 text-red-800' :
                               'bg-yellow-100 text-yellow-800'
                             }`}>
-                              {getOverallStatus(entry).charAt(0).toUpperCase() + getOverallStatus(entry).slice(1)}
+                              <span className="hidden sm:inline">{getOverallStatus(entry).charAt(0).toUpperCase() + getOverallStatus(entry).slice(1)}</span>
+                              <span className="sm:hidden">{getOverallStatus(entry).charAt(0).toUpperCase()}</span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm px-1 sm:px-2">
                             <div className="flex items-center space-x-1">
                               {entry.role === "Head Department" ? (
                                 // Head Department workflow: HD → HR
                                 <>
                                   <div className="flex items-center">
-                                    <div className={`w-3 h-3 rounded-full ${
+                                    <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
                                       entry.statusFromDepartment === 'approved' ? 'bg-green-500' :
                                       entry.statusFromDepartment === 'rejected' ? 'bg-red-500' :
                                       'bg-yellow-500'
                                     }`} title={`Head Department: ${entry.statusFromDepartment}`} />
-                                    <div className="w-2 h-0.5 bg-gray-300 mx-1" />
-                                    <div className={`w-3 h-3 rounded-full ${
+                                    <div className="w-1 sm:w-2 h-0.5 bg-gray-300 mx-1" />
+                                    <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
                                       entry.statusFromHR === 'approved' ? 'bg-green-500' :
                                       entry.statusFromHR === 'rejected' ? 'bg-red-500' :
                                       'bg-yellow-500'
@@ -1165,13 +1167,13 @@ export default function HR() {
                                 // Staff workflow: Staff → HD → HR
                                 <>
                                   <div className="flex items-center">
-                                    <div className={`w-3 h-3 rounded-full ${
+                                    <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
                                       entry.statusFromDepartment === 'approved' ? 'bg-green-500' :
                                       entry.statusFromDepartment === 'rejected' ? 'bg-red-500' :
                                       'bg-yellow-500'
                                     }`} title={`Head Department: ${entry.statusFromDepartment}`} />
-                                    <div className="w-2 h-0.5 bg-gray-300 mx-1" />
-                                    <div className={`w-3 h-3 rounded-full ${
+                                    <div className="w-1 sm:w-2 h-0.5 bg-gray-300 mx-1" />
+                                    <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
                                       entry.statusFromHR === 'approved' ? 'bg-green-500' :
                                       entry.statusFromHR === 'rejected' ? 'bg-red-500' :
                                       'bg-yellow-500'
@@ -1182,7 +1184,6 @@ export default function HR() {
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
                               {entry.role === "Head Department" ? (
-                                // <span className="text-green-600">HD→</span>
                                 <>
                                   <span className={`${
                                     entry.statusFromDepartment === 'approved' ? 'text-green-600' :
@@ -1206,15 +1207,15 @@ export default function HR() {
                               }`}>HR</span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right px-1 sm:px-2">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleViewDetails(entry)}
-                              className="hover:bg-primary/10"
+                              className="hover:bg-primary/10 px-1 py-1 sm:px-2 sm:py-1"
                             >
-                              <FileText className="w-4 h-4 mr-1" />
-                              Details
+                              <FileText className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                              <span className="hidden sm:inline text-xs">Details</span>
                             </Button>
                           </TableCell>
                         </TableRow>

@@ -1,3 +1,5 @@
+// TODO Operation Menu need one more new menu (queue for driver) (HPC, PT, PBPG)
+
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardStore } from "@/store/dashboardStore";
@@ -27,9 +29,9 @@ import {
   PackageOpen
 } from "lucide-react";
 
-
-import {roleAccess, filterChildrenByRole, hasMenuAccess} from "../authentication/accessControl.ts";
-import {useUser} from "../authentication/userContext.tsx";
+import Clock2 from "../components/dashboard/clock.tsx"
+import { roleAccess, filterChildrenByRole, hasMenuAccess } from "../authentication/accessControl.ts";
+import { useUser } from "../authentication/userContext.tsx";
 import { useEffect, useRef } from "react";
 import NotificationCard from "../components/dashboard/notification.tsx"
 import { useAudio } from "@/hooks/useAudio";
@@ -82,11 +84,12 @@ function useNotificationSound() {
 }
 
 const navigation = [
-  { name: "Dashboard",
+  {
+    name: "Dashboard",
     href: "/",
-    icon: LayoutDashboard, 
-    children:[
-      { key: "employee", name: "Employee", href: "/employee" }, 
+    icon: LayoutDashboard,
+    children: [
+      { key: "employee", name: "Employee", href: "/employee" },
       { key: "trucks", name: "Trucks", href: "/trucks" }
     ]
   },
@@ -95,32 +98,42 @@ const navigation = [
     href: "/operation",
     icon: PackageOpen,
     children: [
-      { 
+      {
         key: "loading",
         name: (
           <span>
             Loading / <span className="text-green-600 font-semibold italic">Muat</span>
           </span>
-        ), 
+        ),
         href: "/loadingtrucks"
       },
-      { 
+      {
         key: "unloading",
         name: (
           <span>
             Unloading / <span className="text-orange-600 font-semibold italic">Bongkar</span>
           </span>
-        ), 
+        ),
         href: "/unloadingtrucks"
       },
-      { key: "scan", name: "Scan", href: "/scan"},
+      {
+        key: "queue",
+        name: (
+          <span>
+            Truck Queue / <span className="text-cyan-600 font-semibold italic">Antrian Truk</span>
+          </span>
+        ),
+        href: "/truck-queue"
+      },
+      { key: "scan", name: "Scan", href: "/scan" },
     ]
   },
-  { name: "History Operation",
+  {
+    name: "History Operation",
     href: "/history",
-    icon: FileClock, 
-    children:[
-      { key: "employee-history", name: "Employee History", href: "/employeehistory" }, 
+    icon: FileClock,
+    children: [
+      { key: "employee-history", name: "Employee History", href: "/employeehistory" },
       { key: "trucks-history", name: "Trucks History", href: "/truckshistory" }
     ]
   },
@@ -130,7 +143,7 @@ const navigation = [
 //console.log("Layout.tsx file loaded");
 
 export default function Layout() {
-  const {role, name, department} = useUser();
+  const { role, name, department } = useUser();
 
   //console.log("ROLE:", role); 
   const filteredNavigation = navigation
@@ -170,7 +183,7 @@ export default function Layout() {
     }
   }, []);
 
-  return (  
+  return (
     <div className="min-h-full bg-gray-50 flex">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
@@ -189,10 +202,10 @@ export default function Layout() {
         <div className="flex flex-col h-screen overflow-y-auto pt-1">
           <div className="flex items-center justify-between h-10 md:h-12 lg:h-14 xl:h-13 px-2 md:px-3 lg:px-4 xl:px-6 border-b border-gray-200">
             <div className="flex items-center">
-              <img 
-                src="../../public/alkindo-naratama-tbk--600-removebg-preview.png" 
-                alt="logo" 
-                className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 xl:w-9 xl:h-9" 
+              <img
+                src="../../public/alkindo-naratama-tbk--600-removebg-preview.png"
+                alt="logo"
+                className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 xl:w-9 xl:h-9"
               />
               <span className="ml-1.5 md:ml-2 text-xs md:text-sm lg:text-lg xl:text-sm 2xl:text-lg font-bold text-gray-900">
                 Gateway System
@@ -213,7 +226,7 @@ export default function Layout() {
             {filteredNavigation.map((item) => {
               const hasChildren = item.children && item.children.length > 0;
               const isOpen = openMenu === item.name;
-              
+
               return (
                 <div key={item.name}>
                   {hasChildren ? (
@@ -254,7 +267,7 @@ export default function Layout() {
                       <span className="truncate text-xs lg:text-sm xl:text-xs">{item.name}</span>
                     </NavLink>
                   )}
-                  
+
                   {/* Much more compact submenu */}
                   {hasChildren && isOpen && (
                     <div className="ml-3 md:ml-4 lg:ml-6 xl:ml-8 mt-0.5 md:mt-1 space-y-0.5">
@@ -293,13 +306,13 @@ export default function Layout() {
                 <p className="text-xs lg:text-sm xl:text-xs font-medium text-gray-900 truncate">{user.name}</p>
                 <p className="text-xs text-gray-500 truncate">{user.role}</p>
               </div>
-              <Button variant="ghost" size="sm" className="p-0.5 md:p-1" onClick={()=>{
+              <Button variant="ghost" size="sm" className="p-0.5 md:p-1" onClick={() => {
                 localStorage.removeItem("user");
                 localStorage.removeItem("userRole");
                 localStorage.removeItem("isLoggedIn");
                 navigate("/login");
-                }
-                }>
+              }
+              }>
                 <LogOut className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4 text-gray-500" />
               </Button>
             </div>
@@ -321,7 +334,7 @@ export default function Layout() {
               >
                 <Menu className="h-3 w-3 md:h-4 md:w-4" />
               </Button>
-              
+
               {/* Much smaller search */}
               <div className="hidden sm:flex items-center ml-1 md:ml-2 lg:ml-4 flex-1 md:max-w-sm lg:max-w-md xl:max-w-lg">
                 <div className="relative w-full">
@@ -334,9 +347,12 @@ export default function Layout() {
                 </div>
               </div>
             </div>
-            
+
             {/* Much smaller action buttons */}
             <div className="flex items-center space-x-1 md:space-x-2">
+              <div className="w-fit">
+                <Clock2 />
+              </div>
               {/* Notification */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -373,9 +389,9 @@ export default function Layout() {
                     </Avatar>
                     <DialogHeader className="w-full text-center">
                       <DialogTitle className="text-lg font-bold">{user.name || "Unknown User"}</DialogTitle>
-                      <DialogDescription className="text-sm text-gray-500 mt-1">Department: 
+                      <DialogDescription className="text-sm text-gray-500 mt-1">Department:
                         <span className="text-slate-700"> {user.role || "-"}</span>
-                        </DialogDescription>
+                      </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="w-full mt-4 flex flex-col gap-2">
                       <Button
@@ -403,7 +419,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-      <Information/>
+      <Information />
     </div>
   );
 }

@@ -17,7 +17,7 @@ export function TicketPreview({
   onPrintTicket,
   operationType
 }: TicketPreviewProps) {
-  
+
   useEffect(() => {
     // Generate barcode when component mounts or ticket number changes
     if (previewTicketNumber && formData.department) {
@@ -50,7 +50,7 @@ export function TicketPreview({
           {previewTicketNumber}
         </div>
       </div>
-      
+
       <div>
         <p className="text-xs font-semibold opacity-85 text-slate-600">
           Silahkan tekan <span className="italic">generate</span>{" "}
@@ -59,7 +59,7 @@ export function TicketPreview({
           masuk truck.
         </p>
       </div>
-      
+
       <div className="flex justify-center items-center">
         <div
           id="print-barcode-area"
@@ -73,16 +73,28 @@ export function TicketPreview({
             />
             <p className="font-bold">Gateway System</p>
           </div>
-          <div className="flex flex-row text-xs pt-5">
-            <p>
-              {formData.driver} || {formData.plateNumber} ||{" "}
-              {operationType === "muat" ? formData.armada : formData.supplier}
-            </p>
-          </div>
-          <div className="flex flex-row text-xs">
-            <p>
-              {formData.date} || {formData.arrivalTime}
-            </p>
+          <div className="flex flex-row justify-between pt-4">
+            <div>
+              <div className="flex text-xs">
+                <p>
+                  {formData.driver} || {formData.plateNumber} ||{" "}
+                  {operationType === "muat" ? formData.armada : formData.supplier}
+                </p>
+              </div>
+              <div className="flex flex-row text-xs">
+                <p>
+                  {formData.date} || {formData.arrivalTime}
+                </p>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                No. Antrean 
+              </p>
+              <p className="text-center text-xl">
+                {previewTicketNumber.slice(-2)}
+              </p>
+            </div>
           </div>
           <svg
             id="barcode"
@@ -94,7 +106,7 @@ export function TicketPreview({
           </p>
         </div>
       </div>
-      
+
       <div className="justify-center items-center flex text-center">
         <Button
           className="justify-center items-center flex text-center bg-blue-800 hover:bg-blue-500"
@@ -104,7 +116,7 @@ export function TicketPreview({
           Print Ticket
         </Button>
       </div>
-      
+
       <div>
         <p className="text-xs font-semibold opacity-85 text-slate-600">
           <span className="text-red-600">Peringatan!</span> jangan

@@ -42,6 +42,7 @@ export function VehicleSelectFields({
             <option value="">Pilih Departemen</option>
             <option value="HPC">HPC</option>
             <option value="PT">PT</option>
+            <option value="PBPG">PBPG</option>
           </select>
         </div>
       )}

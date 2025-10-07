@@ -23,7 +23,7 @@ export function initWebSocket() {
 
     try {
         // console.log("Creating new WebSocket connection to ws://localhost:3000");
-        socket = new WebSocket("ws://192.168.4.50:3000");
+        socket = new WebSocket("ws://192.168.10.27:3000");
         // console.log("WebSocket created, readyState:", socket.readyState);
         notifyConnectionListeners('connecting');
         socket.onopen = () => {

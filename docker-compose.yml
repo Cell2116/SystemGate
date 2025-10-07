@@ -1,30 +1,30 @@
 version: "3.8"
 
 services:
-  postgres:
-    image: postgres:15
-    container_name: esp32_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: espuser
-      POSTGRES_PASSWORD: esp123
-      POSTGRES_DB: esp32db
-    ports:
-      - "5434:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./backend/sql/DK4.csv:/docker-entrypoint-initdb.d/DK4.csv
-      - ./backend/sql/userlogin.csv:/docker-entrypoint-initdb.d/userlogin.csv
+  # postgres:
+  #   image: postgres:15
+  #   container_name: esp32_postgres
+  #   restart: always
+  #   environment:
+  #     POSTGRES_USER: espuser
+  #     POSTGRES_PASSWORD: esp123
+  #     POSTGRES_DB: esp32db
+  #   ports:
+  #     - "5434:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #     - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+  #     - ./backend/sql/DK4.csv:/docker-entrypoint-initdb.d/DK4.csv
+  #     - ./backend/sql/userlogin.csv:/docker-entrypoint-initdb.d/userlogin.csv
 
-  mqtt:
-    image: eclipse-mosquitto
-    container_name: esp32_mqtt
-    restart: always
-    ports: 
-      - "1884:1884"
-    volumes:
-      - ./mosquitto/config:/mosquitto/config
+  # mqtt:
+  #   image: eclipse-mosquitto
+  #   container_name: esp32_mqtt
+  #   restart: always
+  #   ports: 
+  #     - "1884:1884"
+  #   volumes:
+  #     - ./mosquitto/config:/mosquitto/config
 
   backend:
     build: ./backend
@@ -32,16 +32,16 @@ services:
     restart: always
     ports:
       - "3000:3000"
-    depends_on:
-      - mqtt
+    # depends_on:
+      # - mqtt
       # - postgres
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: espuser
-      DB_PASSWORD: esp123
-      DB_NAME: esp32db
-      MQTT_BROKER_URL : mqtt://mqtt:1884
+      DB_HOST: 192.168.10.27
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: Marcello21
+      DB_NAME: thirdparty
+      # MQTT_BROKER_URL : mqtt://mqtt:1884
     volumes:
       # - C:/Users/iotal/Documents/SystemGate/backend/uploads:/usr/src/app/uploads
       # - uploads_data:/usr/src/app/uploads
