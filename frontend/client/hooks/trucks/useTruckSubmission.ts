@@ -35,6 +35,7 @@ export function useTruckSubmission({
       const suratJalanDate = formData.tglsj || currentDate;
 
       const newTruck: Omit<TruckRecord, "id"> = {
+        // Main truck data (untuk tabel trucks)
         plateNumber: formData.plateNumber,
         noticket: ticketNumber,
         department: formData.department,
@@ -44,11 +45,9 @@ export function useTruckSubmission({
         tglsj: suratJalanDate,
         driver: formData.driver,
         supplier: formData.supplier,
-        arrivalTime: arrivalDateTime || "",
         eta: "",
-        status: "Waiting",
-        type:
-          formData.type === "internal" 
+        status: "waiting",
+        type: formData.type === "internal" 
             ? "Inbound"
             : formData.type === "external"
               ? "Outbound"
@@ -58,21 +57,36 @@ export function useTruckSubmission({
         descin: formData.descin,
         descout: formData.descout,
         statustruck: formData.statustruck,
-        // estimatedWaitTime: null,
-        actualWaitTime: null,
-        totalProcessLoadingTime: null,
-        startLoadingTime: "",
-        finishTime: "",
-        date: currentDate,
         armada: formData.armada,
         kelengkapan: formData.kelengkapan,
         jenismobil: formData.jenismobil,
+        date: currentDate,
+        exittime: "",
+        
+        // Time data (untuk tabel truck_times) - set initial values
+        arrivalTime: arrivalDateTime || "",
+        arrivaltime: arrivalDateTime || "",
+        waitingfortimbang: "",
+        starttimbang: "",
+        finishtimbang: "",
+        totalprocesstimbang: "",
+        runtohpc: "",
+        waitingforarrivalhpc: "",
+        entryhpc: "",
+        totalwaitingarrival: "",
+        startloadingtime: "",
+        finishloadingtime: "",
+        totalprocessloadingtime: "",
+        actualwaitloadingtime: "",
+        
+        // Photo data (untuk tabel truck_photos)
+        driver_photo: capturedImages.driver || "",
+        sim_photo: capturedImages.sim || "",
+        stnk_photo: capturedImages.stnk || "",
+        
+        // Optional fields (backward compatibility - tidak dikirim ke backend)
         quantity: formData.quantity || "",
         unit: formData.unit || "",
-        // Include captured images as base64 data
-        driver_photo: capturedImages.driver || undefined,
-        sim_photo: capturedImages.sim || undefined,
-        stnk_photo: capturedImages.stnk || undefined,
       };
 
       console.log("=== SENDING TRUCK DATA ===", newTruck);

@@ -419,7 +419,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-      <Information />
+      {/* <Information /> */}
     </div>
   );
 }

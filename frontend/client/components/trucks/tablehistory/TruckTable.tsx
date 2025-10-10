@@ -123,7 +123,7 @@ export default function TruckTable({
                                         {record.arrivaltime ? formatDateTime(record.arrivaltime) : '-'}
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                                        {record.finishtime ? formatDateTime(record.finishtime) : '-'}
+                                        {record.finishloadingtime ? formatDateTime(record.finishloadingtime) : '-'}
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${record.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :

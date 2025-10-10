@@ -210,7 +210,7 @@ export default function LoadingTrucks() {
                 delete cleanedEditData.quantity;
                 delete cleanedEditData.unit;
 
-                (['arrivalTime', 'startLoadingTime', 'finishTime', 'eta', 'tglsj', 'date'] as (keyof TruckRecord)[]).forEach(field => {
+                (['arrivalTime', 'startLoadingTime', 'finishloadingtime', 'eta', 'tglsj', 'date'] as (keyof TruckRecord)[]).forEach(field => {
                     if (cleanedEditData[field] === "") (cleanedEditData as any)[field] = null;
                 });
 
@@ -246,7 +246,7 @@ export default function LoadingTrucks() {
             if (field === 'nosj') {
                 processedValue = safeValue.trim().toUpperCase();
             }
-            // if (field === 'arrivalTime' || field === 'startLoadingTime' || field === 'finishTime') {
+            // if (field === 'arrivalTime' || field === 'startLoadingTime' || field === 'finishloadingtime') {
             //     const existingValue = editFormData[field];
             //     processedValue = formatTimeForDatabase(
             //         safeValue,
@@ -665,7 +665,7 @@ export default function LoadingTrucks() {
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Finish Time</label>
-                                    <p className="text-sm text-gray-900">{formatIsoForDisplay(selectedTruck.finishTime) || '-'}</p>
+                                    <p className="text-sm text-gray-900">{formatIsoForDisplay(selectedTruck.finishloadingtime) || '-'}</p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Total Process Loading Time</label>
@@ -673,7 +673,7 @@ export default function LoadingTrucks() {
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Actual Wait Time</label>
-                                    <p className="text-sm text-gray-900">{formatIntervalDisplay(selectedTruck.actualWaitTime)}</p>
+                                    <p className="text-sm text-gray-900">{formatIntervalDisplay(selectedTruck.actualwaitloadingtime)}</p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Truck Status</label>

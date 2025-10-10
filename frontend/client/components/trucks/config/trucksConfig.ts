@@ -7,9 +7,9 @@ export const loadingTrucksConfig: TrucksTableConfig = {
     subtitle: 'Muat',
     subtitleColor: 'text-green-600',
     statusMapping: {
-        waiting: ['Waiting', 'pending'],
-        loading: ['Loading', 'loading'],
-        finished: ['Finished', 'finished']
+        waiting: ['waiting'],
+        loading: ['loading'],
+        finished: ['finished', 'done']
     },
     features: {
         suratJalanRecommendations: true
@@ -23,10 +23,10 @@ export const unloadingTrucksConfig: TrucksTableConfig = {
     subtitle: 'Bongkar',
     subtitleColor: 'text-orange-600',
     statusMapping: {
-        waiting: ['Waiting', 'pending'],
-        weighing: ['Weighing', 'weighing'],
-        loading: ['Loading', 'loading'],
-        finished: ['Finished', 'finished']
+        waiting: ['waiting'],
+        weighing: ['timbang'],
+        loading: ['loading', 'unloading'],
+        finished: ['finished', 'done']
     },
     features: {
         suratJalanRecommendations: false
@@ -41,7 +41,7 @@ export const weighingTrucksConfig: TrucksTableConfig = {
     subtitleColor: 'text-blue-600',
     statusMapping: {
         waiting: [],
-        weighing: ['Weighing', 'weighing'],
+        weighing: ['timbang'],
         loading: [],
         finished: []
     },

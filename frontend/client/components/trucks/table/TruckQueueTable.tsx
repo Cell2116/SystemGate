@@ -84,14 +84,14 @@ export function TrucksQueue() {
                                     {filteredTrucks
                                         .filter(
                                             (truck) =>
-                                                truck.status === "Waiting" ||
-                                                truck.status === "Loading",
+                                                truck.status === "waiting" ||
+                                                truck.status === "loading",
                                         )
                                         .sort((a, b) => {
                                             // Loading First then the Waiting status
                                             if (a.status !== b.status) {
-                                                if (a.status === "Loading") return -1;
-                                                if (b.status === "Loading") return 1;
+                                                if (a.status === "loading") return -1;
+                                                if (b.status === "loading") return 1;
                                             }
                                             // Sorting by id 
                                             return a.id.localeCompare(b.id);
@@ -130,25 +130,25 @@ export function TrucksQueue() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {truck.type === "Inbound" && (
+                                                    {truck.type === "internal" && (
                                                         <div className="rounded-full flex bg-green-50 text-green-500 text-xs font-bold px-2 py-1 w-fit mx-auto">
                                                             Internal
                                                         </div>
                                                     )}
-                                                    {truck.type === "Outbound" && (
+                                                    {truck.type === "external" && (
                                                         <div className="rounded-full flex bg-red-50 text-red-500 text-xs font-bold px-2 py-1 w-fit mx-auto">
                                                             External
                                                         </div>
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {truck.status === "Waiting" && (
+                                                    {truck.status === "waiting" && (
                                                         <div className="rounded-full flex bg-yellow-100 text-yellow-700 font-bold text-xs px-2 py-1 w-fit mx-auto">
                                                             {truck.status.charAt(0).toUpperCase() +
                                                                 truck.status.slice(1)}
                                                         </div>
                                                     )}
-                                                    {truck.status === "Loading" && (
+                                                    {truck.status === "loading" && (
                                                         <div className="rounded-full flex bg-blue-100 text-blue-700 font-bold text-xs px-2 py-1 w-fit mx-auto">
                                                             {truck.status.charAt(0).toUpperCase() +
                                                                 truck.status.slice(1)}

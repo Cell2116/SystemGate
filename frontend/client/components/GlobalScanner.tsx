@@ -11,7 +11,7 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
     useEffect(() => {
         let scanTimeout: NodeJS.Timeout;
         
-        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+        const handleGlobalKeyDown = async (e: KeyboardEvent) => {
             const activeElement = document.activeElement;
             const isTypingInInput = activeElement && (
                 activeElement.tagName === 'INPUT' || 
@@ -27,7 +27,7 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
             }
             if (e.key === 'Enter' && scanBuffer.length > 0) {
                 e.preventDefault();
-                processScan(scanBuffer);
+                await processScan(scanBuffer);
                 setScanBuffer("");
                 return;
             }
@@ -42,9 +42,9 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
                 const newBuffer = scanBuffer + e.key;
                 setScanBuffer(newBuffer);
                 
-                scanTimeout = setTimeout(() => {
+                scanTimeout = setTimeout(async () => {
                     if (newBuffer.length > 2) { 
-                        processScan(newBuffer);
+                        await processScan(newBuffer);
                         setScanBuffer("");
                     }
                 }, 100);

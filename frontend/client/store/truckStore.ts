@@ -19,7 +19,62 @@ export interface SuratJalan {
     updatedBy?: string;
 }
 
-// Interface Truck Record
+// Interface untuk data dari tabel trucks (main truck info)
+interface TruckMainData {
+    id: string;
+    platenumber: string;
+    noticket: string;
+    department: string;
+    nikdriver: string;
+    tlpdriver: string;
+    nosj: string;
+    tglsj: string;
+    driver: string;
+    supplier: string;
+    eta?: string;
+    status: "waiting" | "timbang" | "loading" | "unloading" | "done" | "on process" | "finished";
+    type: "Inbound" | "Outbound" | "internal" | "external";
+    operation: "bongkar" | "muat";
+    goods: string;
+    descin: string;
+    descout: string;
+    statustruck: string;
+    armada: string;
+    kelengkapan: string;
+    jenismobil: string;
+    date: string;
+    exittime: string;
+}
+
+// Interface untuk data dari tabel truck_times
+interface TruckTimesData {
+    id: string;
+    truck_id: string;
+    arrivaltime: string;
+    waitingfortimbang: string;
+    starttimbang: string;
+    finishtimbang: string;
+    totalprocesstimbang: string;
+    runtohpc: string;
+    waitingforarrivalhpc: string;
+    entryhpc: string;
+    totalwaitingarrival: string;
+    startloadingtime: string;
+    finishloadingtime: string;
+    totalprocessloadingtime: string;
+    actualwaitloadingtime: string;
+}
+
+// Interface untuk data dari tabel truck_photos
+interface TruckPhotosData {
+    id: string;
+    truck_id: string;
+    driver_photo?: string;
+    sim_photo?: string;
+    stnk_photo?: string;
+}
+
+// Interface Truck Record (gabungan dari 3 tabel)
 export interface TruckRecord {
     id: string;
     plateNumber: string;
@@ -33,38 +88,38 @@ export interface TruckRecord {
     supplier: string;
     arrivalTime: string;
     eta?: string;
-    status:
-        | "Waiting"
-        | "Weighing"
-        | "Loading"
-        | "Finished"
-        | "pending"
-        | "weighing"
-        | "loading"
-        | "finished";
+    status: "waiting" | "timbang" | "loading" | "unloading" | "done" | "on process" | "finished";
     type: "Inbound" | "Outbound" | "internal" | "external";
     operation: "bongkar" | "muat";
     goods: string;
     descin: string;
     descout: string;
     statustruck: string;
-    // estimatedWaitTime field removed - not in database schema
-    actualWaitTime?: string | null; // Changed to string for INTERVAL type
-    totalProcessLoadingTime?: string | null; // New field for INTERVAL
-    startLoadingTime?: string;
-    finishTime?: string;
+    // Time fields dari truck_times
+    arrivaltime: string;
+    waitingfortimbang: string;
+    starttimbang: string;
+    finishtimbang: string;
+    totalprocesstimbang: string;
+    runtohpc: string;
+    waitingforarrivalhpc: string;
+    entryhpc: string;
+    totalwaitingarrival: string;
+    startloadingtime: string;
+    finishloadingtime: string;
+    totalprocessloadingtime: string;
+    actualwaitloadingtime: string;
+    exittime: string;
     date: string;
     armada: string;
     kelengkapan: string;
     jenismobil: string;
+    // Photo fields dari truck_photos
     quantity?: string;
     driver_photo?: string;
     sim_photo?: string;
     stnk_photo?: string;
     unit?: string;
-    driverPhoto?: string;
-    stnkPhoto?: string;
-    simPhoto?: string;
 }
 
 // Interface API Response
@@ -152,11 +207,13 @@ const convertIntervalToString = (interval: any): string | null => {
 
 const transformTruckFromDB = (dbTruck: any): TruckRecord => {
     // Debug logging untuk INTERVAL fields
-    console.log('=== TRANSFORM DEBUG ===');
-    console.log('actualwaittime from DB:', dbTruck.actualwaittime, typeof dbTruck.actualwaittime);
-    console.log('totalprocessloadingtime from DB:', dbTruck.totalprocessloadingtime, typeof dbTruck.totalprocessloadingtime);
+    console.log('=== TRANSFORM TRUCK FROM DB ===');
+    console.log('Raw dbTruck data:', dbTruck);
+    console.log('Status from DB:', dbTruck.status);
     
-    const result = {
+    // Transform data dari JOIN query 3 tabel
+    const result: TruckRecord = {
+        // Main truck data (dari tabel trucks)
         id: dbTruck.id?.toString() || "",
         plateNumber: dbTruck.platenumber || "",
         noticket: dbTruck.noticket || "",
@@ -167,34 +224,48 @@ const transformTruckFromDB = (dbTruck: any): TruckRecord => {
         tglsj: dbTruck.tglsj || "",
         driver: dbTruck.driver || "",
         supplier: dbTruck.supplier || "",
-        arrivalTime: dbTruck.arrivaltime || "",
         eta: dbTruck.eta || "",
-        status: dbTruck.status || "Waiting",
+        status: dbTruck.status || "waiting",
         type: dbTruck.type || "Inbound",
         operation: dbTruck.operation || "bongkar",
         goods: dbTruck.goods || "",
         descin: dbTruck.descin || "",
         descout: dbTruck.descout || "",
         statustruck: dbTruck.statustruck || "",
-        // estimatedWaitTime field removed - not in database schema
-        actualWaitTime: convertIntervalToString(dbTruck.actualwaittime),
-        totalProcessLoadingTime: convertIntervalToString(dbTruck.totalprocessloadingtime),
-        startLoadingTime: dbTruck.startloadingtime || "",
-        finishTime: dbTruck.finishtime || "",
-        date: dbTruck.date || "",
         armada: dbTruck.armada || "",
         kelengkapan: dbTruck.kelengkapan || "",
         jenismobil: dbTruck.jenismobil || "",
-        quantity: dbTruck.quantity || "",
-        unit: dbTruck.unit || "",
+        date: dbTruck.date || "",
+        exittime: dbTruck.exittime || "",
+        
+        // Time data (dari tabel truck_times dengan fallback)
+        arrivalTime: dbTruck.arrivaltime || dbTruck.arrivalTime || "",
+        arrivaltime: dbTruck.arrivaltime || "",
+        waitingfortimbang: convertIntervalToString(dbTruck.waitingfortimbang) || "",
+        starttimbang: dbTruck.starttimbang || "",
+        finishtimbang: dbTruck.finishtimbang || "",
+        totalprocesstimbang: convertIntervalToString(dbTruck.totalprocesstimbang) || "",
+        runtohpc: dbTruck.runtohpc || "",
+        waitingforarrivalhpc: convertIntervalToString(dbTruck.waitingforarrivalhpc) || "",
+        entryhpc: dbTruck.entryhpc || "",
+        totalwaitingarrival: convertIntervalToString(dbTruck.totalwaitingarrival) || "",
+        startloadingtime: dbTruck.startloadingtime || "",
+        finishloadingtime: dbTruck.finishloadingtime || "",
+        totalprocessloadingtime: convertIntervalToString(dbTruck.totalprocessloadingtime) || "",
+        actualwaitloadingtime: convertIntervalToString(dbTruck.actualwaitloadingtime) || "",
+        
+        // Photo data (dari tabel truck_photos)
         driver_photo: dbTruck.driver_photo || "",
         sim_photo: dbTruck.sim_photo || "",
         stnk_photo: dbTruck.stnk_photo || "",
+        
+        // Optional fields (backward compatibility)
+        quantity: dbTruck.quantity || "",
+        unit: dbTruck.unit || "",
     };
     
-    console.log('Converted actualWaitTime:', result.actualWaitTime);
-    console.log('Converted totalProcessLoadingTime:', result.totalProcessLoadingTime);
-    console.log('=== END TRANSFORM DEBUG ===');
+    // console.log('Transformed result:', result);
+    // console.log('=== END TRANSFORM DEBUG ===');
     
     return result;
 };
@@ -309,7 +380,10 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
 
     createTruck: async (data) => {
         try {
-            const dbData = {
+            // Prepare data yang akan dikirim ke backend
+            // Backend akan menangani penyimpanan ke 3 tabel (trucks, truck_times, truck_photos)
+            const truckData = {
+                // Main truck data (untuk tabel trucks)
                 platenumber: data.plateNumber,
                 noticket: data.noticket,
                 department: data.department,
@@ -319,7 +393,6 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 tglsj: data.tglsj || new Date().toISOString().split('T')[0],
                 driver: data.driver,
                 supplier: data.supplier,
-                arrivaltime: data.arrivalTime || null,
                 eta: data.eta || null,
                 status: data.status,
                 type: data.type,
@@ -328,24 +401,38 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 descin: data.descin,
                 descout: data.descout,
                 statustruck: data.statustruck,
-                actualwaittime: data.actualWaitTime || null, 
-                totalprocessloadingtime: data.totalProcessLoadingTime || null,
-                startloadingtime: data.startLoadingTime || null, 
-                finishtime: data.finishTime || null, 
                 date: data.date || new Date().toISOString().split('T')[0], 
                 armada: data.armada,
                 kelengkapan: data.kelengkapan,
                 jenismobil: data.jenismobil,
+                exittime: null,
+                
+                // Time data (untuk tabel truck_times)
+                arrivaltime: data.arrivalTime || null,
+                waitingfortimbang: null,
+                starttimbang: null,
+                finishtimbang: null,
+                totalprocesstimbang: null,
+                runtohpc: null,
+                waitingforarrivalhpc: null,
+                entryhpc: null,
+                totalwaitingarrival: null,
+                startloadingtime: data.startloadingtime || null,
+                finishloadingtime: data.finishloadingtime || null,
+                totalprocessloadingtime: data.totalprocessloadingtime || null,
+                actualwaitloadingtime: data.actualwaitloadingtime || null,
+                
+                // Photo data (untuk tabel truck_photos)
                 driver_photo: data.driver_photo || null,
                 sim_photo: data.sim_photo || null,
                 stnk_photo: data.stnk_photo || null,
             };
 
-            console.log("=== STORE SENDING TO BACKEND ===", dbData);
+            console.log("=== STORE SENDING TO BACKEND (3-TABLE STRUCTURE) ===", truckData);
 
             const response = await axios.post(
                 `${API_BASE_URL}/api/trucks`,
-                dbData,
+                truckData,
             );
             const newTruck = transformTruckFromDB(response.data);
             get().refreshTrucks();
@@ -377,77 +464,102 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
 
             const dbUpdates: any = {};
             
-            // Map frontend field names to database field names
-            if (cleanedUpdates.plateNumber !== undefined)
-                dbUpdates.platenumber = cleanedUpdates.plateNumber;
-            if (cleanedUpdates.noticket !== undefined)
-                dbUpdates.noticket = cleanedUpdates.noticket;
-            if (cleanedUpdates.department !== undefined)
-                dbUpdates.department = cleanedUpdates.department;
-            if (cleanedUpdates.nikdriver !== undefined)
-                dbUpdates.nikdriver = cleanedUpdates.nikdriver;
-            if (cleanedUpdates.tlpdriver !== undefined)
-                dbUpdates.tlpdriver = cleanedUpdates.tlpdriver;
-            if (cleanedUpdates.nosj !== undefined) 
-                dbUpdates.nosj = cleanedUpdates.nosj;
-            if (cleanedUpdates.tglsj !== undefined) 
-                dbUpdates.tglsj = cleanedUpdates.tglsj;
-            if (cleanedUpdates.driver !== undefined) 
-                dbUpdates.driver = cleanedUpdates.driver;
-            if (cleanedUpdates.supplier !== undefined)
-                dbUpdates.supplier = cleanedUpdates.supplier;
-            if (cleanedUpdates.arrivalTime !== undefined)
-                dbUpdates.arrivaltime = cleanedUpdates.arrivalTime;
-            if (cleanedUpdates.eta !== undefined) 
-                dbUpdates.eta = cleanedUpdates.eta;
-            if (cleanedUpdates.status !== undefined) {
-                dbUpdates.status = cleanedUpdates.status;
-                console.log('🔥 STATUS UPDATE DETECTED:', cleanedUpdates.status);
-            }
-            if (cleanedUpdates.type !== undefined) 
-                dbUpdates.type = cleanedUpdates.type;
-            if (cleanedUpdates.operation !== undefined) {
-                // Validate operation value to match database CHECK constraint
-                if (cleanedUpdates.operation === 'bongkar' || cleanedUpdates.operation === 'muat') {
-                    dbUpdates.operation = cleanedUpdates.operation;
-                } else {
-                    console.warn('Invalid operation value:', cleanedUpdates.operation, '- skipping field');
+            // Pisahkan field berdasarkan tabel target
+            const truckMainFields = ['platenumber', 'noticket', 'department', 'nikdriver', 'tlpdriver', 
+                                    'nosj', 'tglsj', 'driver', 'supplier', 'eta', 'status', 'type', 
+                                    'operation', 'goods', 'descin', 'descout', 'statustruck', 'armada', 
+                                    'kelengkapan', 'jenismobil', 'date', 'exittime'];
+            
+            const truckTimeFields = ['arrivaltime', 'waitingfortimbang', 'starttimbang', 'finishtimbang', 
+                                    'totalprocesstimbang', 'runtohpc', 'waitingforarrivalhpc', 'entryhpc', 
+                                    'totalwaitingarrival', 'startloadingtime', 'finishloadingtime', 
+                                    'totalprocessloadingtime', 'actualwaitloadingtime'];
+            
+            const truckPhotoFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
+
+            // Map frontend field names to database field names untuk semua field
+            const fieldMapping = {
+                plateNumber: 'platenumber',
+                noticket: 'noticket',
+                department: 'department',
+                nikdriver: 'nikdriver',
+                tlpdriver: 'tlpdriver',
+                nosj: 'nosj',
+                tglsj: 'tglsj',
+                driver: 'driver',
+                supplier: 'supplier',
+                arrivalTime: 'arrivaltime',
+                eta: 'eta',
+                status: 'status',
+                type: 'type',
+                operation: 'operation',
+                goods: 'goods',
+                descin: 'descin',
+                descout: 'descout',
+                statustruck: 'statustruck',
+                armada: 'armada',
+                kelengkapan: 'kelengkapan',
+                jenismobil: 'jenismobil',
+                date: 'date',
+                exittime: 'exittime',
+                // Time fields
+                arrivaltime: 'arrivaltime',
+                waitingfortimbang: 'waitingfortimbang',
+                starttimbang: 'starttimbang',
+                finishtimbang: 'finishtimbang',
+                totalprocesstimbang: 'totalprocesstimbang',
+                runtohpc: 'runtohpc',
+                waitingforarrivalhpc: 'waitingforarrivalhpc',
+                entryhpc: 'entryhpc',
+                totalwaitingarrival: 'totalwaitingarrival',
+                startloadingtime: 'startloadingtime',
+                finishloadingtime: 'finishloadingtime',
+                totalprocessloadingtime: 'totalprocessloadingtime',
+                actualwaitloadingtime: 'actualwaitloadingtime',
+                // Photo fields
+                driver_photo: 'driver_photo',
+                sim_photo: 'sim_photo',
+                stnk_photo: 'stnk_photo',
+            };
+
+            // Process each field update
+            Object.entries(cleanedUpdates).forEach(([frontendKey, value]) => {
+                if (value !== undefined && value !== null) {
+                    const dbKey = fieldMapping[frontendKey as keyof typeof fieldMapping] || frontendKey;
+                    
+                    // Validasi khusus operation
+                    if (frontendKey === 'operation') {
+                        if (value === 'bongkar' || value === 'muat') {
+                            dbUpdates[dbKey] = value;
+                            console.log('🔥 OPERATION UPDATE:', value);
+                        } else {
+                            console.warn('Invalid operation value:', value, '- skipping field');
+                        }
+                    }
+                    // Validasi khusus status
+                    else if (frontendKey === 'status') {
+                        dbUpdates[dbKey] = value;
+                        console.log('🔥 STATUS UPDATE DETECTED:', value);
+                    }
+                    // Validasi khusus time fields
+                    else if (frontendKey === 'startloadingtime') {
+                        dbUpdates[dbKey] = value;
+                        console.log('🔥 START LOADING TIME UPDATE:', value);
+                    }
+                    else if (frontendKey === 'finishloadingtime') {
+                        dbUpdates[dbKey] = value;
+                        console.log('🔥 FINISH LOADING TIME UPDATE:', value);
+                    }
+                    // Field lainnya
+                    else {
+                        dbUpdates[dbKey] = value;
+                    }
                 }
-            }
-            if (cleanedUpdates.goods !== undefined) 
-                dbUpdates.goods = cleanedUpdates.goods;
-            if (cleanedUpdates.descin !== undefined) 
-                dbUpdates.descin = cleanedUpdates.descin;
-            if (cleanedUpdates.descout !== undefined)
-                dbUpdates.descout = cleanedUpdates.descout;
-            if (cleanedUpdates.statustruck !== undefined)
-                dbUpdates.statustruck = cleanedUpdates.statustruck;
-            if (cleanedUpdates.actualWaitTime !== undefined)
-                dbUpdates.actualwaittime = cleanedUpdates.actualWaitTime;
-            if (cleanedUpdates.totalProcessLoadingTime !== undefined)
-                dbUpdates.totalprocessloadingtime = cleanedUpdates.totalProcessLoadingTime;
-            if (cleanedUpdates.startLoadingTime !== undefined) {
-                dbUpdates.startloadingtime = cleanedUpdates.startLoadingTime;
-                console.log('🔥 START LOADING TIME UPDATE:', cleanedUpdates.startLoadingTime);
-            }
-            if (cleanedUpdates.finishTime !== undefined) {
-                dbUpdates.finishtime = cleanedUpdates.finishTime;
-                console.log('🔥 FINISH TIME UPDATE:', cleanedUpdates.finishTime);
-            }
-            if (cleanedUpdates.date !== undefined) 
-                dbUpdates.date = cleanedUpdates.date;
-            if (cleanedUpdates.armada !== undefined) 
-                dbUpdates.armada = cleanedUpdates.armada;
-            if (cleanedUpdates.kelengkapan !== undefined)
-                dbUpdates.kelengkapan = cleanedUpdates.kelengkapan;
-            if (cleanedUpdates.jenismobil !== undefined)
-                dbUpdates.jenismobil = cleanedUpdates.jenismobil;
-            if (cleanedUpdates.driver_photo !== undefined)
-                dbUpdates.driver_photo = cleanedUpdates.driver_photo;
-            if (cleanedUpdates.sim_photo !== undefined)
-                dbUpdates.sim_photo = cleanedUpdates.sim_photo;
-            if (cleanedUpdates.stnk_photo !== undefined)
-                dbUpdates.stnk_photo = cleanedUpdates.stnk_photo;
+            });
+
+            // Jangan kirim quantity dan unit ke backend (tidak ada di database)
+            delete dbUpdates.quantity;
+            delete dbUpdates.unit;
             // Note: quantity and unit fields don't exist in database schema
             
             console.log('=== FINAL DB UPDATES ===');

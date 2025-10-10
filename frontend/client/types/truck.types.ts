@@ -51,40 +51,49 @@ export interface PhotoCaptureProps {
 }
 
 export interface TruckHistoryRecord {
-    id: number;
-    platenumber: string;
-    noticket?: string;
-    department?: string;
-    nikdriver?: string;
-    tlpdriver?: string;
-    nosj?: string;
-    tglsj?: string;
-    driver?: string;
-    supplier?: string;
-    arrivaltime?: string;
-    eta?: string;
-    status?: string;
-    type?: string;
-    goods?: string;
-    descin?: string;
-    descout?: string;
-    statustruck?: string;
-    estimatedfinish?: string;
-    estimatedwaittime?: string;
-    actualwaittime?: string;
-    startloadingtime?: string;
-    finishtime?: string;
-    date?: string;
-    armada?: string;
-    kelengkapan?: string;
-    jenismobil?: string;
-    driver_photo?: string;
-    sim_photo?: string;
-    stnk_photo?: string;
+        id: number;
+        platenumber: string;
+        noticket: string;
+        department: string;
+        nikdriver: string;
+        tlpdriver: string;
+        nosj: string;
+        tglsj: string;
+        driver: string;
+        supplier: string;
+        eta: string;
+        status: string;
+        type: string;
+        goods: string;
+        descin: string;
+        descout: string;
+        statustruck: string;
+        armada: string;
+        kelengkapan: string;
+        jenismobil: string;
+        date: string;
+        exittime: string;
+        // Time data dari truck_times table
+        arrivaltime: string;
+        waitingfortimbang: string;
+        starttimbang: string;
+        finishtimbang: string;
+        totalprocesstimbang: string;
+        runtohpc: string;
+        waitingforarrivalhpc: string;
+        entryhpc: string;
+        totalwaitingarrival: string;
+        startloadingtime: string;
+        finishloadingtime: string;
+        totalprocessloadingtime: string;
+        actualwaitloadingtime: string;
+        // Photo data dari truck_photos table
+        driver_photo: string;
+        stnk_photo: string;
+        sim_photo: string;
 }
-
 export type TruckOperation = 'muat' | 'bongkar';
-export type TruckStatus = 'Waiting' | 'Loading' | 'Weighing' | 'Finished' | 'pending' | 'weighing' | 'loading' | 'finished';
+export type TruckStatus = 'waiting' | 'timbang' | 'loading' | 'unloading' | 'done' | 'on process' | 'finished' | 'Waiting' | 'Loading' | 'Weighing' | 'Finished' | 'pending' | 'weighing';
 export interface StatusStep {
     id: number;
     label: string;
@@ -112,4 +121,4 @@ export interface TrucksTableConfig {
     emptyMessage: string;
 }
 
-export type FilterStatus = 'all' | 'Waiting' | 'Weighing' | 'Loading' | 'Finished' | 'pending' | 'weighing' | 'loading' | 'unloading' | 'finished';
+export type FilterStatus = 'all' | 'Waiting' | 'Weighing' | 'Loading' | 'Finished' | 'pending' | 'weighing' | 'loading' | 'unloading' | 'finished' | 'waiting' | 'timbang';

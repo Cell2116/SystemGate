@@ -1358,7 +1358,7 @@ app.post('/api/trucks', async (req, res) => {
             platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
             driver, supplier, arrivaltime, eta, status, type, operation, goods,
             descin, descout, statustruck,
-            actualwaittime, totalprocessloadingtime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil,
+            actualwaitloadingtime, totalprocessloadingtime, startloadingtime, finishloadingtime, date, armada, kelengkapan, jenismobil,
             driver_photo, stnk_photo, sim_photo
         } = req.body;
 
@@ -1366,7 +1366,7 @@ app.post('/api/trucks', async (req, res) => {
             platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
             driver, supplier, arrivaltime, eta, status, type, operation, goods,
             descin, descout, statustruck,
-            actualwaittime, totalprocessloadingtime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil
+            actualwaitloadingtime, totalprocessloadingtime, startloadingtime, finishloadingtime, date, armada, kelengkapan, jenismobil
         });
 
         const query = `
@@ -1374,7 +1374,7 @@ app.post('/api/trucks', async (req, res) => {
                 platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
                 driver, supplier, arrivaltime, eta, status, type, operation, goods,
                 descin, descout, statustruck,
-                actualwaittime, totalprocessloadingtime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil,
+                actualwaitloadingtime, totalprocessloadingtime, startloadingtime, finishloadingtime, date, armada, kelengkapan, jenismobil,
                 driver_photo, stnk_photo, sim_photo
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
@@ -1386,7 +1386,7 @@ app.post('/api/trucks', async (req, res) => {
             platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
             driver, supplier, arrivaltime, eta, status, type, operation, goods,
             descin, descout, statustruck,
-            actualwaittime, totalprocessloadingtime, startloadingtime, finishtime, date, armada, kelengkapan, jenismobil,
+            actualwaitloadingtime, totalprocessloadingtime, startloadingtime, finishloadingtime, date, armada, kelengkapan, jenismobil,
             driver_photo, stnk_photo, sim_photo
         ];
 

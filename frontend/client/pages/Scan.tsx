@@ -5,8 +5,14 @@ import { PackageOpen, Scan as ScanIcon, Truck, Package } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { useDashboardStore } from "@/store/dashboardStore"
 import { useScannerStore } from "../store/scannerStore"
+import ActionModal from "@/components/trucks/actionModal"
 
 export default function Scan() {
+    const openActionModal = useScannerStore((state) => state.openActionModal);
+
+    // useEffect(() => {
+    //     openActionModal("SUPT12345", "SU");
+    // }, [openActionModal]);
     const scanInputRef = useRef<HTMLInputElement>(null);
     const [countdown, setCountdown] = useState<number | null>(null);
 
@@ -23,7 +29,6 @@ export default function Scan() {
         processScan
     } = useScannerStore();
 
-    // Focus on input when component mounts for better UX with scanner
     useEffect(() => {
         if (scanInputRef.current) {
             scanInputRef.current.focus();
@@ -85,6 +90,7 @@ export default function Scan() {
                     <p className="text-xs sm:text-sm text-green-600">
                         Scan truck QR code using Ultron scanner
                     </p>
+                    <ActionModal/>
                 </div>
 
                 {/* Main Scan Area - Better mobile spacing */}
@@ -187,6 +193,7 @@ export default function Scan() {
                                 </div>
                             )}
                         </div>
+                    <ActionModal/>
                     </div>
 
                     {/* Two Result Boxes - Responsive grid and spacing */}

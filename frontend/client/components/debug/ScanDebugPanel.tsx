@@ -93,8 +93,8 @@
 //                                 {truck.startLoadingTime && (
 //                                     <div><strong>Start Loading:</strong> {truck.startLoadingTime}</div>
 //                                 )}
-//                                 {truck.finishTime && (
-//                                     <div><strong>Finish Time:</strong> {truck.finishTime}</div>
+//                                 {truck.finishloadingtime && (
+//                                     <div><strong>Finish Time:</strong> {truck.finishloadingtime}</div>
 //                                 )}
 //                             </div>
 //                         ))}

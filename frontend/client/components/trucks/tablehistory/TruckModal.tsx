@@ -69,7 +69,7 @@ export default function TruckModal({ selectedRecord, onClose }: TruckModalProps)
                                     <div><span className="font-semibold text-slate-600">Arrival Time:</span> {selectedRecord.arrivaltime ? formatDateTime(selectedRecord.arrivaltime) : 'N/A'}</div>
                                     <div><span className="font-semibold text-slate-600">ETA:</span> {selectedRecord.eta || 'N/A'}</div>
                                     <div><span className="font-semibold text-slate-600">Start Loading:</span> {selectedRecord.startloadingtime ? formatDateTime(selectedRecord.startloadingtime) : 'N/A'}</div>
-                                    <div><span className="font-semibold text-slate-600">Finish Time:</span> {selectedRecord.finishtime ? formatDateTime(selectedRecord.finishtime) : 'N/A'}</div>
+                                    <div><span className="font-semibold text-slate-600">Finish Time:</span> {selectedRecord.finishloadingtime ? formatDateTime(selectedRecord.finishloadingtime) : 'N/A'}</div>
                                     <div><span className="font-semibold text-slate-600">Estimated Finish:</span> {selectedRecord.estimatedfinish ? formatDateTime(selectedRecord.estimatedfinish) : 'N/A'}</div>
                                 </div>
 

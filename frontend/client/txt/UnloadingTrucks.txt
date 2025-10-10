@@ -163,7 +163,7 @@ export default function UnloadingTrucks() {
         if (editFormData) {
             try {
                 const cleanedEditData = { ...editFormData };
-                (['arrivalTime', 'startLoadingTime', 'finishTime', 'eta', 'tglsj', 'date'] as (keyof TruckRecord)[]).forEach(field => {
+                (['arrivalTime', 'startLoadingTime', 'finishloadingtime', 'eta', 'tglsj', 'date'] as (keyof TruckRecord)[]).forEach(field => {
                     if (cleanedEditData[field] === "") (cleanedEditData as any)[field] = null;
                 });
                 await updateTruckAPI(cleanedEditData.id, cleanedEditData);
@@ -523,7 +523,7 @@ export default function UnloadingTrucks() {
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Finish Time</label>
-                                    <p className="text-sm text-gray-900">{formatIsoForDisplay(selectedTruck.finishTime) || '-'}</p>
+                                    <p className="text-sm text-gray-900">{formatIsoForDisplay(selectedTruck.finishloadingtime) || '-'}</p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Total Process Loading Time</label>
@@ -531,7 +531,7 @@ export default function UnloadingTrucks() {
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Actual Wait Time</label>
-                                    <p className="text-sm text-gray-900">{formatIntervalDisplay(selectedTruck.actualWaitTime)}</p>
+                                    <p className="text-sm text-gray-900">{formatIntervalDisplay(selectedTruck.actualwaitloadingtime)}</p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-500">Truck Status</label>

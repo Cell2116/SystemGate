@@ -136,38 +136,80 @@ export default function InOutTrucks() {
   };
 
   const trucks = allTrucks || [];
+  
+  // Debug log untuk melihat data trucks
+  console.log('Debug trucks data:', trucks);
+  console.log('Debug trucks type fields:', trucks.map(t => ({ id: t.id, type: t.type, plateNumber: t.plateNumber })));
 
   // Submit functions
   const handleSubmitBongkar = async () => {
-    if (!validateAllSteps) {
-      setValidationError("Masih ada data yang belum lengkap. Mohon periksa kembali semua form.");
-      return;
+    try {
+      if (!validateAllSteps) {
+        setValidationError("Masih ada data yang belum lengkap. Mohon periksa kembali semua form.");
+        return;
+      }
+      setValidationError("");
+      const ticketNumber = generateActualTicketNumber();
+      await submitTruck(formData, operationType, capturedImages, ticketNumber);
+    } catch (error) {
+      console.error("Error submitting bongkar:", error);
+      setValidationError("Gagal menyimpan data. Silakan coba lagi.");
     }
-    const ticketNumber = generateActualTicketNumber();
-    await submitTruck(formData, operationType, capturedImages, ticketNumber);
   };
 
   const handleSubmitMuat = async () => {
-    if (!validateAllSteps) {
-      setValidationError("Masih ada data yang belum lengkap. Mohon periksa kembali semua form.");
-      return;
+    try {
+      if (!validateAllSteps) {
+        setValidationError("Masih ada data yang belum lengkap. Mohon periksa kembali semua form.");
+        return;
+      }
+      setValidationError("");
+      const ticketNumber = generateActualTicketNumber();
+      await submitTruck(formData, operationType, capturedImages, ticketNumber);
+    } catch (error) {
+      console.error("Error submitting muat:", error);
+      setValidationError("Gagal menyimpan data. Silakan coba lagi.");
     }
-    const ticketNumber = generateActualTicketNumber();
-    await submitTruck(formData, operationType, capturedImages, ticketNumber);
   };
 
   // Stats functions
   const getOperationStats = (operation: "bongkar" | "muat") => {
     const operationTrucks = trucks.filter((truck) => truck.operation === operation);
-    const pending = operationTrucks.filter((truck) => truck.status === "Waiting").length;
-    const loading = operationTrucks.filter((truck) => truck.status === "Loading").length;
-    const finished = operationTrucks.filter((truck) => truck.status === "Finished").length;
+    
+    // Debug: Log the trucks and their statuses
+    console.log(`${operation} trucks:`, operationTrucks);
+    console.log(`${operation} statuses:`, operationTrucks.map(t => t.status));
+    
+    // Based on actual database statuses: "waiting", "timbang", "loading", "unloading", "done", "on process", "finished"
+    const pending = operationTrucks.filter((truck) => 
+      truck.status === "waiting" || 
+      truck.status === "timbang" ||
+      truck.status === "on process"
+    ).length;
+    
+    const loading = operationTrucks.filter((truck) => 
+      truck.status === "loading" || 
+      truck.status === "unloading"
+    ).length;
+    
+    const finished = operationTrucks.filter((truck) => 
+      truck.status === "done" || 
+      truck.status === "finished"
+    ).length;
+    
     const total = operationTrucks.length;
+    
+    console.log(`${operation} stats:`, { pending, loading, finished, total });
+    
     return { pending, loading, finished, total };
   };
 
   const muatStats = getOperationStats("muat");
   const bongkarStats = getOperationStats("bongkar");
+  
+  // Debug: Log all trucks data
+  console.log("All trucks data:", trucks);
+  console.log("Trucks length:", trucks.length);
   
   const getDepartmentStats = (department: string) => {
     return trucks.filter((truck) => truck.department === department).length;
@@ -208,6 +250,8 @@ export default function InOutTrucks() {
                 setOperationType("");
                 setInputMode("select");
                 setValidationError("");
+                setFormData(INITIAL_FORM_DATA);
+                clearAllImages();
               }
             }}
           >
@@ -342,7 +386,8 @@ export default function InOutTrucks() {
                     <Button
                       type="button"
                       onClick={goToPreviousStep}
-                      className="bg-gray-500 hover:bg-gray-600 text-white"
+                      disabled={isSubmitting}
+                      className="bg-gray-500 hover:bg-gray-600 text-white disabled:opacity-50"
                     >
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Kembali
@@ -353,10 +398,11 @@ export default function InOutTrucks() {
                     <Button
                       type="button"
                       onClick={handleNextStep}
+                      disabled={isSubmitting}
                       className={
                         operationType === "bongkar"
-                          ? "bg-red-600 hover:bg-red-700 text-white ml-auto"
-                          : "bg-green-600 hover:bg-green-700 text-white ml-auto"
+                          ? "bg-red-600 hover:bg-red-700 text-white ml-auto disabled:opacity-50"
+                          : "bg-green-600 hover:bg-green-700 text-white ml-auto disabled:opacity-50"
                       }
                     >
                       Selanjutnya
@@ -368,16 +414,29 @@ export default function InOutTrucks() {
                     <Button
                       type="button"
                       onClick={operationType === "bongkar" ? handleSubmitBongkar : handleSubmitMuat}
+                      disabled={isSubmitting}
                       className={
                         operationType === "bongkar"
-                          ? "bg-red-600 hover:bg-red-700 text-white ml-auto"
-                          : "bg-green-600 hover:bg-green-700 text-white ml-auto"
+                          ? "bg-red-600 hover:bg-red-700 text-white ml-auto disabled:opacity-50"
+                          : "bg-green-600 hover:bg-green-700 text-white ml-auto disabled:opacity-50"
                       }
                     >
-                      {operationType === "bongkar" ? "Simpan Bongkar" : "Simpan Muat"}
+                      {isSubmitting 
+                        ? "Menyimpan..." 
+                        : operationType === "bongkar" 
+                          ? "Simpan Bongkar" 
+                          : "Simpan Muat"
+                      }
                     </Button>
                   )}
                 </div>
+
+                {/* Display validation error */}
+                {validationError && (
+                  <div className="text-red-500 text-sm mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                    {validationError}
+                  </div>
+                )}
               </form>
             </DialogContent>
           </Dialog>

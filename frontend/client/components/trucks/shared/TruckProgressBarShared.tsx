@@ -28,7 +28,7 @@ export default function TrucksProgressBar({
             color: "bg-yellow-500",
             borderColor: "border-yellow-500",
             count: (<span>{pendingCount} <span className="text-sm opacity-70 italic">Truck</span></span>),
-            isActive: selectedStatus === "Waiting" || selectedStatus === "pending"
+            isActive: selectedStatus === "Waiting" || selectedStatus === "waiting"
         }
     ];
 
@@ -43,7 +43,7 @@ export default function TrucksProgressBar({
             color: "bg-cyan-500",
             borderColor: "border-cyan-500",
             count: (<span>{weighingCount} <span className="text-sm opacity-70 italic text-cyan-500">Truck</span></span>),
-            isActive: selectedStatus === "Weighing" || selectedStatus === "weighing"
+            isActive: selectedStatus === "Weighing" || selectedStatus === "weighing" || selectedStatus === "timbang"
         });
     }
 
@@ -55,7 +55,7 @@ export default function TrucksProgressBar({
         color: "bg-blue-500",
         borderColor: "border-blue-500",
         count: (<span>{loadingCount} <span className="text-sm opacity-70 italic">Truck</span></span>),
-        isActive: selectedStatus === "Loading" || selectedStatus === "unloading"
+        isActive: selectedStatus === "Loading" || selectedStatus === "loading" || selectedStatus === "unloading"
     });
 
     // Add finished step

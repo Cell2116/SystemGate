@@ -24,9 +24,9 @@ const transformTruckRecordToHistory = (truck: any): TruckHistoryRecord => {
         statustruck: truck.statustruck || '',
         estimatedfinish: '', // Not available in TruckRecord
         estimatedwaittime: '', // Not available in TruckRecord
-        actualwaittime: truck.actualWaitTime || '',
+        actualwaitloadingtime: truck.actualwaitloadingtime || '',
         startloadingtime: truck.startLoadingTime || '',
-        finishtime: truck.finishTime || '',
+        finishloadingtime: truck.finishloadingtime || '',
         date: truck.date || '',
         armada: truck.armada || '',
         kelengkapan: truck.kelengkapan || '',

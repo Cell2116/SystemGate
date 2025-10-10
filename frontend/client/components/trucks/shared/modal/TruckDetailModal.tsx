@@ -201,7 +201,7 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-500">Finish Time</label>
-                                <p className="text-sm text-gray-900">{formatIsoForDisplay(truck.finishTime) || '-'}</p>
+                                <p className="text-sm text-gray-900">{formatIsoForDisplay(truck.finishloadingtime) || '-'}</p>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-500">Total Process Loading Time</label>
@@ -209,7 +209,7 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-500">Actual Wait Time</label>
-                                <p className="text-sm text-gray-900">{formatIntervalDisplay(truck.actualWaitTime)}</p>
+                                <p className="text-sm text-gray-900">{formatIntervalDisplay(truck.actualwaitloadingtime)}</p>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-500">Truck Status</label>

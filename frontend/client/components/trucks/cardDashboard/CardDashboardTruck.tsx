@@ -20,8 +20,6 @@ interface OperationStatsCardProps {
         finished: number;
     };
 }
-const internalCount = 3;
-const externalCount = 4;
 
 export function OperationStatsCard({ muatStats, bongkarStats }: OperationStatsCardProps) {
     return (
@@ -168,6 +166,10 @@ export function OperationStatsCard({ muatStats, bongkarStats }: OperationStatsCa
 }
 
 export function CardDashboardTruck({ getTypeStats, getDepartmentStats }: CardDashboardTruckProps) {
+    // Get dynamic counts from getTypeStats function
+    const internalCount = getTypeStats("internal");
+    const externalCount = getTypeStats("external");
+    
     return (
         <div className="flex flex-row gap-2 h-1/2">
             {/* Internal Trucks Card */}
