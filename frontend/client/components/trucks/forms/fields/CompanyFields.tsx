@@ -2,14 +2,12 @@ import { ChangeEvent } from "react";
 import { Input } from "../../../ui/input";
 import { Label } from "../../../ui/label";
 import { TruckFormData } from "../../../../types/truck.types";
-
 interface CompanyFieldsProps {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
   showSupplier?: boolean;
   showArmada?: boolean;
 }
-
 export function CompanyFields({ 
   formData, 
   onFieldChange, 

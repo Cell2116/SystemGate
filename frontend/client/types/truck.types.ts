@@ -1,5 +1,5 @@
 export interface TruckFormData {
-    plateNumber: string;
+    platenumber: string;
     driver: string;
     supplier: string;
     arrivalTime: string;
@@ -30,7 +30,129 @@ export interface CapturedImages {
     sim: string | null;
     stnk: string | null;
 }
+export interface SuratJalan {
+    id: string;
+    noSuratJalan: string;
+    tanggal: string;
+    status?: "pending" | "in_progress" | "completed" | "cancelled";
+    supplier?: string;
+    barang?: string;
+    jumlahBarang?: number;
+    unit?: string;
+    keterangan?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    createdBy?: string;
+    updatedBy?: string;
+}
 
+
+export interface TruckMainData {
+    id: string;
+    platenumber: string;
+    noticket: string;
+    department: string;
+    nikdriver: string;
+    tlpdriver: string;
+    nosj: string;
+    tglsj: string;
+    driver: string;
+    supplier: string;
+    eta?: string;
+    status: "waiting" | "timbang" | "loading" | "unloading" | "done" | "on process" | "finished";
+    type: "Inbound" | "Outbound" | "internal" | "external";
+    operation: "bongkar" | "muat";
+    goods: string;
+    descin: string;
+    descout: string;
+    statustruck: string;
+    armada: string;
+    kelengkapan: string;
+    jenismobil: string;
+    date: string;
+    exittime: string;
+}
+
+export interface TruckTimesData {
+    id: string;
+    truck_id: string;
+    arrivaltime: string;
+    waitingfortimbang: string;
+    starttimbang: string;
+    finishtimbang: string;
+    totalprocesstimbang: string;
+    runtohpc: string;
+    waitingforarrivalhpc: string;
+    entryhpc: string;
+    totalwaitingarrival: string;
+    startloadingtime: string;
+    finishloadingtime: string;
+    totalprocessloadingtime: string;
+    actualwaitloadingtime: string;
+}
+
+
+export interface TruckPhotosData {
+    id: string;
+    truck_id: string;
+    driver_photo?: string;
+    sim_photo?: string;
+    stnk_photo?: string;
+}
+
+
+export interface TruckRecord {
+    id: string;
+    plateNumber: string;
+    noticket: string;
+    department: string;
+    nikdriver: string;
+    tlpdriver: string;
+    nosj: string;
+    tglsj: string;
+    driver: string;
+    supplier: string;
+    arrivalTime: string;
+    eta?: string;
+    status: "waiting" | "timbang" | "loading" | "unloading" | "done" | "on process" | "finished";
+    type: "Inbound" | "Outbound" | "internal" | "external";
+    operation: "bongkar" | "muat";
+    goods: string;
+    descin: string;
+    descout: string;
+    statustruck: string;
+    arrivaltime: string;
+    waitingfortimbang: string;
+    starttimbang: string;
+    finishtimbang: string;
+    totalprocesstimbang: string;
+    runtohpc: string;
+    waitingforarrivalhpc: string;
+    entryhpc: string;
+    totalwaitingarrival: string;
+    startloadingtime: string;
+    finishloadingtime: string;
+    totalprocessloadingtime: string;
+    actualwaitloadingtime: string;
+    exittime: string;
+    date: string;
+    armada: string;
+    kelengkapan: string;
+    jenismobil: string;
+    quantity?: string;
+    driver_photo?: string;
+    sim_photo?: string;
+    stnk_photo?: string;
+    unit?: string;
+}
+
+
+interface ApiResponse<T> {
+    success: boolean;
+    data: T;
+    message: string;
+    error?: string;
+}
 export interface TruckStats {
     pending: number;
     loading: number;
@@ -71,29 +193,32 @@ export interface TruckHistoryRecord {
         armada: string;
         kelengkapan: string;
         jenismobil: string;
+
         date: string;
-        exittime: string;
-        // Time data dari truck_times table
         arrivaltime: string;
+        exittime: string;
         waitingfortimbang: string;
+        
         starttimbang: string;
         finishtimbang: string;
         totalprocesstimbang: string;
+
         runtohpc: string;
         waitingforarrivalhpc: string;
         entryhpc: string;
         totalwaitingarrival: string;
+        
         startloadingtime: string;
         finishloadingtime: string;
         totalprocessloadingtime: string;
         actualwaitloadingtime: string;
-        // Photo data dari truck_photos table
+        
         driver_photo: string;
         stnk_photo: string;
         sim_photo: string;
 }
 export type TruckOperation = 'muat' | 'bongkar';
-export type TruckStatus = 'waiting' | 'timbang' | 'loading' | 'unloading' | 'done' | 'on process' | 'finished' | 'Waiting' | 'Loading' | 'Weighing' | 'Finished' | 'pending' | 'weighing';
+export type TruckStatus = 'waiting' | 'timbang' | 'loading' | 'unloading' | 'exit' | 'on process' | 'finished' | 'Waiting' | 'Loading' | 'Weighing' | 'Finished' | 'pending' | 'weighing';
 export interface StatusStep {
     id: number;
     label: string;
@@ -111,14 +236,18 @@ export interface TrucksTableConfig {
     subtitleColor: string;
     statusMapping: {
         waiting: TruckStatus[];
-        weighing?: TruckStatus[]; // Optional untuk operasi yang tidak butuh weighing
+        weighing?: TruckStatus[]; 
         loading: TruckStatus[];
         finished: TruckStatus[];
+        exit: TruckStatus[];
     };
+    // departmentFilters?:{
+    //     weighing?: string[];
+    // }
     features: {
         suratJalanRecommendations: boolean;
     };
     emptyMessage: string;
 }
 
-export type FilterStatus = 'all' | 'Waiting' | 'Weighing' | 'Loading' | 'Finished' | 'pending' | 'weighing' | 'loading' | 'unloading' | 'finished' | 'waiting' | 'timbang';
+export type FilterStatus = 'all' | 'Waiting' | 'Weighing' | 'Loading' | 'Finished' | 'Exit' | 'pending' | 'weighing' | 'loading' | 'unloading' | 'finished' | 'waiting' | 'timbang' | 'exit';

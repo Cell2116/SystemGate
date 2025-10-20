@@ -1,14 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
 import { Label } from './label';
-
 interface Employee {
   name: string;
   department: string;
   licensePlate?: string;
   role?: string;
 }
-
 interface EmployeeAutocompleteProps {
   id?: string;
   label?: string;
@@ -20,7 +18,6 @@ interface EmployeeAutocompleteProps {
   required?: boolean;
   maxSuggestions?: number;
 }
-
 export function EmployeeAutocomplete({
   id,
   label,
@@ -37,7 +34,6 @@ export function EmployeeAutocomplete({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-
   useEffect(() => {
     if (value.length > 0) {
       const filtered = employees
@@ -56,21 +52,17 @@ export function EmployeeAutocomplete({
     }
     setHighlightedIndex(-1);
   }, [value, employees, maxSuggestions]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
   };
-
   const handleEmployeeClick = (employee: Employee) => {
     onChange(employee.name, employee);
     setIsOpen(false);
     setHighlightedIndex(-1);
     inputRef.current?.focus();
   };
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) return;
-
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
@@ -94,20 +86,17 @@ export function EmployeeAutocomplete({
         break;
     }
   };
-
   const handleInputFocus = () => {
     if (value.length > 0 && filteredEmployees.length > 0) {
       setIsOpen(true);
     }
   };
-
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     setTimeout(() => {
       setIsOpen(false);
       setHighlightedIndex(-1);
     }, 150);
   };
-
   useEffect(() => {
     if (highlightedIndex >= 0 && listRef.current) {
       const highlightedElement = listRef.current.children[highlightedIndex] as HTMLElement;
@@ -119,7 +108,6 @@ export function EmployeeAutocomplete({
       }
     }
   }, [highlightedIndex]);
-
   return (
     <div className="relative">
       {label && (

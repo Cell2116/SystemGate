@@ -2,20 +2,18 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Save, X } from "lucide-react";
-import { TruckRecord } from "@/store/truckStore";
+import { CombinedTruckData} from "@/store/truckStore";
 import { useFormatTime } from "@/hooks/trucks/useFormatTime";
-
 interface TruckEditModalProps {
-    truck: TruckRecord | null;
+    truck: CombinedTruckData | null;
     isOpen: boolean;
     onClose: (open: boolean) => void;
     onSave: () => void;
-    onChange: (field: keyof TruckRecord, value: string | null | undefined) => void;
+    onChange: (field: keyof CombinedTruckData, value: string | null | undefined) => void;
     showSuratJalanRecommendations?: boolean;
     suratJalanRecommendations?: string[];
     onSelectSuratJalan?: (value: string) => void;
 }
-
 export default function TruckEditModal({
     truck,
     isOpen,
@@ -27,14 +25,12 @@ export default function TruckEditModal({
     onSelectSuratJalan
 }: TruckEditModalProps) {
     const { formatTimeForInput } = useFormatTime();
-
     if (!truck) return null;
-
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Edit Truck - {truck.plateNumber}</DialogTitle>
+                    <DialogTitle>Edit Truck - {truck.platenumber}</DialogTitle>
                 </DialogHeader>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-4">
@@ -42,8 +38,8 @@ export default function TruckEditModal({
                             <label className="block text-sm font-medium text-gray-700 mb-1">Plate Number</label>
                             <input
                                 type="text"
-                                value={truck.plateNumber}
-                                onChange={(e) => onChange('plateNumber', e.target.value)}
+                                value={truck.platenumber}
+                                onChange={(e) => onChange('platenumber', e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -74,7 +70,6 @@ export default function TruckEditModal({
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
-
                         {/* Surat Jalan field - only show for loading trucks */}
                         {showSuratJalanRecommendations && (
                             <div className="relative">
@@ -102,7 +97,6 @@ export default function TruckEditModal({
                                 </div>
                             </div>
                         )}
-
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                             <select
@@ -118,12 +112,13 @@ export default function TruckEditModal({
                             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                             <select
                                 value={truck.status}
-                                onChange={(e) => onChange('status', e.target.value as "pending" | "loading" | "finished")}
+                                onChange={(e) => onChange('status', e.target.value as "pending" | "weighing" | "loading" | "finished")}
                                 className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                                <option value="pending">Pending</option>
-                                <option value="loading">Loading</option>
-                                <option value="finished">Finished</option>
+                                <option value="pending">Menunggu</option>
+                                <option value="weighing">Timbang</option>
+                                <option value="loading">Muat/Bongkar</option>
+                                <option value="finished">Selesai</option>
                             </select>
                         </div>
                         <div>
@@ -150,8 +145,8 @@ export default function TruckEditModal({
                             <label className="block text-sm font-medium text-gray-700 mb-1">Arrival Time</label>
                             <input
                                 type="time"
-                                value={formatTimeForInput(truck?.arrivalTime) || ""}
-                                onChange={(e) => onChange('arrivalTime', e.target.value)}
+                                value={formatTimeForInput(truck?.arrivaltime) || ""}
+                                onChange={(e) => onChange('arrivaltime', e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 disabled
                             />

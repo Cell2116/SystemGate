@@ -9,15 +9,12 @@ import {
     DialogTrigger,
     DialogClose
 } from '@/components/ui/dialog';
-
 import { Button } from '@/components/ui/button';
-
 export default function Information() {
     const [isOpen, setIsOpen] = useState(false);
     useEffect(() => {
         setIsOpen(true)
     }, []);
-
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogOverlay className='fixed inset-0 bg-black bg-opacity-30 z-50' />
@@ -44,7 +41,6 @@ export default function Information() {
                             </p>
                         </div>
                     </DialogDescription>
-
                 </div>
                 <div className='flex flex-row justify-between items-end'>
                     <DialogClose asChild>
@@ -63,7 +59,7 @@ export default function Information() {
                             alt="IT Logo"
                             className='w-20 h-20 object-contain'
                             onError={(e) => {
-                                console.log("Image doesn't show");
+                                
                                 e.currentTarget.style.display = 'none';
                             }}
                         />

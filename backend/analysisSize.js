@@ -3,20 +3,16 @@ import path from "path";
 
 function getFolderSize(folderPath) {
   let total = 0;
-
   if (!fs.existsSync(folderPath)) return 0;
   const stats = fs.statSync(folderPath);
-
   if (!stats.isDirectory()) {
     return stats.size;
   }
-
   const files = fs.readdirSync(folderPath);
   for (const file of files) {
     const fullPath = path.join(folderPath, file);
     total += getFolderSize(fullPath);
   }
-
   return total;
 }
 
@@ -38,12 +34,8 @@ const sizes = packages.map(pkg => {
   const size = getFolderSize(pkgPath);
   return { name: pkg, size };
 });
-
 // Sort by size descending
 sizes.sort((a, b) => b.size - a.size);
 
-// Print top 10
-//console.log("📦 Top 10 biggest node_modules packages:\n");
 sizes.slice(0, 10).forEach(pkg => {
-  //console.log(`${pkg.name.padEnd(30)} ${formatSize(pkg.size)}`);
 });

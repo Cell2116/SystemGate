@@ -9,14 +9,12 @@ import ActionModal from "@/components/trucks/actionModal"
 
 export default function Scan() {
     const openActionModal = useScannerStore((state) => state.openActionModal);
-
     // useEffect(() => {
     //     openActionModal("SUPT12345", "SU");
     // }, [openActionModal]);
     const scanInputRef = useRef<HTMLInputElement>(null);
     const [countdown, setCountdown] = useState<number | null>(null);
-
-    // Use global scanner store
+    
     const {
         scannedData,
         scanResult,
@@ -28,23 +26,19 @@ export default function Scan() {
         clearScan,
         processScan
     } = useScannerStore();
-
     useEffect(() => {
         if (scanInputRef.current) {
             scanInputRef.current.focus();
         }
     }, []);
-
-    // Auto-clear functionality after successful scan
+    
     useEffect(() => {
         let countdownInterval: NodeJS.Timeout;
         let autoClearTimeout: NodeJS.Timeout;
-
         if (scannedData && (scanResult || lastTruckUpdate)) {
-            // Start countdown from 5 seconds
+            
             setCountdown(5);
-
-            // Update countdown every second
+            
             countdownInterval = setInterval(() => {
                 setCountdown(prev => {
                     if (prev === null || prev <= 1) {
@@ -53,14 +47,13 @@ export default function Scan() {
                     return prev - 1;
                 });
             }, 1000);
-
-            // Clear scan data after 5 seconds
+            
             autoClearTimeout = setTimeout(() => {
+
                 clearScan();
                 setCountdown(null);
             }, 5000);
         }
-
         return () => {
             if (countdownInterval) {
                 clearInterval(countdownInterval);
@@ -70,7 +63,6 @@ export default function Scan() {
             }
         };
     }, [scannedData, scanResult, lastTruckUpdate, clearScan]);
-
     return (
         <div className="relative min-h-screen bg-gray-50">
             {/* Clock - Fixed position, responsive sizing */}
@@ -79,7 +71,6 @@ export default function Scan() {
                     <Clock2 />
                 </div>
             </div> */}
-
             {/* Main Content - Proper spacing and responsive padding */}
             <div className="px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
                 {/* Header - Responsive spacing */}
@@ -92,7 +83,6 @@ export default function Scan() {
                     </p>
                     <ActionModal/>
                 </div>
-
                 {/* Main Scan Area - Better mobile spacing */}
                 <div className="flex flex-col items-center space-y-4 sm:space-y-6 pb-6">
                     {/* Large Scan Box - Responsive sizing */}
@@ -122,7 +112,6 @@ export default function Scan() {
                                     `} />
                                 </div>
                             </div>
-
                             {/* Status Text - Responsive typography */}
                             <div className="text-center mb-3 sm:mb-4">
                                 {isScanning ? (
@@ -154,7 +143,6 @@ export default function Scan() {
                                     </div>
                                 )}
                             </div>
-
                             {/* Scanner Input Display - Responsive sizing */}
                             <div className="w-full mb-3">
                                 <input
@@ -170,14 +158,12 @@ export default function Scan() {
                                     🔒 Scanner Only - Manual input disabled
                                 </p>
                             </div>
-
                             {/* Display scanned data - Responsive text */}
-                            {scannedData && (
+                            {scannedData && countdown !== null && (
                                 <div className="mt-2 p-2 bg-gray-100 rounded text-xs sm:text-sm text-center">
                                     Last Scan: <span className="font-mono font-semibold break-all">{scannedData}</span>
                                 </div>
                             )}
-
                             {/* Clear Button - Responsive sizing */}
                             {(scannedData || scanResult || lastTruckUpdate) && (
                                 <div className="text-center mt-3">
@@ -195,7 +181,6 @@ export default function Scan() {
                         </div>
                     <ActionModal/>
                     </div>
-
                     {/* Two Result Boxes - Responsive grid and spacing */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 w-full max-w-sm sm:max-w-2xl lg:max-w-4xl">
                         {/* Loading Box (CU) - Responsive padding and text */}
@@ -242,7 +227,7 @@ export default function Scan() {
                                                 <span className="font-medium">Ticket:</span> {lastTruckUpdate.ticketNumber}
                                             </p>
                                             <p className="text-blue-700 truncate">
-                                                <span className="font-medium">Plate:</span> {lastTruckUpdate.plateNumber}
+                                                <span className="font-medium">Plate:</span> {lastTruckUpdate.platenumber}
                                             </p>
                                             <p className="text-blue-700">
                                                 <span className="font-medium">Status:</span>
@@ -261,7 +246,6 @@ export default function Scan() {
                                 )}
                             </div>
                         </div>
-
                         {/* Unloading Box (SU) - Responsive padding and text */}
                         <div className={`
                             bg-white border-2 rounded-lg p-3 sm:p-4 shadow-md transition-all duration-300
@@ -306,7 +290,7 @@ export default function Scan() {
                                                 <span className="font-medium">Ticket:</span> {lastTruckUpdate.ticketNumber}
                                             </p>
                                             <p className="text-green-700 truncate">
-                                                <span className="font-medium">Plate:</span> {lastTruckUpdate.plateNumber}
+                                                <span className="font-medium">Plate:</span> {lastTruckUpdate.platenumber}
                                             </p>
                                             <p className="text-green-700">
                                                 <span className="font-medium">Status:</span>

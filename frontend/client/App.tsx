@@ -1,5 +1,4 @@
 import "./global.css";
-
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -10,7 +9,6 @@ import LoadingTrucks from "./pages/LoadingTrucks.refactored";
 import UnloadingTrucks from "./pages/UnloadingTrucks.refactored";
 // import UnloadingTrucks from "./pages/UnloadingTrucks";
 import Scan from "./pages/Scan";
-
 import NotFound from "./pages/NotFound";
 // import EmployeeHistory  from "./pages/EmployeeHistory";
 import EmployeeHistory  from "./pages/EmployeeHistory.refactored";
@@ -31,16 +29,18 @@ import { NetworkStatus } from "./components/NetworkStatus";
 import GlobalScanner from "./components/GlobalScanner";
 import ScannerIndicator from "./components/ScannerIndicator";
 import TruckQueuePage from "./pages/TruckQueuePage";
-
 const queryClient = new QueryClient();
-
 const App = () => {
   useEffect(() => {
-    //console.log("Initiating global WebSocket connection...");
+    
     initWebSocket();
-    //console.log("WebSocket initialization completed");
+    
   }, []);
-
+  // if (import.meta.env.MODE === 'development') {
+  //   console.log = () => { };
+  //   console.debug = () => { };
+  //   console.info = () => { };
+  // }
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -68,7 +68,6 @@ const App = () => {
                 <Route path="/unloadingtrucks" element={<UnloadingTrucks />} />
                 <Route path="/scan" element={<Scan />} />
                 <Route path="/truck-queue" element={<TruckQueuePage />} />
-
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
@@ -83,4 +82,3 @@ const App = () => {
   );
 };
 createRoot(document.getElementById("root")!).render(<App />);
-

@@ -1,14 +1,11 @@
 import { useLoginStore } from "@/store/loginStore";
 import { useUser } from "../authentication/userContext";
-
 export default function DebugAuth() {
   const { user, isAuthenticated, loading, error } = useLoginStore();
   const { role } = useUser();
-
   if (process.env.NODE_ENV !== 'development') {
     return null;
   }
-
   return (
     <div className="fixed bottom-4 right-4 bg-black text-white p-4 rounded-lg text-xs max-w-sm">
       <h3 className="font-bold mb-2">Auth Debug</h3>

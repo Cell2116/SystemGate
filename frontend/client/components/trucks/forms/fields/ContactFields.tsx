@@ -2,12 +2,10 @@ import { ChangeEvent } from "react";
 import { Input } from "../../../ui/input";
 import { Label } from "../../../ui/label";
 import { TruckFormData } from "../../../../types/truck.types";
-
 interface ContactFieldsProps {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
 }
-
 export function ContactFields({ formData, onFieldChange }: ContactFieldsProps) {
   return (
     <div className="grid grid-cols-2 gap-4">

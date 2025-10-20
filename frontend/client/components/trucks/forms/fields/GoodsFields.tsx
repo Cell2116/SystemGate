@@ -2,13 +2,11 @@ import { ChangeEvent } from "react";
 import { Input } from "../../../ui/input";
 import { Label } from "../../../ui/label";
 import { TruckFormData } from "../../../../types/truck.types";
-
 interface GoodsFieldsProps {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
   operationType?: "bongkar" | "muat";
 }
-
 export function GoodsFields({ formData, onFieldChange, operationType = "bongkar" }: GoodsFieldsProps) {
   return (
     <div className="grid grid-cols-2 gap-4">

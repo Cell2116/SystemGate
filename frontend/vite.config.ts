@@ -4,7 +4,6 @@ import path from "path";
 import { createServer } from "./server";
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from "fs";
-
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -17,7 +16,13 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
   },
+},
   plugins: [
     react(), 
     expressPlugin(),
@@ -124,14 +129,12 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
-
 function expressPlugin(): Plugin {
   return {
     name: "express-plugin",
     apply: "serve", // Only apply during development (serve mode)
     configureServer(server) {
       const app = createServer();
-
       // Add Express app as middleware to Vite dev server
       server.middlewares.use(app);
     },

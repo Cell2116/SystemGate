@@ -1,28 +1,28 @@
-// src/components/trucks/shared/TrucksTableComponent.tsx
+
 import { Eye, Edit } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useTrucksWithFetch, TruckRecord } from "@/store/truckStore";
+import { useTrucksWithFetch, CombinedTruckData } from "@/store/truckStore";
 import TrucksProgressBar from "./TruckProgressBarShared";
 import TrucksSearchBar from "./TruckSearchBarShared";
 import TruckDetailModal from "../shared/modal/TruckDetailModal";
 import TruckEditModal from "../shared/modal/TruckEditModal";
 import { TrucksTableConfig, FilterStatus } from '@/types/truck.types';
 import { formatIsoForDisplay } from "@/lib/utils";
-
 interface TrucksTableComponentProps {
     config: TrucksTableConfig;
 }
-
 export default function TrucksTableComponent({ config }: TrucksTableComponentProps) {
     const [selectedStatus, setSelectedStatus] = useState<FilterStatus>("all");
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedTruck, setSelectedTruck] = useState<TruckRecord | null>(null);
+    const [selectedTruck, setSelectedTruck] = useState<CombinedTruckData | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editFormData, setEditFormData] = useState<TruckRecord | null>(null);
+    const [editFormData, setEditFormData] = useState<CombinedTruckData | null>(null);
     const [suratJalanRecommendations, setSuratJalanRecommendations] = useState<string[]>([]);
-
+    const handleStatusChange = (status: FilterStatus) => {
+        setSelectedStatus(status);
+    }
     const {
         trucks: allTrucks,
         loading,
@@ -33,87 +33,55 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
         saveSuratJalanToDatabase
     } = useTrucksWithFetch({
         searchTerm: searchTerm || undefined,
-        status: selectedStatus === "all" ? undefined : selectedStatus
     });
-
-    // Filter trucks by operation
     const trucks = allTrucks.filter(truck => truck.operation === config.operation);
-
-    // Load recommendations when edit modal opens (only for loading trucks)
     useEffect(() => {
         if (isEditModalOpen && config.features.suratJalanRecommendations) {
             loadSuratJalanRecommendations();
         }
     }, [isEditModalOpen]);
-
-    // Calculate counts for each status
-    console.log('🔍 Debug Counts Calculation:');
-    console.log('Total trucks:', trucks.length);
-    console.log('Config status mapping:', config.statusMapping);
-    console.log('Truck statuses:', trucks.map(t => t.status));
-    
     const pendingCount = trucks.filter(truck =>
         config.statusMapping.waiting.includes(truck.status as any)
     ).length;
-    console.log('Pending count:', pendingCount, 'for statuses:', config.statusMapping.waiting);
-
+    
     const weighingCount = trucks.filter(truck =>
         config.statusMapping.weighing?.includes(truck.status as any) || false
     ).length;
-    console.log('Weighing count:', weighingCount, 'for statuses:', config.statusMapping.weighing);
-
     const loadingCount = trucks.filter(truck =>
         config.statusMapping.loading.includes(truck.status as any)
     ).length;
-    console.log('Loading count:', loadingCount, 'for statuses:', config.statusMapping.loading);
-
+    
     const finishedCount = trucks.filter(truck =>
         config.statusMapping.finished.includes(truck.status as any)
     ).length;
-    console.log('Finished count:', finishedCount, 'for statuses:', config.statusMapping.finished);
-
-    // Filter trucks based on search and status
-    console.log('🔍 Debug Filter Logic:');
-    console.log('Selected status:', selectedStatus);
-    console.log('Selected status type:', typeof selectedStatus);
-    
+    const exitCount = trucks.filter(truck =>
+        config.statusMapping.exit.includes(truck.status as any)
+    ).length;
     const filteredTrucks = trucks.filter(truck => {
+        // First apply search filter
         const matchesSearch = !searchTerm ||
-            truck.plateNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            truck.platenumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             truck.driver?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             truck.goods?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             truck.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
-
-        const matchesStatus = selectedStatus === "all" || 
+        if (selectedStatus === "all") {
+            return matchesSearch;
+        }        
+        const matchesStatus = 
             truck.status === selectedStatus ||
-            // Handle "Waiting" from progress bar and "waiting" from other sources
             ((selectedStatus === "Waiting" || selectedStatus === "waiting") && config.statusMapping.waiting.includes(truck.status as any)) ||
-            // Handle "Weighing" from progress bar and "weighing"/"timbang" from other sources  
             ((selectedStatus === "Weighing" || selectedStatus === "weighing" || selectedStatus === "timbang") && config.statusMapping.weighing?.includes(truck.status as any)) ||
-            // Handle "Loading" from progress bar and "loading"/"unloading" from other sources
             ((selectedStatus === "Loading" || selectedStatus === "loading" || selectedStatus === "unloading") && config.statusMapping.loading.includes(truck.status as any)) ||
-            // Handle "Finished" from progress bar and "finished" from other sources
             ((selectedStatus === "Finished" || selectedStatus === "finished") && config.statusMapping.finished.includes(truck.status as any)) ||
-            // Legacy support for "pending"
+            ((selectedStatus === "exit" || selectedStatus === 'Exit' ) && config.statusMapping.exit.includes(truck.status as any)) ||
             (selectedStatus === "pending" && config.statusMapping.waiting.includes(truck.status as any));
-
-        if (selectedStatus !== "all") {
-            console.log(`Truck ${truck.plateNumber} (${truck.status}): matchesStatus = ${matchesStatus}`);
-        }
-
+            
         return matchesSearch && matchesStatus;
-    });
-    
-    console.log('Filtered trucks count:', filteredTrucks.length);
-
+    });    
     const loadSuratJalanRecommendations = async () => {
         if (!config.features.suratJalanRecommendations) return;
-
         try {
-            console.log('🔄 Loading surat jalan recommendations...');
             const existingData = await fetchExistingSuratJalan();
-            console.log('📊 Raw data from database:', existingData);
-
             let dataArray: any[] = [];
             if (!existingData) {
                 dataArray = [];
@@ -128,57 +96,38 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                     dataArray = [];
                 }
             }
-
             const suratJalanNumbers = dataArray
                 .map((item: any) => item.nosj || item.noSuratJalan || item.nomor)
                 .filter(Boolean);
-
-            console.log('📋 Processed recommendations:', suratJalanNumbers);
+            
             setSuratJalanRecommendations(suratJalanNumbers);
         } catch (error) {
             console.error('❌ Error loading surat jalan recommendations:', error);
             setSuratJalanRecommendations([]);
         }
     };
-
-    const handleDetailView = (truck: TruckRecord) => {
+    const handleDetailView = (truck: CombinedTruckData) => {
         setSelectedTruck(truck);
         setIsDetailModalOpen(true);
     };
-
-    const handleEditTruck = (truck: TruckRecord) => {
+    const handleEditTruck = (truck: CombinedTruckData) => {
         setEditFormData({ ...truck });
         setIsEditModalOpen(true);
         if (config.features.suratJalanRecommendations) {
             loadSuratJalanRecommendations();
         }
     };
-
     const handleSaveEdit = async () => {
         if (editFormData) {
             try {
-                console.log('=== SAVE EDIT ===');
-                console.log('Edit form data:', editFormData);
                 const cleanedEditData = { ...editFormData };
-                delete cleanedEditData.quantity;
-                delete cleanedEditData.unit;
-
-                (['arrivalTime', 'startLoadingTime', 'finishloadingtime', 'eta', 'tglsj', 'date'] as (keyof TruckRecord)[]).forEach(field => {
+                (['arrivalTime', 'startLoadingTime', 'finishloadingtime', 'eta', 'tglsj', 'date'] as (keyof CombinedTruckData)[]).forEach(field => {
                     if (cleanedEditData[field] === "") (cleanedEditData as any)[field] = null;
                 });
-
-                console.log('Cleaned edit data:', cleanedEditData);
-
-                // Save surat jalan if feature enabled
                 if (config.features.suratJalanRecommendations && cleanedEditData.nosj && cleanedEditData.nosj.trim()) {
-                    console.log('Saving surat jalan:', cleanedEditData.nosj.trim());
                     await saveSuratJalanToDatabase(cleanedEditData.nosj.trim().toUpperCase());
                 }
-
-                console.log('Calling updateTruckAPI with ID:', cleanedEditData.id);
                 await updateTruckAPI(cleanedEditData.id, cleanedEditData);
-                console.log('Update successful!');
-
                 setIsEditModalOpen(false);
                 setEditFormData(null);
                 setSuratJalanRecommendations([]);
@@ -187,8 +136,7 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
             }
         }
     };
-
-    const handleFormChange = (field: keyof TruckRecord, value: string | null | undefined) => {
+    const handleFormChange = (field: keyof CombinedTruckData, value: string | null | undefined) => {
         if (editFormData) {
             const safeValue = typeof value === 'string' ? value : '';
             let processedValue = safeValue;
@@ -201,12 +149,10 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
             });
         }
     };
-
     const handleRefresh = () => {
         refetch();
     };
-
-    // Loading state
+    
     if (loading) {
         return (
             <div className="relative h-[calc(80vh-1rem)] p-2 sm:p-3">
@@ -216,8 +162,7 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
             </div>
         );
     }
-
-    // Error state
+    
     if (error) {
         return (
             <div className="relative h-[calc(80vh-1rem)] p-2 sm:p-3">
@@ -230,13 +175,11 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
             </div>
         );
     }
-
     return (
         <div className="relative h-[calc(80vh-1rem)] p-2 sm:p-3">
             {/* <div className="absolute right-1 top-1 scale-75 sm:scale-100">
                 <Clock2 />
             </div> */}
-
             {/* Header */}
             <div className="mb-3">
                 <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
@@ -245,19 +188,19 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                         <span className={`${config.subtitleColor} italic opacity-75 text-sm sm:text-base lg:text-lg`}>{config.subtitle}</span>
                     </h1>
                 </div>
-
                 {/* Progress Bar */}
                 <TrucksProgressBar
                     pendingCount={pendingCount}
                     weighingCount={weighingCount}
                     loadingCount={loadingCount}
                     finishedCount={finishedCount}
+                    exitCount={exitCount}
                     selectedStatus={selectedStatus}
-                    onStatusChange={setSelectedStatus}
+                    onStatusChange={handleStatusChange}
                     config={config}
+                    // trucks={filteredTrucks}
                 />
             </div>
-
             {/* Search Bar */}
             <TrucksSearchBar
                 searchTerm={searchTerm}
@@ -266,7 +209,6 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                 filteredCount={filteredTrucks.length}
                 selectedStatus={selectedStatus}
             />
-
             {/* Truck Table */}
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto xl:h-[50vh] sm:h-[50vh] h-[60vh] overflow-y-auto">
@@ -303,7 +245,7 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                             {filteredTrucks.map((truck) => (
                                 <tr key={truck.id} className="hover:bg-gray-50">
                                     <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                                        <div className="font-mono">{truck.plateNumber}</div>
+                                        <div className="font-mono">{truck.platenumber}</div>
                                     </td>
                                     <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600">
                                         {truck.driver}
@@ -319,9 +261,11 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                                     <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                                         <span className={`inline-flex px-1 py-1 sm:px-2 text-xs font-semibold rounded-full ${
                                             truck.status === 'waiting' ? 'bg-yellow-100 text-yellow-800' :
-                                            truck.status === 'timbang' ? 'bg-blue-100 text-blue-800' :
-                                            truck.status === 'loading' ? 'bg-orange-100 text-orange-800' :
-                                            'bg-green-100 text-green-800'
+                                            truck.status === 'timbang' ? 'bg-cyan-100 text-cyan-800' :
+                                            truck.status === 'loading' ? 'bg-blue-100 text-blue-800' :
+                                            truck.status === 'unloading' ? 'bg-blue-100 text-blue-800' :
+                                            truck.status === 'finished' ? 'bg-green-100 text-green-800' :
+                                            'bg-red-100 text-red-800'
                                         }`}>
                                             {truck.status === 'loading' && config.operation === 'bongkar' 
                                                 ? 'UNLOADING' 
@@ -333,7 +277,7 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                                         {truck.jenismobil || '-'}
                                     </td>
                                     <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600">
-                                        <div className="font-mono text-xs">{formatIsoForDisplay(truck.arrivalTime) || '-'}</div>
+                                        <div className="font-mono text-xs">{formatIsoForDisplay(truck.arrivaltime) || '-'}</div>
                                     </td>
                                     <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600">
                                         <div className="flex space-x-1 sm:space-x-2">
@@ -360,7 +304,6 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                         </tbody>
                     </table>
                 </div>
-
                 {/* No data message */}
                 {/* {filteredTrucks.length === 0 && (
                     <div className="text-center py-6 sm:py-8 px-4">
@@ -394,14 +337,12 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                     </div>
                 )} */}
             </div>
-
             {/* Detail Modal */}
             <TruckDetailModal
                 truck={selectedTruck}
                 isOpen={isDetailModalOpen}
                 onClose={setIsDetailModalOpen}
             />
-
             {/* Edit Modal */}
             <TruckEditModal
                 truck={editFormData}

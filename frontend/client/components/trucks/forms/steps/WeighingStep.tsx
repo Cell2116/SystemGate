@@ -3,16 +3,13 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Scale, Truck, CheckCircle } from 'lucide-react';
-
 interface WeighingStepProps {
     truck: any;
     onComplete: () => void;
     onCancel: () => void;
 }
-
 export default function WeighingStep({ truck, onComplete, onCancel }: WeighingStepProps) {
     const [isWeighing, setIsWeighing] = useState(false);
-
     const handleStartWeighing = () => {
         setIsWeighing(true);
         // Simulate weighing process
@@ -21,7 +18,6 @@ export default function WeighingStep({ truck, onComplete, onCancel }: WeighingSt
             onComplete();
         }, 3000);
     };
-
     return (
         <div className="max-w-md mx-auto">
             <Card>
@@ -49,7 +45,6 @@ export default function WeighingStep({ truck, onComplete, onCancel }: WeighingSt
                             <span className="font-medium">{truck.jenismobil}</span>
                         </div>
                     </div>
-
                     {!isWeighing ? (
                         <div className="space-y-3">
                             <Button 

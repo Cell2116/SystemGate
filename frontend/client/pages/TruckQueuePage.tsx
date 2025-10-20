@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useTruckStore } from "@/store/truckStore";
 import { Scale, Truck, Clock5, Package, PackageOpen, FileQuestion } from "lucide-react"
 import { useAudio } from "@/hooks/useAudio"
-import { TruckRecord } from "@/store/truckStore"
+import { CombinedTruckData } from "@/store/truckStore"
 import TimeTickerSimple from "@/components/dashboard/timeTickerSimple"
 
 import { ReactNode, CSSProperties } from "react";
@@ -38,29 +38,25 @@ export default function TruckQueuePage() {
         trucks,
         fetchTrucks,
     } = useTruckStore();
-
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedDepartment, setSelectedDepartment] = useState("HPC/PBPG");
-
     const [modalImage, setModalImage] = useState<string | null>(null);
-
-    // Filter dan sort truck berdasarkan status operasi dan department
     const sortedAndFilteredTrucks = useMemo(() => {
-        const filteredTrucks = trucks.filter((truck: TruckRecord) => {
+        const filteredTrucks = trucks.filter((truck: CombinedTruckData) => {
             const status = truck.status?.toLowerCase();
             const matchesStatus = status === 'waiting' ||
                 status === 'timbang' ||
                 status === 'loading' ||
                 status === 'unloading';
-
+            if (status === 'timbang') {
+                return selectedDepartment === "ALL" || selectedDepartment === "PT";
+            }            
             const matchesDepartment = selectedDepartment === "ALL" ||
                 (selectedDepartment === "HPC/PBPG" && (truck.department === "HPC" || truck.department === "PBPG")) ||
                 truck.department === selectedDepartment;
-
             return matchesStatus && matchesDepartment;
         });
-
         const sortedTrucks = filteredTrucks.sort((a, b) => {
             const getPriority = (status: string) => {
                 switch (status?.toLowerCase()) {
@@ -73,9 +69,7 @@ export default function TruckQueuePage() {
             };
             const priorityA = getPriority(a.status || '');
             const priorityB = getPriority(b.status || '');
-
             if (priorityA === priorityB) {
-                // Jika prioritas sama, urutkan berdasarkan nomor ticket
                 const ticketA = a.noticket || '';
                 const ticketB = b.noticket || '';
                 return ticketA.localeCompare(ticketB);
@@ -84,25 +78,27 @@ export default function TruckQueuePage() {
         });
         return sortedTrucks;
     }, [trucks, selectedDepartment]);
-
     const formatTime = (dateString: string | null | undefined) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return 'Invalid Time';
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
+        // const hours = String(date.getHours()).padStart(2, '0');
+        // const minutes = String(date.getMinutes()).padStart(2, '0');
+        // const seconds = String(date.getSeconds()).padStart(2, '0');
+        const hours = String(date.getUTCHours()).padStart(2, "0");
+        const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+        const seconds = String(date.getUTCSeconds()).padStart(2, "0");
         return `${hours}:${minutes}:${seconds}`;
     };
-
-    // Hitung statistik untuk setiap department
     const departmentStats = useMemo(() => {
         const departments = ['ALL', 'HPC/PBPG', 'PT'];
         return departments.map(dept => {
             const deptTrucks = trucks.filter(truck => {
                 const status = truck.status?.toLowerCase();
                 const matchesStatus = status === 'waiting' || status === 'timbang' || status === 'loading' || status === 'unloading';
-
+                if (status === 'timbang') {
+                    return dept === 'ALL' || dept === 'PT';
+                }
                 let matchesDepartment = false;
                 if (dept === 'ALL') {
                     matchesDepartment = true;
@@ -111,20 +107,22 @@ export default function TruckQueuePage() {
                 } else {
                     matchesDepartment = truck.department === dept;
                 }
-
                 return matchesStatus && matchesDepartment;
             });
-
             return {
                 department: dept,
                 total: deptTrucks.length,
                 waiting: deptTrucks.filter(t => t.status?.toLowerCase() === 'waiting').length,
-                timbang: deptTrucks.filter(t => t.status?.toLowerCase() === 'timbang').length,
+                timbang: deptTrucks.filter(t => {
+                    if (t.status?.toLowerCase() === 'timbang') {
+                        return dept === 'PT' || dept === 'ALL';
+                    }
+                    return false;
+                }).length,
                 loading: deptTrucks.filter(t => ['loading', 'unloading'].includes(t.status?.toLowerCase() || '')).length,
             };
         });
     }, [trucks]);
-
     const getStatusInfo = (status: string) => {
         switch (status?.toLowerCase()) {
             case 'timbang':
@@ -164,31 +162,21 @@ export default function TruckQueuePage() {
                 };
         }
     };
-
-    // Extract nomor antrian dari ticket number (2 digit terakhir)
     const getQueueNumberFromTicket = (ticket: string | null | undefined) => {
         if (!ticket) return 'N/A';
-
-        // Extract 2 digit terakhir dari ticket number
-        // Contoh: SUHPC2025100701 -> 01
         const match = ticket.match(/(\d{2})$/);
-        if (match) {    
-            return parseInt(match[1], 10); // Convert ke number untuk menghilangkan leading zero
+        if (match) {
+            return parseInt(match[1], 10);
         }
-        return ticket.slice(-2); // Fallback jika regex tidak match
+        return ticket.slice(-2);
     };
-
     useEffect(() => {
         fetchTrucks();
-
-        // Auto refresh setiap 10 detik
         const interval = setInterval(() => {
             fetchTrucks();
         }, 10000);
-
         return () => clearInterval(interval);
     }, [fetchTrucks]);
-
     return (
         <>
             <div className="h-[130vh] flex flex-col bg-gray-50 p-3 overflow-hidden">
@@ -232,7 +220,6 @@ export default function TruckQueuePage() {
                                         ))}
                                     </select>
                                 </div>
-
                                 {/* Department Statistics */}
                                 {selectedDepartment !== "ALL" && departmentStats.find(s => s.department === selectedDepartment) && (
                                     <div className="flex items-center gap-2 text-xs flex-wrap">
@@ -250,7 +237,6 @@ export default function TruckQueuePage() {
                             </div>
                         </div>
                     </div>
-
                     <CardContent className="flex-1 overflow-y-auto space-y-4 p-4 pb-8" style={{
                         scrollBehavior: 'smooth',
                         scrollPadding: '20px'
@@ -264,7 +250,6 @@ export default function TruckQueuePage() {
                                 </div>
                             </div>
                         )}
-
                         {/* Error State */}
                         {error && (
                             <div className="flex items-center justify-center py-8">
@@ -276,7 +261,6 @@ export default function TruckQueuePage() {
                                 </div>
                             </div>
                         )}
-
                         {/* Empty State */}
                         {!loading && !error && sortedAndFilteredTrucks.length === 0 && (
                             <div className="flex items-center justify-center py-12">
@@ -287,12 +271,10 @@ export default function TruckQueuePage() {
                                 </div>
                             </div>
                         )}
-
                         {/* Trucks List */}
-                        {sortedAndFilteredTrucks.map((truck: TruckRecord, index: number) => {
+                        {sortedAndFilteredTrucks.map((truck: CombinedTruckData, index: number) => {
                             const statusInfo = getStatusInfo(truck.status || '');
                             const queueNumber = getQueueNumberFromTicket(truck.noticket);
-
                             return (
                                 <Card
                                     key={`${truck.id}-${index}`}
@@ -300,7 +282,6 @@ export default function TruckQueuePage() {
                                 >
                                     <CardContent className="p-4">
                                         <div className="flex flex-col lg:flex-row justify-between lg:text-2xl sm:text-sm gap-4 w-full">
-
                                             {/* Section 1: Truck Image */}
                                             <div className="w-full lg:w-1/4 flex flex-col gap-4">
                                                 <div className="w-full flex flex-row gap-4 justify-center">
@@ -323,14 +304,13 @@ export default function TruckQueuePage() {
                                                     </div>
                                                 </div>
                                             </div>
-
                                             {/* Section 2: Truck Information */}
                                             <div className="w-full lg:w-2/4 flex flex-col text-left space-y-3">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <p className="font-bold lg:text-2xl sm:text-sm text-blue-600">
                                                         {truck.driver || 'Unknown Driver'} | {""}
                                                         <span className="text-blue-400">
-                                                            {truck.plateNumber || 'No Plate'}
+                                                            {truck.platenumber || 'No Plate'}
                                                         </span>
                                                     </p>
                                                     {/* <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color} flex items-center gap-1`}>
@@ -338,27 +318,23 @@ export default function TruckQueuePage() {
                                                         {statusInfo.label}
                                                     </span> */}
                                                 </div>
-
                                                 <div>
                                                     <span className="text-gray-900 font-bold lg:text-xl sm:text-sm">
                                                         {truck.noticket || 'No Ticket'} | {""}
                                                     </span>
                                                 </div>
-
                                                 <div>
                                                     <span className="text-gray-500 font-bold lg:text-xl sm:text-sm">
                                                         {truck.supplier || 'Unknown Supplier'} | {truck.department || 'No Dept'}
                                                     </span>
                                                 </div>
-
                                                 <div className="text-sm text-gray-600">
-                                                    <div>Jam Kedatangan: {formatTime(truck.arrivalTime)}</div>
+                                                    <div>Jam Kedatangan: {formatTime(truck.arrivaltime)}</div>
                                                     {truck.startloadingtime && (
                                                         <div>Proses Dimulai: {formatTime(truck.startloadingtime)}</div>
                                                     )}
                                                 </div>
                                             </div>
-
                                             {/* Section 3: Queue Number & Status */}
                                             <div className="w-full lg:w-1/4 flex flex-col text-left space-y-3">
                                                 <div className="flex items-center gap-2 mb-2 justify-end">
@@ -368,7 +344,6 @@ export default function TruckQueuePage() {
                                                                 <Scale />
                                                                 <span>Timbang</span>
                                                             </span>
-
                                                         )}
                                                     {truck.status?.toLowerCase() === 'loading' &&
                                                         (
@@ -376,7 +351,6 @@ export default function TruckQueuePage() {
                                                                 <Package />
                                                                 <span>Muat</span>
                                                             </span>
-
                                                         )}
                                                     {truck.status?.toLowerCase() === 'unloading' &&
                                                         (
@@ -384,7 +358,6 @@ export default function TruckQueuePage() {
                                                                 <PackageOpen />
                                                                 <span>Bongkar</span>
                                                             </span>
-
                                                         )}
                                                     {truck.status?.toLowerCase() === 'waiting' &&
                                                         (
@@ -392,31 +365,24 @@ export default function TruckQueuePage() {
                                                                 <Clock5 />
                                                                 <span>Menunggu</span>
                                                             </span>
-
                                                         )}
                                                 </div>
-
                                                 <div className="flex items-center">
                                                     <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Waktu Proses:</span>
                                                     {["timbang", "loading", "unloading"].includes(truck.status?.toLowerCase() || "") ? (
                                                         (() => {
-                                                            // Determine which start time to use based on status
                                                             let timeField = null;
                                                             const status = truck.status?.toLowerCase();
-
                                                             if (status === 'timbang') {
                                                                 timeField = truck.starttimbang;
                                                             } else if (status === 'loading' || status === 'unloading') {
                                                                 timeField = truck.startloadingtime;
                                                             }
-
-                                                            console.log(`🚛 Truck ${truck.plateNumber} (${status}):`, {
-                                                                starttimbang: truck.starttimbang,
-                                                                startloadingtime: truck.startloadingtime,
-                                                                selectedField: timeField
-                                                            });
-
-                                                            // Only show TimeTicker if we have a valid time field
+                                                            // console.log(`🚛 Truck ${truck.plateNumber} (${status}):`, {
+                                                            //     starttimbang: truck.starttimbang,
+                                                            //     startloadingtime: truck.startloadingtime,
+                                                            //     selectedField: timeField
+                                                            // });
                                                             return timeField ? (
                                                                 <TimeTickerSimple startTime={timeField} status={truck.status} />
                                                             ) : (
@@ -427,7 +393,7 @@ export default function TruckQueuePage() {
                                                         })()
                                                     ) : (
                                                         <span className="ml-2 text-black font-bold lg:text-xl sm:text-sm">
-                                                            {formatTime(truck.startloadingtime || truck.arrivalTime)}
+                                                            {formatTime(truck.startloadingtime || truck.arrivaltime)}
                                                         </span>
                                                     )}
                                                 </div>
@@ -443,7 +409,6 @@ export default function TruckQueuePage() {
                                 </Card>
                             );
                         })}
-
                         {/* Spacer untuk memastikan item terakhir tidak terpotong */}
                         {sortedAndFilteredTrucks.length > 0 && (
                             <div className="h-16"></div>
@@ -451,7 +416,6 @@ export default function TruckQueuePage() {
                     </CardContent>
                 </Card>
             </div>
-
             {/* Image Modal */}
             {modalImage && (
                 <div

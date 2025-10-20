@@ -1,14 +1,12 @@
 // Komponen untuk mengubah status truck secara manual
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TruckOperation } from '@/types/truck.types';
-
 interface StatusSelectorProps {
     currentStatus: string;
     operation: TruckOperation;
     onStatusChange: (newStatus: string) => void;
     disabled?: boolean;
 }
-
 export default function StatusSelector({ 
     currentStatus, 
     operation, 
@@ -32,7 +30,6 @@ export default function StatusSelector({
             ];
         }
     };
-
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Waiting': return 'text-yellow-600';
@@ -42,7 +39,6 @@ export default function StatusSelector({
             default: return 'text-gray-600';
         }
     };
-
     return (
         <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">

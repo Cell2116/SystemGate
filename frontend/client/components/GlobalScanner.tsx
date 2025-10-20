@@ -7,7 +7,6 @@ interface GlobalScannerProps {
 
 export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
     const { processScan, scanBuffer, setScanBuffer } = useScannerStore();
-
     useEffect(() => {
         let scanTimeout: NodeJS.Timeout;
         
@@ -51,10 +50,10 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
             }
         };
         
-        // Global Listenrr
+        
         document.addEventListener('keydown', handleGlobalKeyDown, true);
         
-        // Cleanup
+        
         return () => {
             document.removeEventListener('keydown', handleGlobalKeyDown, true);
             if (scanTimeout) {
@@ -62,7 +61,6 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
             }
         };
     }, [scanBuffer, processScan, setScanBuffer]);
-
     return <>{children}</>;
 };
 

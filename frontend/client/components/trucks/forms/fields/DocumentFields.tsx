@@ -2,12 +2,10 @@ import { ChangeEvent } from "react";
 import { Input } from "../../../ui/input";
 import { Label } from "../../../ui/label";
 import { TruckFormData } from "../../../../types/truck.types";
-
 interface DocumentFieldsProps {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
 }
-
 export function DocumentFields({ formData, onFieldChange }: DocumentFieldsProps) {
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -26,7 +24,7 @@ export function DocumentFields({ formData, onFieldChange }: DocumentFieldsProps)
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
             onFieldChange("nosj", e.target.value)
           }
-          className="h-9 border-gray-300 focus:border-blue-500 focus:outline-none"
+          className="h-9 uppercase border-gray-300 focus:border-blue-500 focus:outline-none"
           required
         />
       </div>

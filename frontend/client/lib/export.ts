@@ -2,7 +2,6 @@ import * as XLSX from "xlsx";
 import { HistoryRecord } from "@/types/employee.types";
 import { TruckHistoryRecord } from "@/types/truck.types";
 import { formatDateTime, formatCustomDateTime } from "@/lib/utils";
-
 // Employee History Export
 export const exportEmployeeHistoryToXLSX = (filteredRecords: HistoryRecord[]) => {
     const exportData = filteredRecords.map(record => ({
@@ -18,9 +17,10 @@ export const exportEmployeeHistoryToXLSX = (filteredRecords: HistoryRecord[]) =>
         'Planned Exit Time': record.planned_exit_time ? formatCustomDateTime(record.planned_exit_time) : '',
         'Planned Return Time': record.planned_return_time ? formatCustomDateTime(record.planned_return_time) : '',
         'Actual Exit Time': record.actual_exittime ? formatDateTime(record.actual_exittime) : '',
-        'Actual Return Time': record.actual_returntime ? formatDateTime(record.actual_returntime) : ''
+        'Actual Return Time': record.actual_returntime ? formatDateTime(record.actual_returntime) : '',
+        'Approver Level 1 ': record.approval_level1_name || '',
+        'Approver Level 2': record.approval_level2_name || ''
     }));
-
     const columnWidths = [
         { wch: 15 },
         { wch: 25 },
@@ -34,15 +34,13 @@ export const exportEmployeeHistoryToXLSX = (filteredRecords: HistoryRecord[]) =>
         { wch: 20 },
         { wch: 20 },
         { wch: 20 },
-        { wch: 20 }
+        { wch: 30 },
+        { wch: 30 },
     ];
-
     const fileName = `employee_history_${new Date().toISOString().split('T')[0]}.xlsx`;
     const sheetName = 'Employee History';
-
     exportToExcel(exportData, columnWidths, fileName, sheetName);
 };
-
 // Truck History Export
 export const exportTruckHistoryToXLSX = (filteredRecords: TruckHistoryRecord[]) => {
     const exportData = filteredRecords.map(record => ({
@@ -60,8 +58,6 @@ export const exportTruckHistoryToXLSX = (filteredRecords: TruckHistoryRecord[]) 
         'Status': record.status || '',
         'Type': record.type || '',
         'Goods': record.goods || '',
-        'Estimated Finish': record.estimatedfinish ? formatDateTime(record.estimatedfinish) : '',
-        'Estimated Wait Time': record.estimatedwaittime || '',
         'Actual Wait Time': record.actualwaitloadingtime || '',
         'Description In': record.descin || '',
         'Description Out': record.descout || '',
@@ -70,7 +66,6 @@ export const exportTruckHistoryToXLSX = (filteredRecords: TruckHistoryRecord[]) 
         'Kelengkapan': record.kelengkapan || '',
         'Jenis Mobil': record.jenismobil || ''
     }));
-
     const columnWidths = [
         { wch: 15 },
         { wch: 25 },
@@ -87,8 +82,6 @@ export const exportTruckHistoryToXLSX = (filteredRecords: TruckHistoryRecord[]) 
         { wch: 20 },
         { wch: 20 },
         { wch: 20 },
-        { wch: 20 },
-        { wch: 20 },
         { wch: 25 },
         { wch: 25 },
         { wch: 20 },
@@ -96,13 +89,10 @@ export const exportTruckHistoryToXLSX = (filteredRecords: TruckHistoryRecord[]) 
         { wch: 20 },
         { wch: 20 }
     ];
-
     const fileName = `truck_history_${new Date().toISOString().split('T')[0]}.xlsx`;
     const sheetName = 'Truck History';
-
     exportToExcel(exportData, columnWidths, fileName, sheetName);
 };
-
 // Generic export function
 const exportToExcel = (
     data: any[],
@@ -116,6 +106,5 @@ const exportToExcel = (
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
     XLSX.writeFile(workbook, fileName);
 };
-
 // Backward compatibility - keeping the old function name for existing code
 export const exportToXLSX = exportEmployeeHistoryToXLSX;

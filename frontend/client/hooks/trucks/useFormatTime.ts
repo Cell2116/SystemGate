@@ -1,5 +1,4 @@
 import { useState, useCallback } from  "react";
-
 export function useFormatTime(){
     const formatTimeForInput = (dateTime?: string | null) =>{
         if (!dateTime) return '';
@@ -13,23 +12,20 @@ export function useFormatTime(){
             const minutes = date.getMinutes().toString().padStart(2, '0');
             return `${hours}:${minutes}`;
         } catch (error) {
-            console.log('Error formatting time for input:', error);
+            
             return '';
         }
     }
     const formatTimeForDatabase = (timeValue: string, originalDatetime?: string | null) => {
         if (!timeValue) return null;
-
         try {
             // Ambil tanggal dari datetime asli, atau gunakan tanggal hari ini
             const baseDate = originalDatetime ? new Date(originalDatetime) : new Date();
             const [hours, minutes] = timeValue.split(':');
-
             baseDate.setHours(parseInt(hours, 10));
             baseDate.setMinutes(parseInt(minutes, 10));
             baseDate.setSeconds(0);
             baseDate.setMilliseconds(0);
-
             return baseDate.toISOString();
         } catch (error) {
             console.error('Error formatting time for database:', error);

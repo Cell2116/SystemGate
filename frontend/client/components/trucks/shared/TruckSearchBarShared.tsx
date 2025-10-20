@@ -2,7 +2,6 @@
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FilterStatus } from '@/types/truck.types';
-
 interface SearchBarProps {
     searchTerm: string;
     onSearchChange: (value: string) => void;
@@ -10,7 +9,6 @@ interface SearchBarProps {
     filteredCount: number;
     selectedStatus: FilterStatus;
 }
-
 export default function TrucksSearchBar({
     searchTerm,
     onSearchChange,
@@ -47,8 +45,7 @@ export default function TrucksSearchBar({
                         <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                     </button>
                 )}
-            </div>
-
+            </div>  
             {/* Search Results Summary */}
             {searchTerm && (
                 <div className="mt-2 text-sm text-gray-600">

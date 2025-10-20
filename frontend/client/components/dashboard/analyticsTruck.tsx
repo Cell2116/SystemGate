@@ -31,8 +31,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, TrendingUp, Truck, ArrowUpDown } from "lucide-react";
-import { useTrucksWithFetch, TruckRecord } from "@/store/truckStore";
-
+import { CombinedTruckData, useTrucksWithFetch } from "@/store/truckStore";
 // Interface untuk data chart
 interface TruckAnalyticsData {
     date: string;
@@ -56,7 +55,6 @@ interface TruckOperationData {
     loading: number;
     unloading: number;
 }
-
 // Chart configuration
 const chartConfig = {
     totalTrucks: {
@@ -88,7 +86,6 @@ const chartConfig = {
         color: "#dc2626", // red-600
     },
 } satisfies ChartConfig;
-
 // Status colors untuk pie chart
 const STATUS_COLORS = [
     "#10b981", // green - finished
@@ -102,21 +99,17 @@ export default function AnalyticsTruck() {
         from: getIndonesianDate(-7), // 7 days ago in Indonesian timezone
         to: getIndonesianDate(0), // today in Indonesian timezone
     });
-
     const { trucks, loading, error, refetch } = useTrucksWithFetch({
         dateFrom: dateRange.from,
         dateTo: dateRange.to,
     });
-
-    // Process data untuk analytics
+    
     const processAnalyticsData = (
-        trucks: TruckRecord[],
+        trucks: CombinedTruckData[],
     ): TruckAnalyticsData[] => {
         const dateMap = new Map<string, TruckAnalyticsData>();
-
         trucks.forEach((truck) => {
             const date = truck.date || getIndonesianDate();
-
             if (!dateMap.has(date)) {
                 dateMap.set(date, {
                     date,
@@ -129,80 +122,67 @@ export default function AnalyticsTruck() {
                     externalTrucks: 0,
                 });
             }
-
             const dayData = dateMap.get(date)!;
             dayData.totalTrucks++;
-
-            // Count by operation
+            
             if (truck.operation === "muat") {
                 dayData.loadingTrucks++;
             } else if (truck.operation === "bongkar") {
                 dayData.unloadingTrucks++;
             }
-
-            // Count by status
+            
             const status = truck.status.toLowerCase();
             if (status === "waiting" || status === "pending") {
                 dayData.waitingTrucks++;
             } else if (status === "loading") {
-                // Already counted in operation
+                
             } else if (status === "finished") {
                 dayData.finishedTrucks++;
             }
-
-            // Count by type
+            
             if (truck.type === "Inbound" || truck.type === "internal") {
                 dayData.internalTrucks++;
             } else {
                 dayData.externalTrucks++;
             }
         });
-
         return Array.from(dateMap.values()).sort(
             (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
         );
     };
-
-    // Process data untuk status pie chart
-    const processStatusData = (trucks: TruckRecord[]): TruckStatusData[] => {
+    
+    const processStatusData = (trucks: CombinedTruckData[]): TruckStatusData[] => {
         const statusCount = trucks.reduce(
             (acc, truck) => {
                 const status = truck.status.toLowerCase();
                 let normalizedStatus = status;
-
                 if (status === "pending") normalizedStatus = "waiting";
                 if (status === "loading") normalizedStatus = "loading";
                 if (status === "finished") normalizedStatus = "finished";
-
                 acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
                 return acc;
             },
             {} as Record<string, number>,
         );
-
         return Object.entries(statusCount).map(([name, value], index) => ({
             name: name.charAt(0).toUpperCase() + name.slice(1),
             value,
             color: STATUS_COLORS[index % STATUS_COLORS.length],
         }));
     };
-
-    // Process data untuk operation comparison
+    
     const processOperationData = (
-        trucks: TruckRecord[],
+        trucks: CombinedTruckData[],
     ): TruckOperationData[] => {
         const dateMap = new Map<
             string,
             { loading: number; unloading: number }
         >();
-
         trucks.forEach((truck) => {
             const date = truck.date || new Date().toISOString().split("T")[0];
-
             if (!dateMap.has(date)) {
                 dateMap.set(date, { loading: 0, unloading: 0 });
             }
-
             const dayData = dateMap.get(date)!;
             if (truck.operation === "muat") {
                 dayData.loading++;
@@ -210,7 +190,6 @@ export default function AnalyticsTruck() {
                 dayData.unloading++;
             }
         });
-
         return Array.from(dateMap.entries()).map(([date, data]) => ({
             name: new Date(date).toLocaleDateString("id-ID", {
                 month: "short",
@@ -219,12 +198,10 @@ export default function AnalyticsTruck() {
             ...data,
         }));
     };
-
     const analyticsData = processAnalyticsData(trucks);
     const statusData = processStatusData(trucks);
     const operationData = processOperationData(trucks);
-
-    // Calculate summary stats
+    
     const totalTrucks = trucks.length;
     const avgTrucksPerDay =
         analyticsData.length > 0
@@ -235,18 +212,15 @@ export default function AnalyticsTruck() {
             current.totalTrucks > max.totalTrucks ? current : max,
         analyticsData[0] || { totalTrucks: 0, date: "" },
     );
-
     const handleDateRangeChange = (field: "from" | "to", value: string) => {
         setDateRange((prev) => ({
             ...prev,
             [field]: value,
         }));
     };
-
     const handleRefresh = () => {
         refetch();
     };
-
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
@@ -254,7 +228,6 @@ export default function AnalyticsTruck() {
             </div>
         );
     }
-
     if (error) {
         return (
             <div className="text-center p-8">
@@ -265,7 +238,6 @@ export default function AnalyticsTruck() {
             </div>
         );
     }
-
     return (
         <div className="space-y-6">
             {/* Header dengan Date Range Selector */}
@@ -277,7 +249,6 @@ export default function AnalyticsTruck() {
                         {new Date(dateRange.to).toLocaleDateString()}
                     </p>
                 </div>
-
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <CalendarDays className="h-4 w-4" />
@@ -304,7 +275,6 @@ export default function AnalyticsTruck() {
                     </Button>
                 </div>
             </div>
-
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
@@ -324,7 +294,6 @@ export default function AnalyticsTruck() {
                         </div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center">
@@ -342,7 +311,6 @@ export default function AnalyticsTruck() {
                         </div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center">
@@ -367,7 +335,6 @@ export default function AnalyticsTruck() {
                         </div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center">
@@ -386,7 +353,6 @@ export default function AnalyticsTruck() {
                     </CardContent>
                 </Card>
             </div>
-
             {/* Charts */}
             <Tabs defaultValue="daily-trend" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-2">
@@ -398,7 +364,6 @@ export default function AnalyticsTruck() {
                         Operation Comparison
                     </TabsTrigger> */}
                 </TabsList>
-
                 <TabsContent value="daily-trend" className="space-y-4">
                     <Card className="flex flex-col">
                         <CardHeader className="flex items-start">
@@ -491,7 +456,6 @@ export default function AnalyticsTruck() {
                         </CardContent>
                     </Card>
                 </TabsContent>
-
                 <TabsContent value="status-breakdown" className="space-y-4">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Card>
@@ -534,7 +498,6 @@ export default function AnalyticsTruck() {
                                 </ChartContainer>
                             </CardContent>
                         </Card>
-
                         <Card>
                             <CardHeader>
                                 <CardTitle>Vehicle Type Distribution</CardTitle>
@@ -587,7 +550,6 @@ export default function AnalyticsTruck() {
                         </Card>
                     </div>
                 </TabsContent>
-
                 {/* <TabsContent value="operation-comparison" className="space-y-4">
                     <Card className="flex flex-col">
                         <CardHeader className="flex items-start">

@@ -3,21 +3,17 @@ import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
 import { Download, Smartphone } from 'lucide-react';
-
 export function InstallPrompt() {
   const { isInstallable, isInstalled, installApp } = useInstallPrompt();
-
   if (isInstalled || !isInstallable) {
     return null;
   }
-
   const handleInstall = async () => {
     const installed = await installApp();
     if (installed) {
-      console.log('App installed successfully');
+      
     }
   };
-
   return (
     <div className="fixed bottom-4 left-4 z-50 max-w-sm">
       <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">

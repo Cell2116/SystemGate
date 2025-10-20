@@ -11,6 +11,7 @@ import { WebSocketServer } from "ws";
 import { captureSnapshot } from './cctv.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import broadcastTwillio from './broadcastTwillio.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,34 +21,19 @@ const port = 3000;
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// Middleware untuk serve static files dari uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-console.log('📁 Static files served from:', path.join(__dirname, 'uploads'));
 
-// Function untuk save image ke file
 function saveImageToFile(base64Data, filename) {
     return new Promise((resolve, reject) => {
         try {
-            console.log('📸 Saving image:', filename);
-            
-            // Remove data:image/jpeg;base64, prefix
             const base64Image = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
             const imageBuffer = Buffer.from(base64Image, 'base64');
-            
-            // Ensure uploads/trucks directory exists
             const uploadDir = path.join(__dirname, 'uploads/trucks');
-            console.log('📁 Upload directory:', uploadDir);
-            
             if (!fs.existsSync(uploadDir)) {
                 fs.mkdirSync(uploadDir, { recursive: true });
-                console.log('📁 Created directory:', uploadDir);
             }
-            
             const filePath = path.join(uploadDir, filename);
             fs.writeFileSync(filePath, imageBuffer);
-            console.log('✅ Image saved to:', filePath);
-            
-            // Return only filename for database storage
             resolve(filename);
         } catch (error) {
             console.error('❌ Error saving image:', error);
@@ -56,38 +42,28 @@ function saveImageToFile(base64Data, filename) {
     });
 }
 
-// WebSocket broadcast function
 function broadcast(data) {
-    console.log("📢 Broadcasting to", wss.clients.size, "clients:", data.type || 'unknown');
     wss.clients.forEach((client) => {
         if (client.readyState === 1) {
             client.send(JSON.stringify(data));
         }
     });
 }
-
 //-----------------------------------------------------//
 //-----------------------------------------------------//
 //-----------------------------------------------------//
-
 // !! WEBSOCKET CONNECTION FUNCTION
 wss.on("connection", (ws) => {
-    console.log("✅ WebSocket client connected. Total clients:", wss.clients.size);
-
     ws.send(JSON.stringify({
         type: "info",
         message: "Connected to WebSocket server",
         timestamp: new Date().toISOString()
     }));
-
     ws.on("message", (message) => {
-        //console.log("Message from client:", message.toString());
+        //
     });
-
     ws.on("close", () => {
-        console.log("⚠️ WebSocket client disconnected. Remaining clients:", wss.clients.size);
     });
-
     ws.on("error", (error) => {
         console.error("❌ WebSocket error:", error);
     });
@@ -97,40 +73,116 @@ wss.on("connection", (ws) => {
 //-----------------------------------------------------//
 //-----------------------------------------------------//
 //-----------------------------------------------------//
+// !! HELPER FUNCTIONS FOR ROUTING-BASED APPROVAL SYSTEM
+async function isLeavePermissionApproved(licensePlate) {
+    try {
+        //console.log(`🔍 Routing check for license plate: ${licensePlate}`);
 
+        const leaveQuery = `
+            SELECT lp.*, u.role, u.department as user_department, u.name as employee_name
+            FROM leave_permission lp
+            JOIN users u ON lp.licenseplate = u.licenseplate
+            WHERE lp.licenseplate = $1 
+            AND CONVERT(DATE, lp.date) = CONVERT(DATE, GETDATE())
+            AND lp.actual_exittime IS NULL
+        `;
+        const leaveResult = await db.query(leaveQuery, [licensePlate]);
+        //console.log(`📋 Found ${leaveResult.rows.length} leave requests for today`);
+
+        if (leaveResult.rows.length === 0) {
+            //console.log(`❌ No leave requests found for ${licensePlate}`);
+            return false;
+        }
+
+        const leave = leaveResult.rows[0];
+        //console.log(`📄 Leave request details:`, {
+        //     id: leave.id,
+        //     role: leave.role,
+        //     department: leave.user_department,
+        //     employee: leave.employee_name,
+        //     statusfromhr: leave.statusfromhr,
+        //     statusfromdept: leave.statusfromdept
+        // });
+
+        const routingQuery = `
+            SELECT TOP 1 approval_level1_role, approval_level2_role, 
+                   approval_level1_name, approval_level2_name
+            FROM master_routing 
+            WHERE department = $1 
+            AND (employee_name = $2 OR employee_name IS NULL)
+            ORDER BY CASE WHEN employee_name IS NOT NULL THEN 1 ELSE 2 END
+        `;
+        const routingResult = await db.query(routingQuery, [leave.user_department, leave.employee_name]);
+        //console.log(`🗂️ Found ${routingResult.rows.length} routing rules`);
+
+        if (routingResult.rows.length === 0) {
+            //console.log(`❌ No routing rules found for department: ${leave.user_department}, employee: ${leave.employee_name}`);
+            return false;
+        }
+
+        const routing = routingResult.rows[0];
+        //console.log(`📊 Routing rule:`, {
+        //     level1_role: routing.approval_level1_role,
+        //     level2_role: routing.approval_level2_role,
+        //     level1_name: routing.approval_level1_name,
+        //     level2_name: routing.approval_level2_name
+        // });
+
+        let isApproved = false;
+        if (leave.role === 'Staff') {
+            const level1Approved = (routing.approval_level1_role === 'HEAD DEPARTMENT' && leave.statusfromdept === 'approved') ||
+                (routing.approval_level1_role === 'HR' && leave.statusfromhr === 'approved');
+            const level2Approved = (routing.approval_level2_role === 'HEAD DEPARTMENT' && leave.statusfromdept === 'approved') ||
+                (routing.approval_level2_role === 'HR' && leave.statusfromhr === 'approved');
+
+            //console.log(`📊 Staff approval check:`, {
+            //     level1Approved,
+            //     level2Approved,
+            //     level1Required: routing.approval_level1_role,
+            //     level2Required: routing.approval_level2_role
+            // });
+
+            isApproved = level1Approved && level2Approved;
+        } else if (leave.role === 'Head Department') {
+            isApproved = leave.statusfromhr === 'approved';
+            //console.log(`📊 Head Department approval check:`, {
+            //     statusfromhr: leave.statusfromhr,
+            //     isApproved
+            // });
+        }
+
+        //console.log(`✅ Final approval result: ${isApproved}`);
+        return isApproved;
+    } catch (error) {
+        console.error('❌ Error checking leave permission approval:', error);
+        return false;
+    }
+}
+// !! END OF HELPER FUNCTIONS
+
+//-----------------------------------------------------//
+//-----------------------------------------------------//
+//-----------------------------------------------------//
 // !! HIKVISION POLLING SYSTEM
 const HIKVISION_POLL_INTERVAL = parseInt(process.env.HIKVISION_POLL_INTERVAL) || 3000;
 let pollingActive = false;
 let pollingInterval = null;
 
-console.log(`🔧 Hikvision polling configured: ${HIKVISION_POLL_INTERVAL}ms interval`);
-
-// Process single attlog entry (sama persis dengan MQTT flow)
 async function processHikvisionEntry(attlogRecord) {
     const uid = attlogRecord.cardNo;
     const authDateTime = new Date(attlogRecord.authDateTime);
     const personName = attlogRecord.personName;
     const direction = attlogRecord.direction;
-
-    console.log(`📡 Processing Hikvision entry: ${uid} - ${personName} - ${direction} at ${authDateTime.toISOString()}`);
-
     try {
-        // Get user info
-        const userResult = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
 
+        const userResult = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
         if (userResult.rows.length === 0) {
-            console.log(`❌ User not found: ${uid}`);
             await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['user_not_found', attlogRecord.id]);
             return;
         }
-
         const userInfo = userResult.rows[0];
         const licensePlate = userInfo.licenseplate;
         const today = new Date().toISOString().split('T')[0];
-
-        console.log(`✅ Valid user: ${userInfo.name} (${uid})`);
-
-        // Check existing entry today
         const existingEntry = await db.query(
             `SELECT TOP 1 * FROM attendance_logs 
             WHERE uid = $1 
@@ -139,21 +191,13 @@ async function processHikvisionEntry(attlogRecord) {
             ORDER BY datein DESC`,
             [uid]
         );
-
-        // SCENARIO 1: First tap (ENTRY)
         if (existingEntry.rows.length === 0) {
-            console.log(`🚪 ENTRY for ${userInfo.name}`);
-
-            // Capture entry photo
             const entryImagePath = await captureSnapshot(uid);
-
             await db.query(
                 `INSERT INTO attendance_logs (uid, licenseplate, datein, status, image_path) 
                 VALUES ($1, $2, $3, 'entry', $4)`,
                 [uid, licensePlate, authDateTime, entryImagePath]
             );
-
-            // Get the inserted record
             const recordResult = await db.query(
                 `SELECT TOP 1 * FROM attendance_logs 
                 WHERE uid = $1 AND licenseplate = $2 
@@ -161,8 +205,6 @@ async function processHikvisionEntry(attlogRecord) {
                 [uid, licensePlate]
             );
             const newRecord = recordResult.rows[0];
-
-            // Broadcast to WebSocket
             broadcast({
                 type: 'entry',
                 id: newRecord.id,
@@ -173,66 +215,65 @@ async function processHikvisionEntry(attlogRecord) {
                 datein: newRecord.datein,
                 status: 'entry'
             });
-
-            console.log(`✅ ENTRY broadcast sent for ${userInfo.name}`);
-
-            // Mark as processed
             await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['entry_processed', attlogRecord.id]);
             return;
         }
-
-        // SCENARIO 2+: Subsequent taps
         const attendance = existingEntry.rows[0];
-        console.log(`🔄 Found existing entry for ${userInfo.name}, checking next action...`);
+        //console.log(`🔄 Found existing entry for ${userInfo.name}, checking next action...`);
 
-        // Check for leave permission
-        const leavePermission = await db.query(
-            `SELECT TOP 1 * FROM leave_permission 
-            WHERE licenseplate = $1 
-            AND CONVERT(DATE, date) = CONVERT(DATE, GETDATE())
-            AND (
-                (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
-                OR
-                (statusfromhr = 'approved' AND role = 'Head Department')
-            )
-            AND actual_exittime IS NULL
-            ORDER BY exittime ASC`,
-            [licensePlate]
-        );
+        // Check for leave permission using the routing system
+        //console.log(`🔍 Checking leave permission for ${licensePlate}...`);
+        const hasApprovedLeave = await isLeavePermissionApproved(licensePlate);
+        //console.log(`✅ Leave permission approved via routing: ${hasApprovedLeave}`);
 
-        // SCENARIO 2A: Has approved leave → LEAVE EXIT
+        let leavePermission = { rows: [] };
+        if (hasApprovedLeave) {
+            leavePermission = await db.query(
+                `SELECT TOP 1 * FROM leave_permission 
+                WHERE licenseplate = $1 
+                AND CONVERT(DATE, date) = CONVERT(DATE, GETDATE())
+                AND actual_exittime IS NULL
+                ORDER BY exittime ASC`,
+                [licensePlate]
+            );
+            //console.log(`📋 Found ${leavePermission.rows.length} approved leave permissions via routing`);
+        } else {
+            //console.log(`🔄 Trying fallback approval logic...`);
+            leavePermission = await db.query(
+                `SELECT TOP 1 * FROM leave_permission 
+                WHERE licenseplate = $1 
+                AND CONVERT(DATE, date) = CONVERT(DATE, GETDATE())
+                AND (
+                    (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
+                    OR
+                    (statusfromhr = 'approved' AND role = 'Head Department')
+                )
+                AND actual_exittime IS NULL
+                ORDER BY exittime ASC`,
+                [licensePlate]
+            );
+            //console.log(`📋 Found ${leavePermission.rows.length} approved leave permissions via fallback`);
+        }
         if (leavePermission.rows.length > 0) {
             const permission = leavePermission.rows[0];
-            console.log(`🏃 LEAVE EXIT for ${userInfo.name} - Leave ID: ${permission.id}`);
-
-            // Check if this is second/multiple leave
             if (attendance.leave_permission_id && attendance.leave_permission_id !== permission.id) {
-                console.log(`🔄 Creating NEW ROW for second leave`);
-
-                // Capture leave exit photo
                 const leaveExitImagePath = await captureSnapshot(uid);
-
-                // Create new row with same entry time
                 await db.query(
                     `INSERT INTO attendance_logs 
                     (uid, licenseplate, datein, actual_exittime, exittime, returntime, status, leave_permission_id, image_path_leave_exit) 
                     VALUES ($1, $2, $3, $4, $5, $6, 'leave_exit', $7, $8)`,
                     [uid, licensePlate, attendance.datein, authDateTime, permission.exittime, permission.returntime, permission.id, leaveExitImagePath]
                 );
-
-                // Get the inserted leave record
                 const newRowResult = await db.query(
                     `SELECT TOP 1 * FROM attendance_logs 
                     WHERE uid = $1 AND leave_permission_id = $2 
                     ORDER BY id DESC`,
                     [uid, permission.id]
                 );
-
                 await db.query(
                     'UPDATE leave_permission SET actual_exittime = $1 WHERE id = $2',
                     [authDateTime, permission.id]
                 );
-
                 broadcast({
                     type: 'leave_exit',
                     uid: uid,
@@ -241,25 +282,17 @@ async function processHikvisionEntry(attlogRecord) {
                     leavePermissionId: permission.id,
                     isSecondLeave: true
                 });
-
                 broadcast({ type: 'data_change', table: 'attendance' });
-
             } else {
-                // First leave - update existing row
-
-                // Capture leave exit photo
                 const leaveExitImagePath = await captureSnapshot(uid);
-
                 await db.query(
                     'UPDATE attendance_logs SET actual_exittime = $1, exittime = $2, returntime = $3, status = $4, leave_permission_id = $5, image_path_leave_exit = $6 WHERE id = $7',
                     [authDateTime, permission.exittime, permission.returntime, 'leave_exit', permission.id, leaveExitImagePath, attendance.id]
                 );
-
                 await db.query(
                     'UPDATE leave_permission SET actual_exittime = $1 WHERE id = $2',
                     [authDateTime, permission.id]
                 );
-
                 broadcast({
                     type: 'leave_exit',
                     uid: uid,
@@ -267,16 +300,12 @@ async function processHikvisionEntry(attlogRecord) {
                     attendanceId: attendance.id,
                     leavePermissionId: permission.id
                 });
-
                 broadcast({ type: 'data_change', table: 'attendance' });
             }
-
-            console.log(`✅ LEAVE EXIT broadcast sent`);
             await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['leave_exit_processed', attlogRecord.id]);
             return;
         }
 
-        // SCENARIO 2B: Check if returning from leave
         const returningLeave = await db.query(
             `SELECT TOP 1 lp.*, al.id as attendance_log_id 
             FROM leave_permission lp
@@ -289,25 +318,17 @@ async function processHikvisionEntry(attlogRecord) {
             ORDER BY lp.actual_exittime DESC`,
             [licensePlate, uid]
         );
-
-        // SCENARIO 2C: LEAVE RETURN
         if (returningLeave.rows.length > 0) {
             const permission = returningLeave.rows[0];
-            console.log(`🔙 LEAVE RETURN for ${userInfo.name} - Leave ID: ${permission.id}`);
-
-            // Capture leave return photo
             const leaveReturnImagePath = await captureSnapshot(uid);
-
             await db.query(
                 'UPDATE attendance_logs SET actual_returntime = $1, returntime = $2, status = $3, image_path_leave_return = $4 WHERE id = $5',
                 [authDateTime, permission.returntime, 'leave_return', leaveReturnImagePath, permission.attendance_log_id]
             );
-
             await db.query(
                 'UPDATE leave_permission SET actual_returntime = $1 WHERE id = $2',
                 [authDateTime, permission.id]
             );
-
             broadcast({
                 type: 'leave_return',
                 uid: uid,
@@ -315,21 +336,11 @@ async function processHikvisionEntry(attlogRecord) {
                 attendanceId: permission.attendance_log_id,
                 leavePermissionId: permission.id
             });
-
             broadcast({ type: 'data_change', table: 'attendance' });
-
-            console.log(`✅ LEAVE RETURN broadcast sent`);
             await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['leave_return_processed', attlogRecord.id]);
             return;
         }
-
-        // SCENARIO 2D: REGULAR EXIT (no more leaves)
-        console.log(`🚪 REGULAR EXIT for ${userInfo.name} - closing all open records`);
-
-        // Capture exit photo
         const exitImagePath = await captureSnapshot(uid);
-
-        // Close ALL open records
         await db.query(
             `UPDATE attendance_logs 
             SET dateout = $2, status = 'exit', image_path_out = $3
@@ -338,18 +349,13 @@ async function processHikvisionEntry(attlogRecord) {
             AND dateout IS NULL`,
             [uid, authDateTime, exitImagePath]
         );
-
         broadcast({
             type: 'exit',
             uid: uid,
             name: userInfo.name
         });
-
         broadcast({ type: 'data_change', table: 'attendance' });
-
-        console.log(`✅ REGULAR EXIT broadcast sent`);
         await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['exit_processed', attlogRecord.id]);
-
     } catch (error) {
         console.error('❌ Error processing Hikvision entry:', error);
         await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2',
@@ -357,31 +363,23 @@ async function processHikvisionEntry(attlogRecord) {
     }
 }
 
-// Main polling function
+
 async function pollHikvisionDatabase() {
     if (pollingActive) {
-        //console.log('⏭️ Skipping poll - already active');
+
         return;
     }
-
     pollingActive = true;
-
     try {
-        // Get unprocessed records
         const result = await db.query(
             `SELECT TOP 10 * FROM attlog 
             WHERE processed = 0 OR processed IS NULL
             ORDER BY authDateTime ASC, id ASC`
         );
-
         if (result.rows.length > 0) {
-            console.log(`\n📊 Found ${result.rows.length} unprocessed Hikvision records`);
-
             for (const record of result.rows) {
                 await processHikvisionEntry(record);
             }
-
-            console.log(`✅ Processed ${result.rows.length} records\n`);
         }
     } catch (error) {
         console.error('❌ Hikvision polling error:', error);
@@ -390,31 +388,19 @@ async function pollHikvisionDatabase() {
     }
 }
 
-// Start polling on server startup
 function startHikvisionPolling() {
-    console.log(`\n🔄 Starting Hikvision database polling...`);
-    console.log(`   Interval: ${HIKVISION_POLL_INTERVAL}ms (${HIKVISION_POLL_INTERVAL / 1000}s)`);
-    console.log(`   WebSocket clients: ${wss.clients.size}\n`);
-
-    // Run immediately
     pollHikvisionDatabase();
-
-    // Then run on interval
     pollingInterval = setInterval(pollHikvisionDatabase, HIKVISION_POLL_INTERVAL);
 }
 
-// Stop polling (for graceful shutdown)
 function stopHikvisionPolling() {
     if (pollingInterval) {
         clearInterval(pollingInterval);
-        console.log('⏹️ Hikvision polling stopped');
     }
 }
 
-// Start polling after 2 seconds (give time for database connection)
-console.log('⏳ Scheduling Hikvision polling to start in 2 seconds...');
-setTimeout(startHikvisionPolling, 2000);
 
+setTimeout(startHikvisionPolling, 2000);
 // !! END OF HIKVISION POLLING SYSTEM
 
 app.use(cors({
@@ -427,37 +413,24 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
-    //console.log("Checking leave permission for exit:", licensePlate);
     const attendanceDate = attendanceRecord.datein ? new Date(attendanceRecord.datein).toISOString().split('T')[0] : null;
-    //console.log("Query params:", { licensePlate, attendanceDate });
-    const leavePermission = await db.query(
-        `SELECT * FROM leave_permission 
-        WHERE licenseplate = $1 
-        AND date = $2
-        AND (
-            (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
-            OR
-            (statusfromhr = 'approved' AND role = 'Head Department')
-        )
-        AND actual_exittime IS NULL
-        ORDER BY date DESC
-        LIMIT 1`,
-        [licensePlate, attendanceDate]
-    );
-
-    //console.log("leavePermission.rows:", leavePermission.rows);
-
+    const hasApprovedLeave = await isLeavePermissionApproved(licensePlate);
+    let leavePermission = { rows: [] };
+    if (hasApprovedLeave) {
+        leavePermission = await db.query(
+            `SELECT * FROM leave_permission 
+            WHERE licenseplate = $1 
+            AND date = $2
+            AND actual_exittime IS NULL
+            ORDER BY date DESC
+            LIMIT 1`,
+            [licensePlate, attendanceDate]
+        );
+    }
     if (leavePermission.rows.length > 0) {
         const permission = leavePermission.rows[0];
-        //console.log(permission);
         const now = new Date();
         const plannedExitTime = new Date(permission.exittime);
-
-        //console.log("Found approved leave permission for:", licensePlate);
-        //console.log("Planned exit time:", plannedExitTime);
-        //console.log("Actual exit time:", now);
-
-        // Update attendance_logs (leave permission exit)
         await db.query(
             `UPDATE attendance_logs 
             SET actual_exittime = CURRENT_TIMESTAMP, 
@@ -467,7 +440,6 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
             WHERE id = $1`,
             [attendanceRecord.id, permission.exittime, permission.returntime]
         );
-
         // Update leave_permission with actual_exittime
         await db.query(
             `UPDATE leave_permission 
@@ -476,8 +448,6 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
             [permission.id]
         );
 
-        //console.log("Leave exit recorded - actual_exittime set in both attendance_logs and leave_permission");
-
         return {
             type: 'leave_exit',
             permission: permission,
@@ -485,7 +455,6 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
             isLate: now > plannedExitTime
         };
     } else {
-        //console.log("No approved leave permission found, treating as regular exit");
 
         // Regular exit
         await db.query(
@@ -495,7 +464,6 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
             WHERE id = $1`,
             [attendanceRecord.id]
         );
-
         return {
             type: 'regular_exit'
         };
@@ -503,9 +471,6 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
 }
 
 async function handleEmployeeReturn(uid, licensePlate) {
-    //console.log("Checking for active leave permission return:", licensePlate);
-
-    // Check for leave that was exited but not returned (and not final)
     const activeLeavePermission = await db.query(
         `SELECT * FROM leave_permission 
         WHERE licenseplate = $1 
@@ -514,11 +479,8 @@ async function handleEmployeeReturn(uid, licensePlate) {
         AND actual_returntime IS NULL`,
         [licensePlate]
     );
-
     if (activeLeavePermission.rows.length > 0) {
         const permission = activeLeavePermission.rows[0];
-
-        // Check if this was a final leave (no return expected)
         const leaveReason = permission.reason.toLowerCase();
         const isNoReturnLeave = leaveReason.includes('sick') ||
             leaveReason.includes('sakit') ||
@@ -526,22 +488,13 @@ async function handleEmployeeReturn(uid, licensePlate) {
             leaveReason.includes('darurat') ||
             leaveReason.includes('pulang') ||
             leaveReason.includes('home');
-
         if (isNoReturnLeave) {
-            //console.log("User returned after final leave - treating as new entry");
             return {
                 type: 'new_entry_after_final'
             };
         }
-
         const now = new Date();
         const plannedReturnTime = new Date(permission.returntime);
-
-        //console.log("Found active leave permission for return:", licensePlate);
-        //console.log("Planned return time:", plannedReturnTime);
-        //console.log("Actual return time:", now);
-
-        // Update the attendance record for today with actual_returntime
         await db.query(
             `UPDATE attendance_logs 
             SET actual_returntime = CURRENT_TIMESTAMP,
@@ -552,15 +505,12 @@ async function handleEmployeeReturn(uid, licensePlate) {
             AND leave_permission_id = $2`,
             [licensePlate, permission.id, permission.returntime]
         );
-
-        // Update leave_permission with actual_returntime
         await db.query(
             `UPDATE leave_permission 
             SET actual_returntime = CURRENT_TIMESTAMP 
             WHERE id = $1`,
             [permission.id]
         );
-
         return {
             type: 'leave_return',
             permission: permission,
@@ -568,33 +518,23 @@ async function handleEmployeeReturn(uid, licensePlate) {
             isLate: now > plannedReturnTime
         };
     } else {
-        //console.log("No active leave permission found, treating as new entry");
+
         return {
             type: 'new_entry'
         };
     }
 }
-
 //------------------------------------------------------//
 //------------------------------------------------------//
 //------------------------------------------------------//
-
-
-
 // !! HIKVISION POLLING CONFIGURATION
-// Variables already defined above in polling section
-
-// Note: Polling is now fully implemented and running
-
 
 app.get('/hikvision-status', async (req, res) => {
     try {
-        // Get pending count
         const pending = await db.query('SELECT COUNT(*) as count FROM attlog WHERE processed = 0 OR processed IS NULL');
         const processed = await db.query('SELECT COUNT(*) as count FROM attlog WHERE processed = 1');
-
         res.json({
-            polling_active: !pollingActive, // Available for next poll
+            polling_active: !pollingActive,
             current_poll_running: pollingActive,
             poll_interval: HIKVISION_POLL_INTERVAL,
             websocket_clients: wss.clients.size,
@@ -613,7 +553,6 @@ app.get('/hikvision-status', async (req, res) => {
     }
 });
 
-// Legacy endpoint for backward compatibility
 app.get('/mqtt-status', (req, res) => {
     res.json({
         connected: true,
@@ -628,38 +567,29 @@ app.get('/mqtt-status', (req, res) => {
 //------------------------------------------------------//
 //------------------------------------------------------//
 
-
 function convertToJakartaISO(dbTimestamp) {
     if (!dbTimestamp) return null;
-
     if (dbTimestamp instanceof Date) {
-        const jakartaTime = new Date(dbTimestamp.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours
-        return jakartaTime.toISOString().replace('Z', '+07:00'); // Mark as Jakarta time
+        const jakartaTime = new Date(dbTimestamp.getTime() + (7 * 60 * 60 * 1000));
+        return jakartaTime.toISOString().replace('Z', '+07:00');
     }
-
     if (typeof dbTimestamp === 'string') {
         const isoString = dbTimestamp.replace(' ', 'T') + '+07:00';
         return isoString;
     }
-
     return dbTimestamp;
 }
-
 //----------------------------------------------------------------//
 //----------------------------------------------------------------//
 //----------------------------------------------------------------//
-
 // !! API FOR DASHBOARD EMPLOYEE (CONTAIN API USER/EMPLOYEE)
 app.get('/logs', async (req, res) => {
     try {
-        // First, let's check what's in the leave_permission table
         const leavePermCheck = await db.query(`
             SELECT id, uid, actual_exittime, actual_returntime 
             FROM leave_permission 
             WHERE actual_exittime IS NOT NULL OR actual_returntime IS NOT NULL
         `);
-        console.log("🔍 Records with actual times in leave_permission:", leavePermCheck.rows);
-
         const result = await db.query(`
             SELECT
                 al.id,
@@ -684,20 +614,27 @@ app.get('/logs', async (req, res) => {
                 lp.exittime as planned_exit_time,
                 lp.returntime as planned_return_time,
                 lp.actual_exittime as lp_actual_exittime,
-                lp.actual_returntime as lp_actual_returntime
+                lp.actual_returntime as lp_actual_returntime,
+                mr.approval_level1_name,
+                mr.approval_level1_role,
+                mr.approval_level2_name,
+                mr.approval_level2_role,
+                mr.approval_level3_name,
+                mr.approval_level3_role
             FROM attendance_logs al
             JOIN users u ON al.uid = u.uid
             LEFT JOIN leave_permission lp ON al.leave_permission_id = lp.id
+            LEFT JOIN master_routing mr ON (
+                lp.department = mr.department 
+                AND lp.role = mr.role
+                AND (mr.employee_name IS NULL OR mr.employee_name = lp.name)
+                AND mr.is_active = 1
+            )
             ORDER BY al.datein DESC
         `);
-
-        console.log("📊 Sample raw row from query:", result.rows[0]);
-
         const formattedRows = result.rows.map(row => {
-            // Use actual times from attendance_logs first, then from leave_permission as fallback
             const actual_exittime = row.al_actual_exittime || row.lp_actual_exittime;
             const actual_returntime = row.al_actual_returntime || row.lp_actual_returntime;
-            
             const formatted = {
                 id: row.id,
                 uid: row.uid,
@@ -718,26 +655,27 @@ app.get('/logs', async (req, res) => {
                 planned_exit_time: row.planned_exit_time,
                 planned_return_time: row.planned_return_time,
                 actual_exittime: convertToJakartaISO(actual_exittime),
-                actual_returntime: convertToJakartaISO(actual_returntime)
+                actual_returntime: convertToJakartaISO(actual_returntime),
+                approval_level1_name: row.approval_level1_name,
+                approval_level1_role: row.approval_level1_role,
+                approval_level2_name: row.approval_level2_name,
+                approval_level2_role: row.approval_level2_role,
+                approval_level3_name: row.approval_level3_name,
+                approval_level3_role: row.approval_level3_role
             };
-
-            // Log records that have exit/return times
             if (row.exittime || row.returntime || actual_exittime || actual_returntime) {
-                console.log("✅ Record with times:", {
-                    id: formatted.id,
-                    name: formatted.name,
-                    exittime: formatted.exittime,
-                    returntime: formatted.returntime,
-                    actual_exittime: formatted.actual_exittime,
-                    actual_returntime: formatted.actual_returntime,
-                    leave_permission_id: formatted.leave_permission_id
-                });
+                //console.log("✅ Record with times:", {
+                //     id: formatted.id,
+                //     name: formatted.name,
+                //     exittime: formatted.exittime,
+                //     returntime: formatted.returntime,
+                //     actual_exittime: formatted.actual_exittime,
+                //     actual_returntime: formatted.actual_returntime,
+                //     leave_permission_id: formatted.leave_permission_id
+                // });
             }
-
             return formatted;
         });
-
-        console.log(`📈 Fetched ${formattedRows.length} log records. Records with actual times: ${formattedRows.filter(r => r.actual_exittime || r.actual_returntime).length}`);
         res.json(formattedRows);
     } catch (e) {
         console.error("❌ Error fetching logs:", e);
@@ -758,7 +696,7 @@ app.get('/users', async (req, res) => {
             FROM users 
             ORDER BY name ASC
         `);
-        //console.log(`Fetched ${result.rows.length} users`);
+
         res.json(result.rows);
     } catch (error) {
         console.error('❌ Error fetching users:', error);
@@ -781,7 +719,7 @@ app.get('/users/department/:department', async (req, res) => {
             WHERE department = $1
             ORDER BY name ASC
         `, [department]);
-        //console.log(`Fetched ${result.rows.length} users for department: ${department}`);
+
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching users by department:', error);
@@ -792,76 +730,70 @@ app.get('/users/department/:department', async (req, res) => {
 app.get('/employee/:uid/leave-status', async (req, res) => {
     try {
         const { uid } = req.params;
-        console.log(`🔍 Fetching leave status for UID: ${uid}`);
-
         const user = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
         if (user.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
-
         const userInfo = user.rows[0];
-
         const attendance = await db.query(
             'SELECT TOP 1 * FROM attendance_logs WHERE uid = $1 AND DATE(datein) = CURRENT_DATE ORDER BY datein DESC',
             [uid]
         );
-        
         const leavePermissions = await db.query(
             `SELECT * FROM leave_permission 
             WHERE uid = $1 AND date = CURRENT_DATE 
             ORDER BY submittedat DESC`,
             [uid]
         );
-        
         const approvedLeave = await db.query(
-            `SELECT * FROM leave_permission 
-            WHERE uid = $1 AND date = CURRENT_DATE 
-            AND (
-                (statusfromhr = 'approved' AND statusfromdept = 'approved' AND role = 'Staff')
-                OR
-                (statusfromhr = 'approved' AND role = 'Head Department')
-            )`,
+            `SELECT lp.* FROM leave_permission lp
+            JOIN users u ON lp.licenseplate = u.licenseplate
+            WHERE lp.uid = $1 AND lp.date = CURRENT_DATE`,
             [uid]
         );
 
-        // Log the leave permissions data
+        const approvedLeaves = [];
+        for (const leave of approvedLeave.rows) {
+            const isApproved = await isLeavePermissionApproved(leave.licenseplate);
+            if (isApproved) {
+                approvedLeaves.push(leave);
+            }
+        }
+
         if (leavePermissions.rows.length > 0) {
-            console.log(`📋 Leave permissions for ${userInfo.name}:`, 
-                leavePermissions.rows.map(lp => ({
-                    id: lp.id,
-                    actual_exittime: lp.actual_exittime,
-                    actual_returntime: lp.actual_returntime,
-                    status: `HR:${lp.statusfromhr}, Dept:${lp.statusfromdept}`
-                }))
-            );
+            //console.log(`📋 Leave permissions for ${userInfo.name}:`,
+            // leavePermissions.rows.map(lp => ({
+            //     id: lp.id,
+            //     actual_exittime: lp.actual_exittime,
+            //     actual_returntime: lp.actual_returntime,
+            //     status: `HR:${lp.statusfromhr}, Dept:${lp.statusfromdept}`
+            // }))
+            // );
         }
-
-        if (attendance.rows.length > 0) {
-            console.log(`📅 Today's attendance for ${userInfo.name}:`, {
-                id: attendance.rows[0].id,
-                actual_exittime: attendance.rows[0].actual_exittime,
-                actual_returntime: attendance.rows[0].actual_returntime,
-                leave_permission_id: attendance.rows[0].leave_permission_id
-            });
-        }
-
+        // if (attendance.rows.length > 0) {
+        //     //console.log(`📅 Today's attendance for ${userInfo.name}:`, {
+        //     //     id: attendance.rows[0].id,
+        //     //     actual_exittime: attendance.rows[0].actual_exittime,
+        //     //     actual_returntime: attendance.rows[0].actual_returntime,
+        //     //     leave_permission_id: attendance.rows[0].leave_permission_id
+        //     // });
+        // }
         res.json({
             user: userInfo,
             todayAttendance: attendance.rows[0] || null,
             leavePermissions: leavePermissions.rows,
-            approvedLeave: approvedLeave.rows[0] || null,
-            canUseLeave: approvedLeave.rows.length > 0,
+            approvedLeave: approvedLeaves[0] || null,
+            canUseLeave: approvedLeaves.length > 0,
             isInBuilding: attendance.rows.length > 0 && !attendance.rows[0].dateout && !attendance.rows[0].exittime
         });
     } catch (e) {
-        console.error("❌ Error fetching employee leave status:", e);
+        // console.error("❌ Error fetching employee leave status:", e);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 app.get('/health', async (req, res) => {
     try {
         const pending = await db.query('SELECT COUNT(*) as count FROM attlog WHERE processed = 0 OR processed IS NULL');
-
         res.json({
             status: 'OK',
             websocket_clients: wss.clients.size,
@@ -880,11 +812,9 @@ app.get('/health', async (req, res) => {
         });
     }
 });
-
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 //-------------------------------------------------------//
-
 // !! API FOR LEAVE PERMISSION RECORD EMPLOYEE FUNCTION 
 app.post('/leave-permission', async (req, res) => {
     try {
@@ -904,7 +834,6 @@ app.post('/leave-permission', async (req, res) => {
             statusFromDirector,
             submittedAt
         } = req.body;
-
         const result = await db.query(
             `INSERT INTO leave_permission
             (name, uid, licenseplate, department, role, date, exittime, returntime, reason, approval, statusfromdept, statusfromhr, statusfromdirector, submittedat)
@@ -933,6 +862,41 @@ app.post('/leave-permission', async (req, res) => {
             action: 'insert',
             data: inserted
         });
+
+        // Send WhatsApp notification for new leave permission
+        try {
+            const whatsappMessage = `🔔 New Leave Permission Request\n\n` +
+                `Name: ${name}\n` +
+                `Department: ${department}\n` +
+                `Role: ${role}\n` +
+                `Date: ${new Date(date).toLocaleDateString('id-ID')}\n` +
+                `Exit Time: ${exitTime}\n` +
+                `Return Time: ${returnTime || 'Not specified'}\n` +
+                `Reason: ${reason}\n` +
+                `Status: ${approval}\n\n` +
+                `Submitted at: ${new Date(submittedAt).toLocaleString('id-ID')}`;
+
+            // Call the WhatsApp broadcast function
+            const whatsappResponse = await fetch('http://localhost:3000/api/whatsapp/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: whatsappMessage
+                })
+            });
+
+            if (whatsappResponse.ok) {
+                //console.log('✅ WhatsApp notification sent successfully for leave permission:', inserted.id);
+            } else {
+                console.error('❌ Failed to send WhatsApp notification:', await whatsappResponse.text());
+            }
+        } catch (whatsappError) {
+            console.error('❌ Error sending WhatsApp notification:', whatsappError);
+            // Don't fail the main request if WhatsApp fails
+        }
+
         res.status(201).json(result.rows[0]);
     } catch (e) {
         console.error("❌ Error inserting leave permission:", e);
@@ -943,9 +907,6 @@ app.post('/leave-permission', async (req, res) => {
 app.put('/leave-permission/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        console.log(`🔄 Updating leave permission ID: ${id}`);
-        console.log('📝 Update data:', req.body);
-        
         const allowedFields = [
             'approval',
             'statusfromhr',
@@ -965,7 +926,6 @@ app.put('/leave-permission/:id', async (req, res) => {
         const setClauses = [];
         const values = [];
         let idx = 1;
-        
         for (const key of Object.keys(updates)) {
             if (allowedFields.includes(key.toLowerCase())) {
                 setClauses.push(`${key} = $${idx}`);
@@ -973,43 +933,67 @@ app.put('/leave-permission/:id', async (req, res) => {
                 idx++;
             }
         }
-        
         if (setClauses.length === 0) {
             return res.status(400).json({ message: 'No valid fields to update' });
         }
-        
         values.push(id);
-        
-        // First check if record exists
+
         const existsResult = await db.query('SELECT id FROM leave_permission WHERE id = $1', [id]);
         if (existsResult.rows.length === 0) {
-            console.log(`❌ Leave permission not found: ID ${id}`);
             return res.status(404).json({ message: 'Leave permission not found' });
         }
-        
-        // Update the record
+
         const updateQuery = `UPDATE leave_permission SET ${setClauses.join(', ')} WHERE id = $${values.length}`;
-        console.log('🔧 Update query:', updateQuery);
-        console.log('🔧 Update values:', values);
-        
         await db.query(updateQuery, values);
-        
-        // Get the updated record
+
         const result = await db.query('SELECT * FROM leave_permission WHERE id = $1', [id]);
-        
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Leave permission not found after update' });
         }
-        
         const updatedRecord = result.rows[0];
-        console.log('✅ Leave permission updated successfully:', updatedRecord.id);
-        
         broadcast({
             type: 'leave_permission',
             action: 'update',
             data: updatedRecord
         });
-        
+
+        // Send WhatsApp notification for leave permission updates
+        try {
+            // Check if status fields were updated
+            const statusFields = ['approval', 'statusfromhr', 'statusfromdept', 'statusfromdirector'];
+            const statusUpdated = Object.keys(updates).some(key => statusFields.includes(key.toLowerCase()));
+
+            if (statusUpdated) {
+                const whatsappMessage = `🔄 Leave Permission Status Updated\n\n` +
+                    `Name: ${updatedRecord.name}\n` +
+                    `Department: ${updatedRecord.department}\n` +
+                    `Date: ${new Date(updatedRecord.date).toLocaleDateString('id-ID')}\n` +
+                    `Overall Status: ${updatedRecord.approval}\n` +
+                    `Department Status: ${updatedRecord.statusfromdept || 'Pending'}\n` +
+                    `HR Status: ${updatedRecord.statusfromhr || 'Pending'}\n` +
+                    `Director Status: ${updatedRecord.statusfromdirector || 'Pending'}\n\n` +
+                    `Updated at: ${new Date().toLocaleString('id-ID')}`;
+
+                const whatsappResponse = await fetch('http://192.168.4.108:3000/api/whatsapp/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: whatsappMessage
+                    })
+                });
+
+                if (whatsappResponse.ok) {
+                    //console.log('✅ WhatsApp notification sent for leave permission update:', updatedRecord.id);
+                } else {
+                    console.error('❌ Failed to send WhatsApp update notification:', await whatsappResponse.text());
+                }
+            }
+        } catch (whatsappError) {
+            console.error('❌ Error sending WhatsApp update notification:', whatsappError);
+        }
+
         res.json(updatedRecord);
     } catch (e) {
         console.error('❌ Error updating leave permission:', e);
@@ -1019,48 +1003,402 @@ app.put('/leave-permission/:id', async (req, res) => {
 
 app.get('/leave-permission', async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM leave_permission ORDER BY submittedat DESC');
-        
-        // Log records with actual times
-        const recordsWithActualTimes = result.rows.filter(row => 
+        // const result = await db.query('SELECT * FROM leave_permission ORDER BY submittedat DESC');
+        const result = await db.query(`
+            SELECT 
+                lp.*,
+                dept_approval.approved_by as department_approver,
+                dept_approval.approved_at as department_approved_at,
+                hr_approval.approved_by as hr_approver,
+                hr_approval.approved_at as hr_approved_at
+            FROM leave_permission lp
+            LEFT JOIN approval_tracking dept_approval ON lp.id = dept_approval.leave_permission_id AND dept_approval.approval_level = 1
+            LEFT JOIN approval_tracking hr_approval ON lp.id = hr_approval.leave_permission_id AND hr_approval.approval_level = 2
+            `);
+
+        const recordsWithActualTimes = result.rows.filter(row =>
             row.actual_exittime || row.actual_returntime
         );
-        
-        console.log(`📊 Leave Permission API: Total records: ${result.rows.length}, With actual times: ${recordsWithActualTimes.length}`);
-        
         if (recordsWithActualTimes.length > 0) {
-            console.log("✅ Records with actual times:", recordsWithActualTimes.map(row => ({
-                id: row.id,
-                uid: row.uid,
-                actual_exittime: row.actual_exittime,
-                actual_returntime: row.actual_returntime,
-                statusfromhr: row.statusfromhr,
-                statusfromdept: row.statusfromdept
-            })));
+            //console.log("✅ Records with actual times:", recordsWithActualTimes.map(row => ({
+            //     id: row.id,
+            //     uid: row.uid,
+            //     actual_exittime: row.actual_exittime,
+            //     actual_returntime: row.actual_returntime,
+            //     statusfromhr: row.statusfromhr,
+            //     statusfromdept: row.statusfromdept
+            // })));
         }
-        
         res.json(result.rows);
     } catch (e) {
         console.error("❌ Error fetching leave permissions:", e);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-// !! END OF API LEAVE PERMISSION EMPLOYEE
+
+app.use("/api/whatsapp", broadcastTwillio);
 
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 //-------------------------------------------------------//
+// !! ROUTING-BASED APPROVAL API ENDPOINTS
+//-------------------------------------------------------//
 
+
+// app.get('/leavepermission/:nameApproval', async (req, res) => {
+//     try{
+//         const {}
+//     }
+//     catch (e){
+
+//     }
+// })
+
+app.get('/routing/:department/:role', async (req, res) => {
+    try {
+        const { department, role } = req.params;
+        const { employeeName } = req.query;
+
+        const routing = await db.query(`
+            SELECT TOP 1 * FROM master_routing 
+            WHERE department = $1 
+              AND role = $2
+              AND (employee_name = $3 OR employee_name IS NULL)
+              AND is_active = 1
+            ORDER BY 
+              CASE WHEN employee_name IS NOT NULL THEN 0 ELSE 1 END,  -- employee-specific first
+              created_at DESC
+        `, [department, role, employeeName || null]);
+        if (routing.rows.length === 0) {
+            return res.status(404).json({
+                message: 'No routing configuration found',
+                department,
+                role,
+                employeeName
+            });
+        }
+        res.json(routing.rows[0]);
+    } catch (e) {
+        console.error("❌ Error fetching routing:", e);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+
+app.get('/leave-permission/pending-for/:approverName', async (req, res) => {
+    try {
+        const { approverName } = req.params;
+        //console.log('🔍 Fetching pending requests for approver:', approverName);
+
+        // Step 1: Get all routing data using SQL Server syntax (no parameters)
+        const allApprovers = await db.query(`
+            SELECT 
+                id,
+                department,
+                employee_name,
+                role,
+                approval_level1_name,
+                approval_level1_role,
+                approval_level2_name,
+                approval_level2_role,
+                is_active
+            FROM master_routing 
+            WHERE is_active = 1
+        `);
+        //console.log('📋 All approvers found:', allApprovers.rows?.length, 'records');
+
+        // Step 2: Find the approver using JavaScript string comparison (avoiding SQL parameter issues)
+        const foundApprovers = allApprovers.rows?.filter(row => {
+            return row.approval_level1_name === approverName || row.approval_level2_name === approverName;
+        });
+
+        if (!foundApprovers || foundApprovers.length === 0) {
+            //console.log('❌ Approver not found in master_routing table');
+            return res.status(404).json({
+                success: false,
+                message: 'Approver not found in routing table',
+                debug: {
+                    approverName: approverName,
+                    availableApprovers: allApprovers.rows?.map(r => ({
+                        level1: r.approval_level1_name,
+                        level2: r.approval_level2_name
+                    }))
+                }
+            });
+        }
+
+        // Step 3: Get all pending leave permissions with proper routing priority
+        // Use a more sophisticated JOIN that prioritizes employee-specific routing over generic routing
+        const allLeaves = await db.query(`
+            SELECT 
+                lp.id,
+                lp.name,
+                lp.licenseplate,
+                lp.department,
+                lp.role,
+                lp.statusfromhr,
+                lp.statusfromdept,
+                lp.statusfromdirector,
+                lp.approval,
+                lp.reason,
+                lp.date,
+                lp.exittime,
+                lp.returntime,
+                lp.submittedat,
+                routing.approval_level1_name,
+                routing.approval_level1_role,
+                routing.approval_level2_name,
+                routing.approval_level2_role,
+                routing.employee_name as routing_employee_name
+            FROM leave_permission lp
+            CROSS APPLY (
+                SELECT TOP 1 
+                    mr.approval_level1_name,
+                    mr.approval_level1_role,
+                    mr.approval_level2_name,
+                    mr.approval_level2_role,
+                    mr.employee_name
+                FROM master_routing mr 
+                WHERE mr.department = lp.department 
+                  AND mr.role = lp.role
+                  AND mr.is_active = 1
+                  AND (mr.employee_name = lp.name OR mr.employee_name IS NULL)
+                ORDER BY 
+                  CASE WHEN mr.employee_name IS NOT NULL THEN 0 ELSE 1 END,  -- Employee-specific first
+                  mr.created_at DESC
+            ) routing
+            WHERE lp.approval = 'pending'
+        `);
+
+        //console.log('📋 All pending leaves with routing info:');
+        allLeaves.rows?.forEach(leave => {
+            //console.log(`   Leave ${leave.id}: ${leave.name} (${leave.department}/${leave.role})`);
+            //console.log(`     Level 1: ${leave.approval_level1_name} (${leave.approval_level1_role})`);
+            //console.log(`     Level 2: ${leave.approval_level2_name} (${leave.approval_level2_role})`);
+            //console.log(`     Routing Type: ${leave.routing_employee_name ? 'Employee-Specific' : 'Department-Generic'}`);
+            //console.log(`     Status: dept=${leave.statusfromdept}, hr=${leave.statusfromhr}`);
+        });
+
+        // Also check for any pending requests that don't have routing
+        const pendingWithoutRouting = await db.query(`
+            SELECT lp.id, lp.name, lp.department, lp.role
+            FROM leave_permission lp
+            LEFT JOIN master_routing mr ON (lp.department = mr.department AND lp.role = mr.role AND mr.is_active = 1)
+            WHERE lp.approval = 'pending' AND mr.id IS NULL
+        `);
+
+        if (pendingWithoutRouting.rows?.length > 0) {
+            //console.log('⚠️ Pending requests WITHOUT routing configuration:');
+            pendingWithoutRouting.rows?.forEach(leave => {
+                //console.log(`   Leave ${leave.id}: ${leave.name} (${leave.department}/${leave.role}) - NO ROUTING FOUND`);
+            });
+        }
+
+        // Step 4: Filter leave requests that need approval from this specific approver
+        const pendingForApprover = allLeaves.rows?.filter(leave => {
+            // Check if this approver is level 1 and level 1 approval is pending
+            if (leave.approval_level1_name === approverName) {
+                if (leave.approval_level1_role === 'Head Department') {
+                    return leave.statusfromdept === null || leave.statusfromdept === 'pending';
+                } else if (leave.approval_level1_role === 'HR') {
+                    return leave.statusfromhr === null || leave.statusfromhr === 'pending';
+                } else if (leave.approval_level1_role === 'DIRECTOR') {
+                    return leave.statusfromdirector === null || leave.statusfromdirector === 'pending';
+                }
+            }
+
+            // Check if this approver is level 2 and level 1 is approved but level 2 is pending
+            if (leave.approval_level2_name === approverName) {
+                // First check if level 1 is approved
+                let level1Approved = false;
+                if (leave.approval_level1_role === 'Head Department') {
+                    level1Approved = leave.statusfromdept === 'approved';
+                } else if (leave.approval_level1_role === 'HR') {
+                    level1Approved = leave.statusfromhr === 'approved';
+                } else if (leave.approval_level1_role === 'DIRECTOR') {
+                    level1Approved = leave.statusfromdirector === 'approved';
+                }
+
+                // If level 1 is approved, check if level 2 is pending
+                if (level1Approved) {
+                    if (leave.approval_level2_role === 'Head Department') {
+                        return leave.statusfromdept === null || leave.statusfromdept === 'pending';
+                    } else if (leave.approval_level2_role === 'HR') {
+                        return leave.statusfromhr === null || leave.statusfromhr === 'pending';
+                    } else if (leave.approval_level2_role === 'DIRECTOR') {
+                        return leave.statusfromdirector === null || leave.statusfromdirector === 'pending';
+                    }
+                }
+            }
+
+            return false;
+        });
+
+        //console.log('📋 Found', pendingForApprover?.length || 0, 'pending requests for', approverName);
+
+        res.json({
+            success: true,
+            approver: approverName,
+            pendingRequests: pendingForApprover || [],
+            count: pendingForApprover?.length || 0,
+            debug: {
+                routingData: foundApprovers,
+                totalLeaves: allLeaves.rows?.length || 0,
+                filteredCount: pendingForApprover?.length || 0
+            }
+        });
+
+    } catch (e) {
+        console.error("❌ Error fetching pending requests:", e);
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server Error',
+            error: e.message,
+            approver: req.params.approverName
+        });
+    }
+});
+app.put('/leave-permission/:id/routing-approval', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { approverName, action, notes } = req.body; // action: 'approved' | 'rejected'
+        if (!['approved', 'rejected'].includes(action)) {
+            return res.status(400).json({ message: 'Invalid action. Must be "approved" or "rejected"' });
+        }
+
+        const leaveData = await db.query(`
+            SELECT TOP 1
+                lp.*,
+                mr.approval_level1_name,
+                mr.approval_level1_role,
+                mr.approval_level2_name,
+                mr.approval_level2_role,
+                mr.approval_level3_name,
+                mr.approval_level3_role
+            FROM leave_permission lp
+            JOIN master_routing mr ON (
+                lp.department = mr.department 
+                AND lp.role = mr.role
+                AND (mr.employee_name IS NULL OR mr.employee_name = lp.name)
+                AND mr.is_active = 1
+            )
+            WHERE lp.id = $1 
+            ORDER BY CASE WHEN mr.employee_name IS NOT NULL THEN 0 ELSE 1 END, mr.created_at DESC
+        `, [id]);
+        if (leaveData.rows.length === 0) {
+            return res.status(404).json({ message: 'Leave permission or routing not found' });
+        }
+        const leave = leaveData.rows[0];
+
+        // Debug logging
+        //console.log('🔍 Approval Debug Info:');
+        //console.log('   Approver Name:', approverName);
+        //console.log('   Leave ID:', id);
+        //console.log('   Leave Department:', leave.department);
+        //console.log('   Leave Role:', leave.role);
+        //console.log('   Level 1:', leave.approval_level1_name, '(', leave.approval_level1_role, ')');
+        //console.log('   Level 2:', leave.approval_level2_name, '(', leave.approval_level2_role, ')');
+        //console.log('   Level 3:', leave.approval_level3_name, '(', leave.approval_level3_role, ')');
+
+        let updateField = null;
+        let approverLevel = 0;
+
+        if (leave.approval_level1_name === approverName) {
+            approverLevel = 1;
+            if (leave.approval_level1_role === 'Head Department') updateField = 'statusfromdept';
+            else if (leave.approval_level1_role === 'HR') updateField = 'statusfromhr';
+            else if (leave.approval_level1_role === 'DIRECTOR') updateField = 'statusfromdirector';
+        } else if (leave.approval_level2_name === approverName) {
+            approverLevel = 2;
+            if (leave.approval_level2_role === 'Head Department') updateField = 'statusfromdept';
+            else if (leave.approval_level2_role === 'HR') updateField = 'statusfromhr';
+            else if (leave.approval_level2_role === 'DIRECTOR') updateField = 'statusfromdirector';
+        } else if (leave.approval_level3_name === approverName) {
+            approverLevel = 3;
+            if (leave.approval_level3_role === 'Head Department') updateField = 'statusfromdept';
+            else if (leave.approval_level3_role === 'HR') updateField = 'statusfromhr';
+            else if (leave.approval_level3_role === 'DIRECTOR') updateField = 'statusfromdirector';
+        }
+        if (!updateField) {
+            return res.status(403).json({
+                message: 'Approver not authorized for this leave request',
+                approverName,
+                leaveId: id
+            });
+        }
+
+        await db.query(`UPDATE leave_permission SET ${updateField} = $1 WHERE id = $2`, [action, id]);
+
+        const updatedLeave = await db.query('SELECT * FROM leave_permission WHERE id = $1', [id]);
+        const updated = updatedLeave.rows[0];
+        let overallApproval = 'pending';
+        if (updated.statusfromdept === 'rejected' || updated.statusfromhr === 'rejected' || updated.statusfromdirector === 'rejected') {
+            overallApproval = 'rejected';
+        } else {
+
+            const requiredApprovals = [];
+            if (leave.approval_level1_role === 'HEAD DEPARTMENT') requiredApprovals.push(updated.statusfromdept);
+            else if (leave.approval_level1_role === 'HR') requiredApprovals.push(updated.statusfromhr);
+            else if (leave.approval_level1_role === 'DIRECTOR') requiredApprovals.push(updated.statusfromdirector);
+            if (leave.approval_level2_name) {
+                if (leave.approval_level2_role === 'HEAD DEPARTMENT') requiredApprovals.push(updated.statusfromdept);
+                else if (leave.approval_level2_role === 'HR') requiredApprovals.push(updated.statusfromhr);
+                else if (leave.approval_level2_role === 'DIRECTOR') requiredApprovals.push(updated.statusfromdirector);
+            }
+            if (leave.approval_level3_name) {
+                if (leave.approval_level3_role === 'HEAD DEPARTMENT') requiredApprovals.push(updated.statusfromdept);
+                else if (leave.approval_level3_role === 'HR') requiredApprovals.push(updated.statusfromhr);
+                else if (leave.approval_level3_role === 'DIRECTOR') requiredApprovals.push(updated.statusfromdirector);
+            }
+            if (requiredApprovals.every(status => status === 'approved')) {
+                overallApproval = 'approved';
+            }
+        }
+
+        await db.query('UPDATE leave_permission SET approval = $1 WHERE id = $2', [overallApproval, id]);
+
+        await db.query(`
+            INSERT INTO approval_tracking 
+            (leave_permission_id, approval_level, approver_name, approver_role, status, approved_at, approved_by, notes)
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7)
+        `, [id, approverLevel, approverName, leave[`approval_level${approverLevel}_role`], action, approverName, notes || null]);
+
+        const finalResult = await db.query('SELECT * FROM leave_permission WHERE id = $1', [id]);
+
+        broadcast({
+            type: 'leave_permission',
+            action: 'routing_approval',
+            data: finalResult.rows[0],
+            approver: approverName,
+            approverLevel,
+            approvalAction: action
+        });
+        res.json({
+            success: true,
+            leavePermission: finalResult.rows[0],
+            approver: approverName,
+            approverLevel,
+            fieldUpdated: updateField,
+            overallApproval
+        });
+    } catch (e) {
+        console.error("❌ Error processing routing approval:", e);
+        res.status(500).json({ message: 'Internal Server Error', error: e.message });
+    }
+});
+// !! END OF ROUTING-BASED APPROVAL API
+
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+//-------------------------------------------------------//
 // ?? JWT TOKEN
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-
     if (!token) {
         return res.status(401).json({ success: false, message: 'Access token required' });
     }
-
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
             return res.status(403).json({ success: false, message: 'Invalid or expired token' });
@@ -1069,28 +1407,23 @@ const authenticateToken = (req, res, next) => {
         next();
     });
 };
-
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 //-------------------------------------------------------//
-
 // !! API FOR AUTHENTICATION LOGIN
 app.post('/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-
         if (!username || !password) {
             return res.status(400).json({
                 success: false,
                 message: 'Username and password are required'
             });
         }
-
         const result = await db.query(
             'SELECT * FROM userlogin WHERE username = $1',
             [username]
         );
-
         if (result.rows.length === 0) {
             return res.status(401).json({
                 success: false,
@@ -1118,15 +1451,12 @@ app.post('/auth/login', async (req, res) => {
         );
         const { password: _, ...userWithoutPassword } = user;
 
-        //console.log(`User logged in: ${user.name} (${user.role})`);
-
         res.json({
             success: true,
             message: 'Login successful',
             user: userWithoutPassword,
             token: token
         });
-
     } catch (error) {
         console.error('❌ Login error:', error);
         res.status(500).json({
@@ -1141,14 +1471,12 @@ app.get('/auth/me', authenticateToken, async (req, res) => {
             'SELECT id, name, username, department, role FROM userlogin WHERE id = $1',
             [req.user.id]
         );
-
         if (result.rows.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'User not found'
             });
         }
-
         res.json({
             success: true,
             user: result.rows[0]
@@ -1163,7 +1491,7 @@ app.get('/auth/me', authenticateToken, async (req, res) => {
 });
 
 app.post('/auth/logout', authenticateToken, (req, res) => {
-    //console.log(`User logged out: ${req.user.name}`);
+
     res.json({
         success: true,
         message: 'Logged out successfully'
@@ -1173,7 +1501,6 @@ app.post('/auth/logout', authenticateToken, (req, res) => {
 app.post('/auth/register', async (req, res) => {
     try {
         const { name, username, password, department, role } = req.body;
-
         if (!name || !username || !password || !department || !role) {
             return res.status(400).json({
                 success: false,
@@ -1181,12 +1508,10 @@ app.post('/auth/register', async (req, res) => {
             });
         }
 
-        // Check if username already exists
         const existingUser = await db.query(
             'SELECT id FROM userlogin WHERE username = $1',
             [username]
         );
-
         if (existingUser.rows.length > 0) {
             return res.status(409).json({
                 success: false,
@@ -1194,23 +1519,18 @@ app.post('/auth/register', async (req, res) => {
             });
         }
 
-        // Hash password
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-
         const result = await db.query(
             'INSERT INTO userlogin (name, username, password, department, role) VALUES ($1, $2, $3, $4, $5); SELECT id, name, username, department, role FROM userlogin WHERE id = SCOPE_IDENTITY()',
             [name, username, hashedPassword, department, role]
         );
-
-        //console.log(`New user registered: ${name} (${role})`);
-
+        //
         res.status(201).json({
             success: true,
             message: 'User registered successfully',
             user: result.rows[0]
         });
-
     } catch (error) {
         console.error('❌ Registration error:', error);
         res.status(500).json({
@@ -1224,24 +1544,16 @@ app.post('/auth/register', async (req, res) => {
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 //-------------------------------------------------------//
-
 // !! API FOR SURAT JALAN 
 app.get('/api/suratjalan', async (req, res) => {
     try {
-        console.log('Fetching surat jalan data from database...');
-
         const query = `
             SELECT nosj, tanggal 
             FROM suratjalan 
             ORDER BY tanggal DESC
         `;
-
         const results = await db.query(query);
-        console.log('Surat jalan data fetched:', results);
-        console.log('Results rows:', results.rows);
-
         res.json(results.rows);
-
     } catch (error) {
         console.error('Error fetching surat jalan data:', error);
         res.status(500).json({
@@ -1251,48 +1563,36 @@ app.get('/api/suratjalan', async (req, res) => {
         });
     }
 });
-
 // API endpoint untuk menyimpan nomor surat jalan baru
 app.post('/api/suratjalan', async (req, res) => {
     try {
         const { nosj, tanggal } = req.body;
-
         if (!nosj) {
             return res.status(400).json({
                 success: false,
                 message: 'Nomor surat jalan harus diisi'
             });
         }
-
-        console.log('Saving new surat jalan:', { nosj, tanggal });
-
         // Cek apakah nomor surat jalan sudah ada
         const checkQuery = 'SELECT nosj FROM suratjalan WHERE nosj = $1';
         const existingResult = await db.query(checkQuery, [nosj]);
-
         if (existingResult.length > 0) {
             return res.status(409).json({
                 success: false,
                 message: 'Nomor surat jalan sudah ada'
             });
         }
-
         const insertQuery = `
             INSERT INTO suratjalan (nosj, tanggal) 
             VALUES ($1, $2)
         `;
-
         const currentDate = tanggal || new Date().toISOString().slice(0, 10);
         await db.query(insertQuery, [nosj, currentDate]);
-
-        console.log('Surat jalan saved successfully');
-
         res.json({
             success: true,
             message: 'Nomor surat jalan berhasil disimpan',
             data: { nosj, tanggal: currentDate }
         });
-
     } catch (error) {
         console.error('Error saving surat jalan:', error);
         res.status(500).json({
@@ -1303,24 +1603,17 @@ app.post('/api/suratjalan', async (req, res) => {
     }
 });
 // !! END OF API SURAT JALAN 
-
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 //-------------------------------------------------------//
-
 // !! API FOR TRUCKS 
 app.get('/api/trucks/history', async (req, res) => {
     try {
         const { searchTerm, status, type, dateFrom, dateTo } = req.query;
-        
-        console.log('=== GET TRUCKS HISTORY API CALLED (3-TABLE) ===');
-        console.log('Query params:', { searchTerm, status, type, dateFrom, dateTo });
 
-        // Connect to SQL Server
         const pool = await db.getPool();
         const request = pool.request();
 
-        // Base query with JOIN from 3 tables
         let query = `
             SELECT 
                 t.*,
@@ -1334,7 +1627,6 @@ app.get('/api/trucks/history', async (req, res) => {
             WHERE 1=1
         `;
 
-        // Add search filter
         if (searchTerm) {
             query += ` AND (
                 t.platenumber LIKE '%' + @searchTerm + '%' OR 
@@ -1345,76 +1637,60 @@ app.get('/api/trucks/history', async (req, res) => {
             request.input('searchTerm', db.sql.VarChar, searchTerm);
         }
 
-        // Add status filter
         if (status && status !== 'all') {
             query += ` AND t.status = @status`;
             request.input('status', db.sql.VarChar, status);
         }
 
-        // Add type filter  
         if (type && type !== 'all') {
             query += ` AND t.type = @type`;
             request.input('type', db.sql.VarChar, type);
         }
 
-        // Add date range filter
         if (dateFrom) {
             query += ` AND t.date >= @dateFrom`;
             request.input('dateFrom', db.sql.Date, dateFrom);
         }
-
         if (dateTo) {
             query += ` AND t.date <= @dateTo`;
             request.input('dateTo', db.sql.Date, dateTo);
         }
 
-        // Order by latest first
         query += ` ORDER BY t.date DESC, tt.arrivaltime DESC`;
-
-        console.log('History query:', query);
-
         const result = await request.query(query);
-        
-        console.log(`✅ Found ${result.recordset.length} truck history records`);
         res.json(result.recordset);
-        
     } catch (error) {
         console.error('💥 Error fetching truck history (3-table):', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Internal server error',
-            details: error.message 
+            details: error.message
         });
     }
 });
 
-// POST endpoint untuk membuat truck baru (3-table structure)
+
 app.post('/api/trucks', async (req, res) => {
     try {
-        console.log('=== RECEIVED TRUCK DATA (3-TABLE STRUCTURE) ===', req.body);
-
         const {
-            // Main truck data (trucks table)
+
             platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
             driver, supplier, eta, status, type, operation, goods,
             descin, descout, statustruck, armada, kelengkapan, jenismobil, date, exittime,
-            // Time data (truck_times table)
+
             arrivaltime, waitingfortimbang, starttimbang, finishtimbang, totalprocesstimbang,
             runtohpc, waitingforarrivalhpc, entryhpc, totalwaitingarrival,
             startloadingtime, finishloadingtime, totalprocessloadingtime, actualwaitloadingtime,
-            // Photo data (truck_photos table)
+
             driver_photo, sim_photo, stnk_photo
         } = req.body;
+        //console.log('=== EXTRACTED VALUES ===', {
+        //     platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
+        //     driver, supplier, eta, status, type, operation, goods,
+        //     descin, descout, statustruck, armada, kelengkapan, jenismobil, date
+        // });
 
-        console.log('=== EXTRACTED VALUES ===', {
-            platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
-            driver, supplier, eta, status, type, operation, goods,
-            descin, descout, statustruck, armada, kelengkapan, jenismobil, date
-        });
-
-        // Handle image saving
         const imageFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
         const savedImages = {};
-        
         for (const field of imageFields) {
             if (req.body[field] && req.body[field].startsWith('data:image')) {
                 const filename = `${field.replace('_photo', '')}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
@@ -1424,14 +1700,11 @@ app.post('/api/trucks', async (req, res) => {
             }
         }
 
-        // Connect to SQL Server and execute transaction
         const pool = await db.getPool();
         const transaction = pool.transaction();
-        
         await transaction.begin();
-        
         try {
-            // 1. Insert into trucks table
+
             const mainRequest = transaction.request();
             mainRequest.input('platenumber', db.sql.VarChar, platenumber);
             mainRequest.input('noticket', db.sql.VarChar, noticket);
@@ -1455,7 +1728,6 @@ app.post('/api/trucks', async (req, res) => {
             mainRequest.input('jenismobil', db.sql.VarChar, jenismobil);
             mainRequest.input('date', db.sql.Date, date);
             mainRequest.input('exittime', db.sql.DateTime2, exittime);
-
             const mainQuery = `
                 INSERT INTO trucks (
                     platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
@@ -1468,11 +1740,9 @@ app.post('/api/trucks', async (req, res) => {
                     @descin, @descout, @statustruck, @armada, @kelengkapan, @jenismobil, @date, @exittime
                 )
             `;
-
             const mainResult = await mainRequest.query(mainQuery);
             const truckId = mainResult.recordset[0].id;
 
-            // 2. Insert into truck_times table
             const timesRequest = transaction.request();
             timesRequest.input('truck_id', db.sql.Int, truckId);
             timesRequest.input('arrivaltime', db.sql.DateTime2, arrivaltime);
@@ -1488,7 +1758,6 @@ app.post('/api/trucks', async (req, res) => {
             timesRequest.input('finishloadingtime', db.sql.Time, finishloadingtime);
             timesRequest.input('totalprocessloadingtime', db.sql.Time, totalprocessloadingtime);
             timesRequest.input('actualwaitloadingtime', db.sql.Time, actualwaitloadingtime);
-
             const timesQuery = `
                 INSERT INTO truck_times (
                     truck_id, arrivaltime, waitingfortimbang, starttimbang, finishtimbang, totalprocesstimbang,
@@ -1500,27 +1769,21 @@ app.post('/api/trucks', async (req, res) => {
                     @startloadingtime, @finishloadingtime, @totalprocessloadingtime, @actualwaitloadingtime
                 )
             `;
-
             await timesRequest.query(timesQuery);
 
-            // 3. Insert into truck_photos table
             const photosRequest = transaction.request();
             photosRequest.input('truck_id', db.sql.Int, truckId);
             photosRequest.input('driver_photo', db.sql.VarChar, savedImages.driver_photo);
             photosRequest.input('sim_photo', db.sql.VarChar, savedImages.sim_photo);
             photosRequest.input('stnk_photo', db.sql.VarChar, savedImages.stnk_photo);
-
             const photosQuery = `
                 INSERT INTO truck_photos (truck_id, driver_photo, sim_photo, stnk_photo)
                 VALUES (@truck_id, @driver_photo, @sim_photo, @stnk_photo)
             `;
-
             await photosRequest.query(photosQuery);
 
-            // 4. Get complete truck data with JOIN
             const selectRequest = transaction.request();
             selectRequest.input('id', db.sql.Int, truckId);
-
             const selectQuery = `
                 SELECT 
                     t.*,
@@ -1533,20 +1796,14 @@ app.post('/api/trucks', async (req, res) => {
                 LEFT JOIN truck_photos tp ON t.id = tp.truck_id
                 WHERE t.id = @id
             `;
-
             const selectResult = await selectRequest.query(selectQuery);
             const newTruck = selectResult.recordset[0];
-
             await transaction.commit();
-            
-            console.log('=== NEW TRUCK CREATED (3-TABLE) ===', newTruck);
             res.status(201).json(newTruck);
-
         } catch (error) {
             await transaction.rollback();
             throw error;
         }
-
     } catch (error) {
         console.error('Error creating truck (3-table):', error);
         console.error('Error details:', error.message);
@@ -1559,20 +1816,17 @@ app.post('/api/trucks', async (req, res) => {
     }
 });
 
-// PUT endpoint untuk update truck (3-table structure)
+
 app.put('/api/trucks/:id', async (req, res) => {
     try {
-        console.log('=== UPDATE TRUCK API CALLED (3-TABLE) ===');
         const { id } = req.params;
         const updateData = req.body;
+        
+        // Debug: Log the update data
+        console.log('🔍 Update data received:', JSON.stringify(updateData, null, 2));
 
-        console.log('Truck ID:', id);
-        console.log('Update data received:', updateData);
-
-        // Handle image saving
         const imageFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
         const savedImages = {};
-        
         for (const field of imageFields) {
             if (updateData[field] && updateData[field].startsWith('data:image')) {
                 const filename = `${field.replace('_photo', '')}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
@@ -1581,87 +1835,127 @@ app.put('/api/trucks/:id', async (req, res) => {
             }
         }
 
-        // Connect to SQL Server and execute transaction
         const pool = await db.getPool();
         const transaction = pool.transaction();
-        
         await transaction.begin();
-        
         try {
-            // Define field groups for each table
+
             const mainTableFields = [
                 'platenumber', 'noticket', 'department', 'nikdriver', 'tlpdriver', 'nosj', 'tglsj',
                 'driver', 'supplier', 'eta', 'status', 'type', 'operation', 'goods',
                 'descin', 'descout', 'statustruck', 'armada', 'kelengkapan', 'jenismobil', 'date', 'exittime'
             ];
-            
             const timeTableFields = [
                 'arrivaltime', 'waitingfortimbang', 'starttimbang', 'finishtimbang', 'totalprocesstimbang',
                 'runtohpc', 'waitingforarrivalhpc', 'entryhpc', 'totalwaitingarrival',
                 'startloadingtime', 'finishloadingtime', 'totalprocessloadingtime', 'actualwaitloadingtime'
             ];
-            
             const photoTableFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
 
-            // Update main trucks table
             const mainUpdateFields = mainTableFields.filter(field => updateData[field] !== undefined);
             if (mainUpdateFields.length > 0) {
                 const mainRequest = transaction.request();
                 mainRequest.input('id', db.sql.Int, id);
-                
                 const setClause = mainUpdateFields.map(field => {
                     mainRequest.input(field, db.sql.VarChar, updateData[field]);
                     return `${field} = @${field}`;
                 }).join(', ');
-
                 const mainQuery = `UPDATE trucks SET ${setClause} WHERE id = @id`;
-                console.log('Updating main table:', mainQuery);
-                
                 await mainRequest.query(mainQuery);
             }
 
-            // Update truck_times table
             const timeUpdateFields = timeTableFields.filter(field => updateData[field] !== undefined);
             if (timeUpdateFields.length > 0) {
+                // First check if truck_times record exists
+                const checkRequest = pool.request();
+                checkRequest.input('truck_id', db.sql.Int, id);
+                const checkResult = await checkRequest.query('SELECT * FROM truck_times WHERE truck_id = @truck_id');
+                
+                if (checkResult.recordset.length === 0) {
+                    // Insert new record if it doesn't exist
+                    const insertRequest = pool.request();
+                    insertRequest.input('truck_id', db.sql.Int, id);
+                    await insertRequest.query('INSERT INTO truck_times (truck_id) VALUES (@truck_id)');
+                    console.log(`✅ Created new truck_times record for truck_id: ${id}`);
+                }
+                
                 const timeRequest = transaction.request();
                 timeRequest.input('truck_id', db.sql.Int, id);
                 
-                const timeSetClause = timeUpdateFields.map(field => {
-                    if (field === 'arrivaltime') {
-                        timeRequest.input(field, db.sql.DateTime2, updateData[field]);
+                // Helper function to validate and format time
+                const validateAndFormatTime = (timeValue, fieldName) => {
+                    if (!timeValue) return null;
+                    
+                    let timeString = String(timeValue).trim();
+                    console.log(`🕐 Processing time field '${fieldName}': ${timeString}`);
+                    
+                    // Handle various time formats
+                    if (timeString.match(/^\d{1,2}:\d{1,2}:\d{1,2}$/)) {
+                        // Format: H:mm:ss or HH:mm:ss
+                        const parts = timeString.split(':');
+                        const hours = parts[0].padStart(2, '0');
+                        const minutes = parts[1].padStart(2, '0');
+                        const seconds = parts[2].padStart(2, '0');
+                        
+                        // Validate ranges
+                        if (parseInt(hours) > 23 || parseInt(minutes) > 59 || parseInt(seconds) > 59) {
+                            throw new Error(`Invalid time values for '${fieldName}': ${timeString}`);
+                        }
+                        
+                        return `${hours}:${minutes}:${seconds}`;
+                    } else if (timeString.match(/^\d{1,2}:\d{1,2}$/)) {
+                        // Format: H:mm or HH:mm - add seconds
+                        const parts = timeString.split(':');
+                        const hours = parts[0].padStart(2, '0');
+                        const minutes = parts[1].padStart(2, '0');
+                        
+                        if (parseInt(hours) > 23 || parseInt(minutes) > 59) {
+                            throw new Error(`Invalid time values for '${fieldName}': ${timeString}`);
+                        }
+                        
+                        return `${hours}:${minutes}:00`;
                     } else {
-                        timeRequest.input(field, db.sql.Time, updateData[field]);
+                        throw new Error(`Invalid time format for '${fieldName}': ${timeString}. Expected HH:mm:ss or HH:mm`);
                     }
-                    return `${field} = @${field}`;
-                }).join(', ');
-
-                const timeQuery = `UPDATE truck_times SET ${timeSetClause} WHERE truck_id = @truck_id`;
-                console.log('Updating time table:', timeQuery);
+                };
                 
+                const timeSetClause = timeUpdateFields.map(field => {
+                    try {
+                        if (field === 'arrivaltime') {
+                            timeRequest.input(field, db.sql.DateTime2, updateData[field]);
+                        } else {
+                            const formattedTime = validateAndFormatTime(updateData[field], field);
+                            console.log(`✅ Formatted time for '${field}': ${formattedTime}`);
+                            
+                            // Try using VarChar instead of Time type to avoid tedious validation issues
+                            timeRequest.input(field, db.sql.VarChar(8), formattedTime);
+                        }
+                        return `${field} = @${field}`;
+                    } catch (error) {
+                        console.error(`❌ Error processing field '${field}':`, error);
+                        throw new Error(`Validation failed for parameter '${field}'. ${error.message}`);
+                    }
+                }).join(', ');
+                
+                const timeQuery = `UPDATE truck_times SET ${timeSetClause} WHERE truck_id = @truck_id`;
+                console.log(`🗃️ Executing time query: ${timeQuery}`);
                 await timeRequest.query(timeQuery);
             }
 
-            // Update truck_photos table
             const photoUpdateFields = photoTableFields.filter(field => updateData[field] !== undefined);
             if (photoUpdateFields.length > 0) {
                 const photoRequest = transaction.request();
                 photoRequest.input('truck_id', db.sql.Int, id);
-                
                 const photoSetClause = photoUpdateFields.map(field => {
                     photoRequest.input(field, db.sql.VarChar, updateData[field]);
                     return `${field} = @${field}`;
                 }).join(', ');
-
                 const photoQuery = `UPDATE truck_photos SET ${photoSetClause} WHERE truck_id = @truck_id`;
-                console.log('Updating photo table:', photoQuery);
-                
                 await photoRequest.query(photoQuery);
             }
 
-            // Get updated truck data with JOIN
             const selectRequest = transaction.request();
             selectRequest.input('id', db.sql.Int, id);
-
             const selectQuery = `
                 SELECT 
                     t.*,
@@ -1674,29 +1968,18 @@ app.put('/api/trucks/:id', async (req, res) => {
                 LEFT JOIN truck_photos tp ON t.id = tp.truck_id
                 WHERE t.id = @id
             `;
-
             const selectResult = await selectRequest.query(selectQuery);
-
             if (selectResult.recordset.length === 0) {
                 await transaction.rollback();
-                console.log('❌ Truck not found with ID:', id);
                 return res.status(404).json({ error: 'Truck not found' });
             }
-
             const updatedTruck = selectResult.recordset[0];
-
             await transaction.commit();
-            
-            console.log('✅ Truck updated successfully (3-table)');
-            console.log('Updated truck data:', updatedTruck);
-
             res.json(updatedTruck);
-
         } catch (error) {
             await transaction.rollback();
             throw error;
         }
-
     } catch (error) {
         console.error('💥 Error updating truck:', error);
         console.error('💥 Error message:', error.message);
@@ -1708,18 +1991,15 @@ app.put('/api/trucks/:id', async (req, res) => {
     }
 });
 
-// DELETE endpoint untuk menghapus truck
+
 app.delete('/api/trucks/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
         const query = 'SELECT * FROM trucks WHERE id = $1; DELETE FROM trucks WHERE id = $1';
         const result = await db.query(query, [id]);
-
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Truck not found' });
         }
-
         res.json({ message: 'Truck deleted successfully', truck: result.rows[0] });
     } catch (error) {
         console.error('Error deleting truck:', error);
@@ -1727,19 +2007,14 @@ app.delete('/api/trucks/:id', async (req, res) => {
     }
 });
 
-// GET endpoint untuk trucks (3-table structure dengan JOIN)
+
 app.get('/api/trucks', async (req, res) => {
     try {
         const { searchTerm, status, type, operation, dateFrom, dateTo } = req.query;
-        
-        console.log('=== GET TRUCKS API CALLED (3-TABLE) ===');
-        console.log('Query params:', { searchTerm, status, type, operation, dateFrom, dateTo });
 
-        // Connect to SQL Server
         const pool = await db.getPool();
         const request = pool.request();
 
-        // Base query with JOIN from 3 tables
         let query = `
             SELECT 
                 t.*,
@@ -1752,10 +2027,8 @@ app.get('/api/trucks', async (req, res) => {
             LEFT JOIN truck_photos tp ON t.id = tp.truck_id
             WHERE 1=1
         `;
-
         let paramIndex = 1;
 
-        // Add search filter
         if (searchTerm) {
             query += ` AND (
                 t.platenumber LIKE '%' + @searchTerm + '%' OR 
@@ -1767,79 +2040,60 @@ app.get('/api/trucks', async (req, res) => {
             paramIndex++;
         }
 
-        // Add status filter
         if (status) {
             query += ` AND t.status = @status`;
             request.input('status', db.sql.VarChar, status);
             paramIndex++;
         }
 
-        // Add type filter
         if (type) {
             query += ` AND t.type = @type`;
             request.input('type', db.sql.VarChar, type);
             paramIndex++;
         }
 
-        // Add operation filter
         if (operation) {
             query += ` AND t.operation = @operation`;
             request.input('operation', db.sql.VarChar, operation);
             paramIndex++;
         }
 
-        // Add date range filter
         if (dateFrom) {
             query += ` AND t.date >= @dateFrom`;
             request.input('dateFrom', db.sql.Date, dateFrom);
             paramIndex++;
         }
-
         if (dateTo) {
             query += ` AND t.date <= @dateTo`;
             request.input('dateTo', db.sql.Date, dateTo);
             paramIndex++;
         }
 
-        // Order by latest first
         query += ` ORDER BY t.id DESC`;
-
-        console.log('Final query:', query);
-
         const result = await request.query(query);
-        
-        console.log(`✅ Found ${result.recordset.length} trucks`);
         res.json(result.recordset);
-        
     } catch (error) {
         console.error('💥 Error fetching trucks (3-table):', error);
         console.error('💥 Error details:', error.message);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Internal server error',
-            details: error.message 
+            details: error.message
         });
     }
 });
 
-// DELETE endpoint untuk menghapus truck (3-table structure)
+
 app.delete('/api/trucks/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        
-        console.log('=== DELETE TRUCK API CALLED (3-TABLE) ===');
-        console.log('Truck ID:', id);
 
-        // Connect to SQL Server and execute transaction
         const pool = await db.getPool();
         const transaction = pool.transaction();
-        
         await transaction.begin();
-        
         try {
-            // Get truck data before deletion
+
             const selectRequest = transaction.request();
             selectRequest.input('id', db.sql.Int, id);
-            
             const selectQuery = `
                 SELECT 
                     t.*,
@@ -1852,50 +2106,39 @@ app.delete('/api/trucks/:id', async (req, res) => {
                 LEFT JOIN truck_photos tp ON t.id = tp.truck_id
                 WHERE t.id = @id
             `;
-            
             const selectResult = await selectRequest.query(selectQuery);
-            
             if (selectResult.recordset.length === 0) {
                 await transaction.rollback();
                 return res.status(404).json({ error: 'Truck not found' });
             }
-            
             const truckData = selectResult.recordset[0];
 
-            // Delete from main table (CASCADE will handle related tables)
             const deleteRequest = transaction.request();
             deleteRequest.input('id', db.sql.Int, id);
-            
             const deleteQuery = 'DELETE FROM trucks WHERE id = @id';
             await deleteRequest.query(deleteQuery);
-
             await transaction.commit();
-            
-            console.log('✅ Truck deleted successfully (3-table)');
-            res.json({ 
-                message: 'Truck deleted successfully', 
-                truck: truckData 
+            res.json({
+                message: 'Truck deleted successfully',
+                truck: truckData
             });
-
         } catch (error) {
             await transaction.rollback();
             throw error;
         }
-
     } catch (error) {
         console.error('💥 Error deleting truck (3-table):', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Internal server error',
-            details: error.message 
+            details: error.message
         });
     }
 });
 
-// API endpoint untuk upload foto truck
+
 app.post('/api/trucks/upload-photo', async (req, res) => {
     try {
         const { photoData, photoType, plateNumber } = req.body;
-
         if (!photoData || !photoType || !plateNumber) {
             return res.status(400).json({
                 success: false,
@@ -1903,35 +2146,26 @@ app.post('/api/trucks/upload-photo', async (req, res) => {
             });
         }
 
-        // Create trucks upload directory if it doesn't exist
         const trucksUploadDir = path.join(__dirname, 'uploads', 'trucks');
         if (!fs.existsSync(trucksUploadDir)) {
             fs.mkdirSync(trucksUploadDir, { recursive: true });
         }
 
-        // Generate filename with timestamp and plate number
         const timestamp = Date.now();
         const sanitizedPlate = plateNumber.replace(/[^a-zA-Z0-9]/g, '_');
         const fileName = `${sanitizedPlate}-${timestamp}-${photoType}.jpg`;
         const filePath = path.join(trucksUploadDir, fileName);
 
-        // Remove data URL prefix if present (data:image/jpeg;base64,)
         const base64Data = photoData.replace(/^data:image\/[a-z]+;base64,/, '');
 
-        // Save the file
         fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
 
-        // Return the relative path for database storage
         const relativePath = `trucks/${fileName}`;
-
-        console.log(`✅ Truck photo saved: ${relativePath}`);
-
         res.json({
             success: true,
             message: 'Photo uploaded successfully',
             filePath: relativePath
         });
-
     } catch (error) {
         console.error('❌ Error uploading truck photo:', error);
         res.status(500).json({
@@ -1941,16 +2175,297 @@ app.post('/api/trucks/upload-photo', async (req, res) => {
         });
     }
 });
-
 // !! END OF API FOR TRUCKS
+
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+//-------------------------------------------------------//
+// !! DEBUG ENDPOINTS FOR ROUTING SYSTEM
+app.get('/debug/simple', async (req, res) => {
+    try {
+
+        const routing = await db.query(`SELECT * FROM master_routing WHERE department = 'IT'`);
+        res.json({
+            message: 'Simple debug test',
+            routing: routing.rows
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/debug/test-routing', async (req, res) => {
+    try {
+
+        const routingData = await db.query('SELECT * FROM master_routing WHERE department = $1', ['IT']);
+
+        const leaveData = await db.query(`
+            SELECT * FROM leave_permission 
+            WHERE name LIKE '%MARCELLO%' 
+            AND CONVERT(DATE, date) = CONVERT(DATE, GETDATE())
+        `);
+        res.json({
+            routing: routingData.rows,
+            leaves: leaveData.rows,
+            debug: 'Test routing configuration'
+        });
+    } catch (error) {
+        console.error('Debug routing error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/debug/leave-approval/:licenseplate', async (req, res) => {
+    try {
+        const { licenseplate } = req.params;
+
+        const leaveQuery = `
+            SELECT lp.*, u.role, u.department as user_department, u.name as employee_name
+            FROM leave_permission lp
+            JOIN users u ON lp.licenseplate = u.licenseplate
+            WHERE lp.licenseplate = $1 
+            AND CONVERT(DATE, lp.date) = CONVERT(DATE, GETDATE())
+            AND lp.actual_exittime IS NULL
+        `;
+        const leaveResult = await db.query(leaveQuery, [licenseplate]);
+        if (leaveResult.rows.length === 0) {
+            return res.json({
+                approved: false,
+                reason: 'No leave permission found for today',
+                licenseplate
+            });
+        }
+        const leave = leaveResult.rows[0];
+
+        const routingQuery = `
+            SELECT TOP 1 approval_level1_role, approval_level2_role, 
+                   approval_level1_name, approval_level2_name
+            FROM master_routing 
+            WHERE department = $1 
+            AND (employee_name = $2 OR employee_name IS NULL)
+            ORDER BY CASE WHEN employee_name IS NOT NULL THEN 1 ELSE 2 END
+        `;
+        const routingResult = await db.query(routingQuery, [leave.user_department, leave.employee_name]);
+        if (routingResult.rows.length === 0) {
+            return res.json({
+                approved: false,
+                reason: 'No routing configuration found',
+                leave,
+                routing: null
+            });
+        }
+        const routing = routingResult.rows[0];
+
+        let approved = false;
+        let approvalDetails = {};
+        if (leave.role === 'Staff') {
+            const level1Approved = (routing.approval_level1_role === 'HEAD DEPARTMENT' && leave.statusfromdept === 'approved') ||
+                (routing.approval_level1_role === 'HR' && leave.statusfromhr === 'approved');
+            const level2Approved = (routing.approval_level2_role === 'HEAD DEPARTMENT' && leave.statusfromdept === 'approved') ||
+                (routing.approval_level2_role === 'HR' && leave.statusfromhr === 'approved');
+            approved = level1Approved && level2Approved;
+            approvalDetails = {
+                level1: {
+                    role: routing.approval_level1_role,
+                    name: routing.approval_level1_name,
+                    approved: level1Approved,
+                    status: routing.approval_level1_role === 'HEAD DEPARTMENT' ? leave.statusfromdept : leave.statusfromhr
+                },
+                level2: {
+                    role: routing.approval_level2_role,
+                    name: routing.approval_level2_name,
+                    approved: level2Approved,
+                    status: routing.approval_level2_role === 'HEAD DEPARTMENT' ? leave.statusfromdept : leave.statusfromhr
+                }
+            };
+        } else if (leave.role === 'Head Department') {
+            approved = leave.statusfromhr === 'approved';
+            approvalDetails = {
+                hrApproval: {
+                    approved: approved,
+                    status: leave.statusfromhr
+                }
+            };
+        }
+        res.json({
+            approved,
+            leave,
+            routing,
+            approvalDetails,
+            licenseplate
+        });
+    } catch (error) {
+        console.error('Error in debug endpoint:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// !! END OF DEBUG ENDPOINTS
+
+// Simple debug endpoint to test database connection
+app.get('/debug/db-test', async (req, res) => {
+    try {
+        //console.log('🔍 Testing database connection...');
+
+        // Test 1: Simple query
+        const simpleTest = await db.query('SELECT 1 as test_value');
+        //console.log('✅ Simple query test passed');
+
+        // Test 2: Check master_routing table
+        const routingCount = await db.query('SELECT COUNT(*) as count FROM master_routing');
+        //console.log('✅ Master routing count:', routingCount.rows[0]?.count);
+
+        // Test 3: Check leave_permission table
+        const leaveCount = await db.query('SELECT COUNT(*) as count FROM leave_permission');
+        //console.log('✅ Leave permission count:', leaveCount.rows[0]?.count);
+
+        // Test 4: Check for specific approver
+        const approverTest = await db.query(`
+            SELECT TOP 3 approval_level1_name, approval_level2_name 
+            FROM master_routing 
+            WHERE approval_level1_name IS NOT NULL OR approval_level2_name IS NOT NULL
+        `);
+        //console.log('✅ Approver test rows:', approverTest.rows?.length);
+
+        res.json({
+            success: true,
+            tests: {
+                simpleQuery: !!simpleTest.rows,
+                routingCount: routingCount.rows[0]?.count || 0,
+                leaveCount: leaveCount.rows[0]?.count || 0,
+                approverRows: approverTest.rows?.length || 0
+            }
+        });
+
+    } catch (e) {
+        console.error('❌ Database test error:', e);
+        res.status(500).json({
+            success: false,
+            error: e.message,
+            stack: e.stack
+        });
+    }
+});
+
+// Debug endpoint to check routing mismatch
+app.get('/debug/routing-mismatch', async (req, res) => {
+    try {
+        //console.log('🔍 Checking routing configuration mismatch...');
+
+        // Get all active routing configurations
+        const routing = await db.query('SELECT * FROM master_routing WHERE is_active = 1 ORDER BY department, role');
+        //console.log('=== ALL ACTIVE ROUTING CONFIGURATIONS ===');
+        routing.rows.forEach(r => {
+            //console.log(`  ID: ${r.id} | Dept: '${r.department}' | Role: '${r.role}' | Employee: '${r.employee_name || 'null'}'`);
+            //console.log(`    Level 1: ${r.approval_level1_name} (${r.approval_level1_role})`);
+            //console.log(`    Level 2: ${r.approval_level2_name} (${r.approval_level2_role})`);
+        });
+
+        // Get all pending leave requests
+        const leaves = await db.query(`SELECT id, name, department, role FROM leave_permission WHERE approval = 'pending' ORDER BY id`);
+        //console.log('=== ALL PENDING LEAVE REQUESTS ===');
+        leaves.rows.forEach(l => {
+            //console.log(`  Leave ID: ${l.id} | Name: '${l.name}' | Dept: '${l.department}' | Role: '${l.role}'`);
+        });
+
+        // Check specific problematic leaves
+        const problematicLeaves = await db.query(`SELECT * FROM leave_permission WHERE name IN ('MIA PUTRI NURDIANTI', 'SITI ROMLAH') AND approval = 'pending'`);
+        //console.log('=== EXACT MATCH CHECK ===');
+        for (const leave of problematicLeaves.rows) {
+            console.log(`\nChecking leave for: ${leave.name}`);
+            console.log(`  Leave dept: '${leave.department}' (length: ${leave.department?.length})`);
+            console.log(`  Leave role: '${leave.role}' (length: ${leave.role?.length})`);
+
+            // Check for exact match
+            const exactMatch = await db.query(`SELECT * FROM master_routing WHERE department = $1 AND role = $2 AND is_active = 1`, [leave.department, leave.role]);
+            console.log(`  Exact matching routing records: ${exactMatch.rows.length}`);
+
+            if (exactMatch.rows.length === 0) {
+                console.log('  ❌ NO EXACT MATCH FOUND!');
+                // Show available departments and roles
+                const allRouting = await db.query(`SELECT DISTINCT department, role FROM master_routing WHERE is_active = 1`);
+                //console.log('    Available departments in routing:');
+                const uniqueDepts = [...new Set(allRouting.rows.map(r => r.department))];
+                uniqueDepts.forEach(dept => console.log(`      '${dept}' (length: ${dept?.length})`));
+
+                console.log('    Available roles in routing:');
+                const uniqueRoles = [...new Set(allRouting.rows.map(r => r.role))];
+                    uniqueRoles.forEach(role => console.log(`'${role}' (length: ${role?.length})`));
+
+                    // Check for department matches only
+                    const deptOnlyMatch = await db.query(`SELECT * FROM master_routing WHERE department = $1 AND is_active = 1`, [leave.department]);
+                    console.log(`    Department-only matches: ${deptOnlyMatch.rows.length}`);
+                    deptOnlyMatch.rows.forEach(match => {
+                        console.log(`      - Role: '${match.role}' (expected: '${leave.role}')`);
+                    });
+                } else {
+                    console.log('  ✅ Found matching routing!');
+                    exactMatch.rows.forEach(match => {
+                        console.log(`    Level 1: ${match.approval_level1_name} (${match.approval_level1_role})`);
+                        console.log(`    Level 2: ${match.approval_level2_name} (${match.approval_level2_role})`);
+                    });
+                }
+        }
+
+            res.json({
+                success: true,
+                routing: routing.rows,
+                leaves: leaves.rows,
+                problematicLeaves: problematicLeaves.rows
+            });
+
+        } catch (e) {
+            console.error('❌ Routing mismatch debug error:', e);
+            res.status(500).json({
+                success: false,
+                error: e.message
+            });
+        }
+    });
+
+// Endpoint to add missing routing configuration
+app.post('/debug/add-missing-routing', async (req, res) => {
+    try {
+        //console.log('🔧 Adding missing routing configuration for HRD GA Staff...');
+
+        // Insert the missing routing configuration for HRD GA Staff
+        const insertResult = await db.query(`
+            INSERT INTO master_routing 
+            (department, role, approval_level1_name, approval_level1_role, approval_level2_name, approval_level2_role, is_active, created_at)
+            VALUES 
+            ('HRD GA', 'Staff', 'DERMAWAN PURBA', 'Head Department', 'MIA PUTRI NURDIANTI', 'HR', 1, GETDATE())
+        `);
+
+        //console.log('✅ Successfully added routing configuration');
+
+        // Verify the insertion
+        const verify = await db.query(`
+            SELECT * FROM master_routing 
+            WHERE department = 'HRD GA' AND role = 'Staff' AND is_active = 1
+        `);
+
+        //console.log('✅ Verification - Found records:', verify.rows.length);
+        verify.rows.forEach(record => {
+            //console.log(`   ID: ${record.id} | Level 1: ${record.approval_level1_name} | Level 2: ${record.approval_level2_name}`);
+        });
+
+        res.json({
+            success: true,
+            message: 'Added missing routing configuration for HRD GA Staff',
+            insertedRecord: verify.rows[0] || null
+        });
+
+    } catch (e) {
+        console.error('❌ Error adding routing configuration:', e);
+        res.status(500).json({
+            success: false,
+            error: e.message
+        });
+    }
+});
 
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 
 server.listen(port, () => {
-    console.log(`\n🚀 Server + WebSocket listening on http://192.168.4.108:${port}`);
-    console.log(`📡 WebSocket endpoint: ws://192.168.4.108:${port}`);
-    console.log(`📁 Image uploads: http://192.168.4.108:${port}/uploads/`);
-    console.log(`⏰ Hikvision polling will start in 2 seconds...\n`);
 });

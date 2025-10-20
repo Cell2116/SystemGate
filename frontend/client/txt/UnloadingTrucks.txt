@@ -106,13 +106,13 @@ export default function UnloadingTrucks() {
 
     // Helper function untuk format INTERVAL data
     const formatIntervalDisplay = (interval?: string | number | null | any) => {
-        console.log('formatIntervalDisplay input:', interval, 'type:', typeof interval);
+        
 
         if (!interval) return '-';
 
         // Handle object case (PostgreSQL interval objects)
         if (typeof interval === 'object' && interval !== null) {
-            console.log('Object detected:', interval);
+            
 
             // Handle PostgreSQL interval object
             if (interval.minutes !== undefined || interval.hours !== undefined || interval.seconds !== undefined) {
@@ -125,7 +125,7 @@ export default function UnloadingTrucks() {
             // Handle other object formats
             if (interval.toString && typeof interval.toString === 'function') {
                 const stringValue = interval.toString();
-                console.log('Object toString:', stringValue);
+                
                 if (stringValue !== '[object Object]') {
                     return stringValue;
                 }

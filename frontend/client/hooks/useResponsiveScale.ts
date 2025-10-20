@@ -1,11 +1,9 @@
 import { useEffect } from 'react';
-
 interface ScaleConfig {
   width: number;
   height?: number;
   scale: number;
 }
-
 const scaleConfigs: ScaleConfig[] = [
   { width: 1366, height: 768, scale: 0.75 }, 
   { width: 1366, height: 626, scale: 0.1 },  
@@ -14,7 +12,6 @@ const scaleConfigs: ScaleConfig[] = [
   { width: 1440, scale: 0.85 },               
   { width: 1600, scale: 0.9 },               
 ];
-
 export const useResponsiveScale = (): void => {
   useEffect(() => {
     const applyScale = (): void => {
@@ -47,9 +44,8 @@ export const useResponsiveScale = (): void => {
         document.documentElement.style.overflow = '';
       }
       
-      //console.log(`Screen: ${screenWidth}x${screenHeight}, Scale: ${scale}`);
+      //
     };
-
     applyScale();
     window.addEventListener('resize', applyScale);
     

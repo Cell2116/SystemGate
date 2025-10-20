@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { HistoryRecord } from "@/types/employee.types";
-
 export const useEmployeeFilters = (records: HistoryRecord[]) => {
     const [filteredRecords, setFilteredRecords] = useState<HistoryRecord[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -12,10 +11,8 @@ export const useEmployeeFilters = (records: HistoryRecord[]) => {
     const [recordsPerPage] = useState(5);
     const [sortBy, setSortBy] = useState("datein");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
     useEffect(() => {
         let filtered = [...records];
-
         if (searchTerm) {
             const search = searchTerm.toLowerCase();
             filtered = filtered.filter(record =>
@@ -24,15 +21,12 @@ export const useEmployeeFilters = (records: HistoryRecord[]) => {
                 record.licenseplate.toLowerCase().includes(search)
             );
         }
-
         if (selectedDepartment !== "all") {
             filtered = filtered.filter(record => record.department === selectedDepartment);
         }
-
         if (selectedStatus !== "all") {
             filtered = filtered.filter(record => record.status === selectedStatus);
         }
-
         if (dateFrom) {
             filtered = filtered.filter(record => {
                 const recordDate = new Date(record.datein).toDateString();
@@ -40,7 +34,6 @@ export const useEmployeeFilters = (records: HistoryRecord[]) => {
                 return recordDate >= fromDate;
             });
         }
-
         if (dateTo) {
             filtered = filtered.filter(record => {
                 const recordDate = new Date(record.datein).toDateString();
@@ -48,11 +41,9 @@ export const useEmployeeFilters = (records: HistoryRecord[]) => {
                 return recordDate <= toDate;
             });
         }
-
         // Apply sorting
         filtered.sort((a, b) => {
             let aValue: any, bValue: any;
-
             switch (sortBy) {
                 case "name":
                     aValue = a.name;
@@ -72,18 +63,15 @@ export const useEmployeeFilters = (records: HistoryRecord[]) => {
                     bValue = new Date(b.datein);
                     break;
             }
-
             if (sortOrder === "asc") {
                 return aValue > bValue ? 1 : -1;
             } else {
                 return aValue < bValue ? 1 : -1;
             }
         });
-
         setFilteredRecords(filtered);
         setCurrentPage(1);
     }, [records, sortBy, sortOrder, searchTerm, selectedDepartment, selectedStatus, dateFrom, dateTo]);
-
     const clearFilters = () => {
         setSearchTerm("");
         setSelectedDepartment("all");
@@ -91,13 +79,11 @@ export const useEmployeeFilters = (records: HistoryRecord[]) => {
         setDateFrom("");
         setDateTo("");
     };
-
     // Pagination
     const indexOfLastRecord = currentPage * recordsPerPage;
     const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
     const currentRecords = filteredRecords.slice(indexOfFirstRecord, indexOfLastRecord);
     const totalPages = Math.ceil(filteredRecords.length / recordsPerPage);
-
     return {
         filteredRecords,
         searchTerm,

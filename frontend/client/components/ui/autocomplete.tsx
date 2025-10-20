@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
 import { Label } from './label';
-
 interface AutocompleteProps {
   id?: string;
   label?: string;
@@ -14,7 +13,6 @@ interface AutocompleteProps {
   maxSuggestions?: number;
   autoShowOnValueChange?: boolean;
 }
-
 export function Autocomplete({
   id,
   label,
@@ -33,7 +31,6 @@ export function Autocomplete({
   const [userTyping, setUserTyping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-
   useEffect(() => {
     if (value.length > 0 && userTyping && autoShowOnValueChange) {
       const filtered = suggestions
@@ -49,12 +46,10 @@ export function Autocomplete({
     }
     setHighlightedIndex(-1);
   }, [value, suggestions, maxSuggestions, userTyping, autoShowOnValueChange]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserTyping(true);
     onChange(e.target.value);
   };
-
   const handleSuggestionClick = (suggestion: string) => {
     setUserTyping(false);
     onChange(suggestion);
@@ -62,10 +57,8 @@ export function Autocomplete({
     setHighlightedIndex(-1);
     inputRef.current?.focus();
   };
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) return;
-
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
@@ -91,14 +84,12 @@ export function Autocomplete({
         break;
     }
   };
-
   const handleInputFocus = () => {
     setUserTyping(true);
     if (value.length > 0 && filteredSuggestions.length > 0) {
       setIsOpen(true);
     }
   };
-
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     setTimeout(() => {
       setIsOpen(false);
@@ -106,7 +97,6 @@ export function Autocomplete({
       setUserTyping(false);
     }, 150);
   };
-
   useEffect(() => {
     if (highlightedIndex >= 0 && listRef.current) {
       const highlightedElement = listRef.current.children[highlightedIndex] as HTMLElement;
@@ -118,7 +108,6 @@ export function Autocomplete({
       }
     }
   }, [highlightedIndex]);
-
   return (
     <div className="relative">
       {label && (

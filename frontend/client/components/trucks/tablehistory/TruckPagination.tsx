@@ -1,29 +1,23 @@
 import { Button } from "@/components/ui/button";
-
 import React from "react";
-
 type CardProps = {
     children: React.ReactNode;
     className?: string;
 };
-
 const Card = ({ children, className = "" }: CardProps) => (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`}>
         {children}
     </div>
 );
-
 type CardContentProps = {
     children: React.ReactNode;
     className?: string;
 };
-
 const CardContent = ({ children, className = "" }: CardContentProps) => (
     <div className={`p-6 ${className}`}>
         {children}
     </div>
 );
-
 interface TruckPaginationProps {
     filterOpen: boolean;
     currentPage: number;
@@ -33,7 +27,6 @@ interface TruckPaginationProps {
     filteredRecordsLength: number;
     onPageChange: (page: number) => void;
 }
-
 export default function TruckPagination({
     filterOpen,
     currentPage,
@@ -58,16 +51,13 @@ export default function TruckPagination({
                         >
                             Previous
                         </button>
-
                         {/* Show page numbers */}
                         {(() => {
                             const maxVisiblePages = 5;
                             const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
                             const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
                             const adjustedStartPage = Math.max(1, endPage - maxVisiblePages + 1);
-
                             const pages = [];
-
                             // First page if not in range
                             if (adjustedStartPage > 1) {
                                 pages.push(
@@ -83,7 +73,6 @@ export default function TruckPagination({
                                     pages.push(<span key="ellipsis1" className="px-1 text-gray-400">...</span>);
                                 }
                             }
-
                             // Visible page range
                             for (let page = adjustedStartPage; page <= endPage; page++) {
                                 pages.push(
@@ -99,7 +88,6 @@ export default function TruckPagination({
                                     </button>
                                 );
                             }
-
                             // Last page if not in range
                             if (endPage < totalPages) {
                                 if (endPage < totalPages - 1) {
@@ -115,10 +103,8 @@ export default function TruckPagination({
                                     </button>
                                 );
                             }
-
                             return pages;
                         })()}
-
                         <button
                             onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
                             disabled={currentPage === totalPages}

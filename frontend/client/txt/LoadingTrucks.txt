@@ -50,11 +50,11 @@ export default function LoadingTrucks() {
 
     // Helper function untuk format INTERVAL data
     const formatIntervalDisplay = (interval?: string | number | null | any) => {
-        console.log('formatIntervalDisplay input:', interval, 'type:', typeof interval);
+        
         if (!interval) return '-';
         // Handle object case (PostgreSQL interval objects)
         if (typeof interval === 'object' && interval !== null) {
-            console.log('Object detected:', interval);
+            
             // Handle PostgreSQL interval object
             if (interval.minutes !== undefined || interval.hours !== undefined || interval.seconds !== undefined) {
                 const hours = interval.hours || 0;
@@ -65,7 +65,7 @@ export default function LoadingTrucks() {
             // Handle other object formats
             if (interval.toString && typeof interval.toString === 'function') {
                 const stringValue = interval.toString();
-                console.log('Object toString:', stringValue);
+                
                 if (stringValue !== '[object Object]') {
                     return stringValue;
                 }
@@ -124,7 +124,7 @@ export default function LoadingTrucks() {
     // Load recommendations saat modal edit dibuka
     useEffect(() => {
         if (isEditModalOpen) {
-            console.log('📝 Edit modal opened, preloading recommendations');
+            
             loadSuratJalanRecommendations();
         }
     }, [isEditModalOpen]);
@@ -155,9 +155,9 @@ export default function LoadingTrucks() {
     // Load rekomendasi surat jalan dari database
     const loadSuratJalanRecommendations = async () => {
         try {
-            console.log('🔄 Loading surat jalan recommendations...');
+            
             const existingData = await fetchExistingSuratJalan();
-            console.log('📊 Raw data from database:', existingData);
+            
 
             // Normalize possible response shapes
             // - Array of objects
@@ -183,17 +183,17 @@ export default function LoadingTrucks() {
                 }
             }
 
-            console.log('📋 Processed data array:', dataArray);
+            
 
             // Ambil nomor surat jalan dari database sebagai rekomendasi
             const suratJalanNumbers = dataArray
                 .map((item: any) => item.nosj || item.noSuratJalan || item.nomor)
                 .filter(Boolean);
 
-            console.log('📋 Processed recommendations:', suratJalanNumbers);
+            
 
             setSuratJalanRecommendations(suratJalanNumbers);
-            console.log('✅ Recommendations set, count:', suratJalanNumbers.length);
+            
         } catch (error) {
             console.error('❌ Error loading surat jalan recommendations:', error);
             setSuratJalanRecommendations([]);
@@ -203,8 +203,8 @@ export default function LoadingTrucks() {
     const handleSaveEdit = async () => {
         if (editFormData) {
             try {
-                console.log('=== LOADING TRUCKS SAVE EDIT ===');
-                console.log('Edit form data:', editFormData);
+                
+                
                 const cleanedEditData = { ...editFormData };
                 // delete cleanedEditData.estimatedTime;
                 delete cleanedEditData.quantity;
@@ -214,17 +214,17 @@ export default function LoadingTrucks() {
                     if (cleanedEditData[field] === "") (cleanedEditData as any)[field] = null;
                 });
 
-                console.log('Cleaned edit data:', cleanedEditData);
+                
 
                 // Simpan nomor surat jalan baru ke database jika ada
                 if (cleanedEditData.nosj && cleanedEditData.nosj.trim()) {
-                    console.log('Saving surat jalan:', cleanedEditData.nosj.trim());
+                    
                     await saveSuratJalanToDatabase(cleanedEditData.nosj.trim().toUpperCase());
                 }
 
-                console.log('Calling updateTruckAPI with ID:', cleanedEditData.id);
+                
                 await updateTruckAPI(cleanedEditData.id, cleanedEditData);
-                console.log('Update successful!');
+                
 
                 setIsEditModalOpen(false);
                 setEditFormData(null);
@@ -262,7 +262,7 @@ export default function LoadingTrucks() {
 
     // Handler untuk memilih rekomendasi surat jalan
     const handleSelectSuratJalanRecommendation = (recommendation: string) => {
-        console.log('Selecting recommendation:', recommendation);
+        
         handleFormChange('nosj', recommendation);
         setShowSuratJalanDropdown(false);
     };
@@ -769,7 +769,7 @@ export default function LoadingTrucks() {
                                         {/* <button
                                             type="button"
                                             onClick={() => {
-                                                console.log('🔄 Manual refresh recommendations');
+                                                
                                                 loadSuratJalanRecommendations();
                                             }}
                                             className="text-xs text-blue-600 hover:text-blue-800 underline"
@@ -791,14 +791,14 @@ export default function LoadingTrucks() {
                                                 handleFormChange('nosj', value);
                                             }}
                                             // onFocus={() => {
-                                            //     console.log('🎯 Input focused, showing dropdown');
-                                            //     console.log('📊 Current recommendations:', suratJalanRecommendations);
-                                            //     console.log('🔍 Recommendations count:', suratJalanRecommendations.length);
+                                            //     
+                                            //     
+                                            //     
                                             //     setShowSuratJalanDropdown(true);
 
                                             //     // Load recommendations if not already loaded
                                             //     if (suratJalanRecommendations.length === 0) {
-                                            //         console.log('🔄 No recommendations found, loading...');
+                                            //         
                                             //         loadSuratJalanRecommendations();
                                             //     }
                                             // }}

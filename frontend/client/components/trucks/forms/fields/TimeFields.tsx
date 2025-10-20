@@ -2,14 +2,12 @@ import { ChangeEvent } from "react";
 import { Input } from "../../../ui/input";
 import { Label } from "../../../ui/label";
 import { TruckFormData } from "../../../../types/truck.types";
-
 interface TimeFieldsProps {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
   showArrivalTime?: boolean;
   showDate?: boolean;
 }
-
 export function TimeFields({ 
   formData, 
   onFieldChange, 
@@ -20,7 +18,6 @@ export function TimeFields({
     const today = new Date();
     return today.toISOString().split("T")[0];
   };
-
   return (
     <div className="space-y-4">
       {showArrivalTime && (

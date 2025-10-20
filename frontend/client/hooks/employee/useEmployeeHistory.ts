@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { HistoryRecord, FilterParams } from "@/types/employee.types";
-
 export const useEmployeeHistory = () => {
     const { fetchHistoryRecords, loading, error } = useDashboardStore();
     const [records, setRecords] = useState<HistoryRecord[]>([]);
-
     const fetchData = async (filters: FilterParams) => {
         try {
             const cleanFilters = {
@@ -15,14 +13,12 @@ export const useEmployeeHistory = () => {
                 dateFrom: filters.dateFrom || undefined,
                 dateTo: filters.dateTo || undefined,
             };
-
             const data = await fetchHistoryRecords(cleanFilters);
             setRecords(data);
         } catch (err) {
             console.error("Failed to fetch history records:", err);
         }
     };
-
     return {
         records,
         setRecords,

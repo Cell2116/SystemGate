@@ -1,27 +1,22 @@
 import React from "react";
-
 type CardProps = {
     children: React.ReactNode;
     className?: string;
 };
-
 const Card = ({ children, className = "" }: CardProps) => (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`}>
         {children}
     </div>
 );
-
 type CardContentProps = {
     children: React.ReactNode;
     className?: string;
 };
-
 const CardContent = ({ children, className = "" }: CardContentProps) => (
     <div className={`p-6 ${className}`}>
         {children}
     </div>
 );
-
 interface TruckFiltersProps {
     filterOpen: boolean;
     searchTerm: string;
@@ -40,7 +35,6 @@ interface TruckFiltersProps {
     setSortOrder: (value: "asc" | "desc") => void;
     onClearFilters: () => void;
 }
-
 export default function TruckFilters({
     filterOpen,
     searchTerm,
@@ -79,7 +73,6 @@ export default function TruckFilters({
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
                         </div>
-
                         {/* Department Filter */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -96,7 +89,6 @@ export default function TruckFilters({
                                 <option value="PT">PT</option>
                             </select>
                         </div>
-
                         {/* Jenis Mobil Filter */}
                         <div>
                             <label htmlFor="jenismobil-filter" className="block text-sm font-medium text-gray-700 mb-1">
@@ -117,7 +109,6 @@ export default function TruckFilters({
                                 <option value="Fuso">Fuso</option>
                             </select>
                         </div>
-
                         {/* Date From */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -131,7 +122,6 @@ export default function TruckFilters({
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                             />
                         </div>
-
                         {/* Date To */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -146,7 +136,6 @@ export default function TruckFilters({
                             />
                         </div>
                     </div>
-
                     {/* Sort Options */}
                     <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-4 pt-4 border-t border-gray-200">
                         <div className="flex items-center gap-2 flex-wrap">

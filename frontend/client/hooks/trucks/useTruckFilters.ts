@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { TruckHistoryRecord } from "@/types/truck.types";
-
 export const useTruckFilters = (records: TruckHistoryRecord[]) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedJenisMobil, setSelectedJenisMobil] = useState("all");
@@ -11,10 +10,8 @@ export const useTruckFilters = (records: TruckHistoryRecord[]) => {
     const [recordsPerPage] = useState(5);
     const [sortBy, setSortBy] = useState("arrivaltime");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
     const filteredRecords = useMemo(() => {
         let filtered = [...records];
-
         // Search filter
         if (searchTerm) {
             const search = searchTerm.toLowerCase();
@@ -25,17 +22,14 @@ export const useTruckFilters = (records: TruckHistoryRecord[]) => {
                 (record.goods && record.goods.toLowerCase().includes(search))
             );
         }
-
         // Department filter
         if (selectedDepartment !== "all") {
             filtered = filtered.filter(record => record.department === selectedDepartment);
         }
-
         // Jenis Mobil filter
         if (selectedJenisMobil !== "all") {
             filtered = filtered.filter(record => record.jenismobil === selectedJenisMobil);
         }
-
         // Date from filter
         if (dateFrom) {
             filtered = filtered.filter(record => {
@@ -45,7 +39,6 @@ export const useTruckFilters = (records: TruckHistoryRecord[]) => {
                 return recordDate >= fromDate;
             });
         }
-
         // Date to filter
         if (dateTo) {
             filtered = filtered.filter(record => {
@@ -55,11 +48,9 @@ export const useTruckFilters = (records: TruckHistoryRecord[]) => {
                 return recordDate <= toDate;
             });
         }
-
         // Apply sorting
         filtered.sort((a, b) => {
             let aValue: any, bValue: any;
-
             switch (sortBy) {
                 case "platenumber":
                     aValue = a.platenumber || "";
@@ -83,28 +74,23 @@ export const useTruckFilters = (records: TruckHistoryRecord[]) => {
                     bValue = b.date ? new Date(b.date) : new Date(0);
                     break;
             }
-
             if (sortOrder === "asc") {
                 return aValue > bValue ? 1 : -1;
             } else {
                 return aValue < bValue ? 1 : -1;
             }
         });
-
         return filtered;
     }, [records, sortBy, sortOrder, searchTerm, selectedJenisMobil, selectedDepartment, dateFrom, dateTo]);
-
     // Reset current page when filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [filteredRecords.length]);
-
     // Pagination
     const indexOfLastRecord = currentPage * recordsPerPage;
     const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
     const currentRecords = filteredRecords.slice(indexOfFirstRecord, indexOfLastRecord);
     const totalPages = Math.ceil(filteredRecords.length / recordsPerPage);
-
     const clearFilters = () => {
         setSearchTerm("");
         setSelectedDepartment("all");
@@ -112,7 +98,6 @@ export const useTruckFilters = (records: TruckHistoryRecord[]) => {
         setDateFrom("");
         setDateTo("");
     };
-
     return {
         filteredRecords,
         currentRecords,

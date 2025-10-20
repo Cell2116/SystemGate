@@ -22,19 +22,15 @@ export default function LoginPage() {
   const {setRole, setName, setDepartment} = useUser();
   const navigate = useNavigate();
   const { login, loading, error: storeError, clearError } = useLoginStore();
-
   const validRoles = ["Security", "HR", "Staff", "Head Department", "Director", "Super User"] as const;
   type Role = typeof validRoles[number];
-
   const handleLogin = async () => {
     if (!username || !password) {
       setError("Please fill in all fields");
       return;
     }
-
     clearError();
     setError("");
-
     try {
       const result = await login({ username: username.trim(), password });
       
@@ -43,7 +39,6 @@ export default function LoginPage() {
         setRole(normalizedRole as Role);
         setName(result.user.name);
         setDepartment(result.user.department);
-
         // Navigate based on role
         switch (normalizedRole) {
           case "HR":
@@ -68,7 +63,6 @@ export default function LoginPage() {
       setError("An unexpected error occurred");
     }
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       {/* <DebugAuth /> */}
@@ -82,7 +76,6 @@ export default function LoginPage() {
             <h2 className="text-3xl font-bold text-yellow-500">PT Alkindo Naratama Tbk</h2>
           </div>
         </div>
-
         {/* Right Side */}
         <div className="w-full md:w-1/2 p-10 flex items-center justify-center relative">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm md:hidden z-0"></div>
@@ -99,7 +92,6 @@ export default function LoginPage() {
                 <Button className="w-full" onClick={() => setView("login")}>Login</Button>
               </div>
             )}
-
             {view === "login" && (
               <div className="space-y-4">
                 <h2 className="text-2xl font-bold text-center text-slate-300 md:text-black">Log in</h2>

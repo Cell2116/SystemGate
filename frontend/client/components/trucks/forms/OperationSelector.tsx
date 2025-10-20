@@ -1,10 +1,8 @@
 import { Button } from "../../ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-
 interface OperationSelectorProps {
   onSelectOperation: (operation: "bongkar" | "muat") => void;
 }
-
 export function OperationSelector({ onSelectOperation }: OperationSelectorProps) {
   return (
     <div className="space-y-6">
@@ -20,7 +18,6 @@ export function OperationSelector({ onSelectOperation }: OperationSelectorProps)
             Unloading Operation
           </span>
         </Button>
-
         <Button
           type="button"
           onClick={() => onSelectOperation("muat")}

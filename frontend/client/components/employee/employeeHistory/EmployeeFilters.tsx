@@ -1,29 +1,24 @@
 import { ReactNode, CSSProperties } from "react";
 import { HistoryRecord } from "@/types/employee.types";
-
 type CardProps = {
     children: ReactNode;
     className?: string;
     style?: CSSProperties;
 };
-
 const Card = ({ children, className = "", style = {} }: CardProps) => (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`} style={style}>
         {children}
     </div>
 );
-
 type CardContentProps = {
     children: ReactNode;
     className?: string;
 };
-
 const CardContent = ({ children, className = "" }: CardContentProps) => (
     <div className={`p-6 ${className}`}>
         {children}
     </div>
 );
-
 interface EmployeeFiltersProps {
     filterOpen: boolean;
     setFilterOpen: (open: boolean) => void;
@@ -44,7 +39,6 @@ interface EmployeeFiltersProps {
     clearFilters: () => void;
     records: HistoryRecord[];
 }
-
 export default function EmployeeFilters({
     filterOpen,
     setFilterOpen,
@@ -73,10 +67,8 @@ export default function EmployeeFilters({
     ];
     const dynamicDepartments = Array.from(new Set(records.map(record => record.department)));
     const allDepartments = Array.from(new Set([...predefinedDepartments, ...dynamicDepartments])).sort();
-
     return (
         <>
-
             <div className={`transition-all duration-300 overflow-hidden ${filterOpen ? 'max-h-[100vh] mb-2 xl:mb-0 max-w-[100vw]' : 'max-h-0'}  md:mb-0 md:block`}>
                 <Card className="md:mb-0">
                     <CardContent>
@@ -94,7 +86,6 @@ export default function EmployeeFilters({
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 />
                             </div>
-
                             {/* Department Filter */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -112,7 +103,6 @@ export default function EmployeeFilters({
                                     ))}
                                 </select>
                             </div>
-
                             {/* Status Filter */}
                             <div>
                                 <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
@@ -131,7 +121,6 @@ export default function EmployeeFilters({
                                     <option value="leave_return">Leave Return</option>
                                 </select>
                             </div>
-
                             {/* Date From */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -145,7 +134,6 @@ export default function EmployeeFilters({
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                 />
                             </div>
-
                             {/* Date To */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -160,7 +148,6 @@ export default function EmployeeFilters({
                                 />
                             </div>
                         </div>
-
                         {/* Sort Options */}
                         <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-4 pt-4 border-t border-gray-200">
                             <div className="flex items-center gap-2 flex-wrap">

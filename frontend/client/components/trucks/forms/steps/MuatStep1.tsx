@@ -7,7 +7,6 @@ import {
   PhotoFields,
   VehicleSelectFields 
 } from "../fields";
-
 interface MuatStep1Props {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
@@ -19,7 +18,6 @@ interface MuatStep1Props {
   onPhotoCapture: (target: CameraTarget, imageData: string) => void;
   validationError?: string;
 }
-
 export function MuatStep1({
   formData,
   onFieldChange,
@@ -42,7 +40,6 @@ export function MuatStep1({
         formData={formData} 
         onFieldChange={onFieldChange} 
       />
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         <CompanyFields 
           formData={formData} 
@@ -56,7 +53,6 @@ export function MuatStep1({
           showSupplier={true}
         />
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TimeFields 
           formData={formData} 
@@ -73,7 +69,6 @@ export function MuatStep1({
           showTransporter={false}
         /> */}
       </div>
-
       <PhotoFields
         capturedImages={capturedImages}
         showCamera={showCamera}
@@ -85,7 +80,6 @@ export function MuatStep1({
         showSim={false}
         showStnk={false}
       />
-
       {validationError && (
         <div className="text-red-500 text-xs mb-2 text-left">
           {validationError}

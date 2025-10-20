@@ -215,7 +215,7 @@
 //     ).length;
 //     const total = operationTrucks.length;
 
-//     // console.log(pending, loading, finished, total);
+//     // 
 //     return { pending, loading, finished, total };
 //   };
 

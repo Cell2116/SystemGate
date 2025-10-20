@@ -22,10 +22,12 @@ interface Attendance {
   planned_return_time?: string | null;
   actual_exittime?: string | null;
   actual_returntime?: string | null;
+
 }
 interface LeavePermission {
   id: string;
   name: string;
+  // uid: string;
   licensePlate: string;
   department: string;
   role: string;
@@ -40,6 +42,12 @@ interface LeavePermission {
   statusFromHR: string;
   statusFromDirector: string;
   submittedAt: string;
+  departmentApprover?: string;
+  hrApprover?: string;
+  directorApprover?: string;
+  departmentApproverAt?: string;
+  hrApproverAt?: string;
+  directorApproverAt?: string;
 }
 interface User {
   id: number;
@@ -73,6 +81,7 @@ interface DashboardStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearRecords: () => void;
+
   fetchHistoryRecords: (filters?: {
     searchTerm?: string;
     department?: string;
@@ -92,7 +101,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   connectionStatus: 'disconnected',
   leavePermissions: [],
   users: [],
-  
+
+
   fetchLeavePermission: async() =>{
     set({ loading: true, error: null });
     try {
@@ -103,7 +113,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
           if (!dateTimeString) return '';
           return dateTimeString.replace('T', ' ').slice(0, 16);
         };
-
         const formatTime = (timeString: string | null) => {
           if (!timeString) return '';
           return timeString.slice(11, 16);
@@ -124,9 +133,11 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
           statusFromHR: item.statusfromhr ?? 'pending',
           statusFromDirector: item.statusfromdirector ?? 'pending',
           submittedAt: formatDateTime(item.submittedat),
+          hrApprover: item.hr_approver,
+          departmentApprover: item.department_approver,
         };
       });
-      //console.log(mapped);
+      
       set({ leavePermissions: mapped, loading: false });
       return mapped;
     } catch (error: any) {
@@ -134,11 +145,9 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       throw error;
     }
   },
-
   setLeavePermissions: (permissions) => {
     set({ leavePermissions: permissions });
   },
-
   addLeavePermission: async (entry) =>{
     set({ loading: true, error: null });
     try {
@@ -153,7 +162,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         String(now.getHours()).padStart(2, '0') + ':' +
         String(now.getMinutes()).padStart(2, '0') + ':' +
         String(now.getSeconds()).padStart(2, '0');
-
       const mappedEntry = {
         name: entry.name,
         licensePlate: entry.licensePlate,
@@ -169,9 +177,9 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         statusfromdirector: entry.statusFromDirector,
         submittedAt: formatted,
       };
-      //console.log(mappedEntry);
+      
       const res = await axios.post("http://192.168.4.108:3000/leave-permission", mappedEntry);
-      //console.log(res.data);
+      
       set((state) => ({
         leavePermissions: [res.data, ...state.leavePermissions],
         loading: false,
@@ -182,7 +190,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       throw error;
     }
   },
-
   updateLeavePermission: async (id, updates) => {
     set({ loading: true, error: null });
     try {
@@ -222,28 +229,20 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       throw error;
     }
   },
-
   fetchRecords: async () => {
-    //console.log("fetchRecords called - starting fetch...");
+    
     set({ loading: true, error: null });
     try {
-      //console.log("Making API call to http://192.168.4.108:3000/logs");
+    
       const res = await axios.get("http://192.168.4.108:3000/logs");
-      //console.log("API response received:", res.data.length, "records");
-      //console.log(res);
-      
       const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
         new Date(b.datein).getTime() - new Date(a.datein).getTime()
       );
-      
       set({ 
         records: sortedRecords, 
         loading: false,
         error: null 
       });
-      
-      //console.log(`Fetched ${sortedRecords.length} records from API`);
-      //console.log("fetchRecords completed successfully");
       return sortedRecords;
     } catch (error: any) {
       console.error("❌ fetchRecords failed:", error);
@@ -256,7 +255,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       throw error;
     }
   },
-
   fetchUsers: async () => {
     set({ loading: true, error: null });
     try {
@@ -267,7 +265,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         error: null 
       });
       
-      //console.log(`Fetched ${res.data.length} users from API`);
+      
       return res.data;
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to fetch users";
@@ -279,7 +277,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       throw error;
     }
   },
-
   fetchUsersByDepartment: async (department: string) => {
     set({ loading: true, error: null });
     try {
@@ -289,7 +286,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         error: null 
       });
       
-      //console.log(`Fetched ${res.data.length} users for department: ${department}`);
+      
       return res.data;
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to fetch users by department";
@@ -301,7 +298,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       throw error;
     }
   },
-
   addRecord: (newRecord) => {
     set((state) => {
       const isDuplicate = state.records.some(
@@ -309,15 +305,11 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
           rec.uid === newRecord.uid &&
           new Date(rec.datein).toISOString() === new Date(newRecord.datein).toISOString()
       );
-
       if (isDuplicate) {
         console.warn("Duplicate record ignored:", newRecord);
         return state;
       }
-
       const updatedRecords = [newRecord, ...state.records];
-      //console.log(`Added new record. Total records: ${updatedRecords.length}`);
-      
       return {
         ...state,
         records: updatedRecords,
@@ -325,7 +317,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       };
     });
   },
-
   updateRecord: (recordId, updates) => {
     set((state) => {
       const updatedRecords = state.records.map((record) =>
@@ -333,39 +324,33 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
           ? { ...record, ...updates }
           : record
       );
-
       const wasUpdated = updatedRecords.some(r => r.id === recordId);
       if (wasUpdated) {
-        //console.log(`Updated record ID ${recordId}:`, updates);
+        
       } else {
         console.warn(`Record ID ${recordId} not found for update`);
       }
-
       return {
         ...state,
         records: updatedRecords
       };
     });
   },
-
   updateRecordByUid: (uid, updates) => {
     set((state) => {
       const targetRecord = state.records
         .filter(r => r.uid === uid)
         .sort((a, b) => new Date(b.datein).getTime() - new Date(a.datein).getTime())[0];
-
       if (!targetRecord) {
         console.warn(`⚠️ No record found for UID ${uid}`);
         return state;
       }
-
       const updatedRecords = state.records.map((record) =>
         record.id === targetRecord.id
           ? { ...record, ...updates }
           : record
       );
-
-      //console.log(`Updated record for UID ${uid}:`, updates);
+      
       
       return {
         ...state,
@@ -373,30 +358,25 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       };
     });
   },
-
   setConnectionStatus: (status) => {
     set({ connectionStatus: status });
-    //console.log(`Connection status: ${status}`);
+    
   },
-
   setLoading: (loading) => {
     set({ loading });
   },
-
   setError: (error) => {
     set({ error });
     if (error) {
       console.error("❌ Store error:", error);
     }
   },
-
   clearRecords: () => {
     set({ records: [], error: null });
-    //console.log("Cleared all records");
+    
   },
-
   fetchHistoryRecords: async (filters = {}) => {
-    //console.log("fetchHistoryRecords called with filters:", filters);
+    
     set({ loading: true, error: null });
     try {
       const queryParams = new URLSearchParams();
@@ -407,11 +387,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       if (filters.dateTo) queryParams.append('dateTo', filters.dateTo);
 
       const url = `http://192.168.4.108:3000/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      //console.log("Making API call to:", url);
-      
       const res = await axios.get(url);
-      // console.log("API response received:", res.data.length, "history records");
-      
       const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
         new Date(b.datein).getTime() - new Date(a.datein).getTime()
       );
@@ -420,8 +396,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         loading: false,
         error: null 
       });
-      
-      //console.log(`Fetched ${sortedRecords.length} history records from API`);
       return sortedRecords;
     } catch (error: any) {
       console.error("❌ fetchHistoryRecords failed:", error);

@@ -6,12 +6,10 @@ import {
   DialogTitle,
 } from "../../ui/dialog";
 import AnalyticsTruck from "../../dashboard/analyticsTruck";
-
 interface AnalyticsDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
 export function AnalyticsDialog({ isOpen, onOpenChange }: AnalyticsDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

@@ -1,20 +1,39 @@
 import { useState } from "react";
 import { HistoryRecord } from "@/types/employee.types";
 import { formatDateTime, formatCustomDateTime } from "@/lib/utils";
-
 interface EmployeeModalProps {
     selectedRecord: HistoryRecord | null;
     setSelectedRecord: (record: HistoryRecord | null) => void;
 }
-
 export default function EmployeeModal({
     selectedRecord,
     setSelectedRecord
 }: EmployeeModalProps) {
     const [modalImage, setModalImage] = useState<string | null>(null);
+    const BASE_URL_PHOTO = 'http://192.168.4.108:3000/uploads/';
+
+    // Helper function to get approver display name
+    const getApproverDisplay = (name: string | null | undefined, role: string | null | undefined) => {
+        if (!name || !role) return 'N/A';
+        return `${name} (${role})`;
+    };
+
+    // Helper function to get friendly role name
+    const getFriendlyRoleName = (role: string | null | undefined) => {
+        if (!role) return '';
+        switch (role.toUpperCase()) {
+            case 'HEAD DEPARTMENT':
+                return 'Head Department';
+            case 'HR':
+                return 'HR';
+            case 'DIRECTOR':
+                return 'Director';
+            default:
+                return role;
+        }
+    };
 
     if (!selectedRecord) return null;
-
     return (
         <>
             {/* Detail Modal */}
@@ -36,7 +55,6 @@ export default function EmployeeModal({
                                 ×
                             </button>
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Basic Info */}
                             <div className="space-y-4">
@@ -50,7 +68,6 @@ export default function EmployeeModal({
                                     <div><span className="font-medium">Exit:</span> {formatDateTime(selectedRecord.dateout)}</div>
                                 </div>
                             </div>
-
                             {/* Leave Permission Info */}
                             <div className="space-y-4">
                                 <h3 className="font-semibold text-gray-900">Leave Permission</h3>
@@ -61,13 +78,24 @@ export default function EmployeeModal({
                                         <div><span className="font-medium">Planned Return:</span> {formatCustomDateTime(selectedRecord.planned_return_time)}</div>
                                         <div><span className="font-medium">Actual Exit:</span> {formatDateTime(selectedRecord.actual_exittime)}</div>
                                         <div><span className="font-medium">Actual Return:</span> {formatDateTime(selectedRecord.actual_returntime)}</div>
+                                        
+                                        {/* Approval Flow Section */}
+                                        <div className="mt-4 pt-3 border-t border-gray-200">
+                                            <h4 className="font-medium text-gray-800 mb-2">Approval Flow</h4>
+                                            <div className="space-y-1">
+                                                <div><span className="font-medium">Level 1 Approver:</span> {getApproverDisplay(selectedRecord.approval_level1_name, getFriendlyRoleName(selectedRecord.approval_level1_role))}</div>
+                                                <div><span className="font-medium">Level 2 Approver:</span> {getApproverDisplay(selectedRecord.approval_level2_name, getFriendlyRoleName(selectedRecord.approval_level2_role))}</div>
+                                                {selectedRecord.approval_level3_name && (
+                                                    <div><span className="font-medium">Level 3 Approver:</span> {getApproverDisplay(selectedRecord.approval_level3_name, getFriendlyRoleName(selectedRecord.approval_level3_role))}</div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="text-sm text-gray-500">No leave permission for this record</p>
                                 )}
                             </div>
                         </div>
-
                         {/* Images */}
                         <div className="mt-6">
                             <h3 className="font-semibold text-gray-900 mb-4">Photos</h3>
@@ -76,21 +104,21 @@ export default function EmployeeModal({
                                     <div className="text-center">
                                         <p className="text-sm font-medium mb-2">Entry</p>
                                         <img
-                                            src={`http://192.168.4.108:3000/uploads/${selectedRecord.image_path}`}
+                                            src={BASE_URL_PHOTO + selectedRecord.image_path}
                                             alt="Entry"
                                             className="w-full h-24 object-cover rounded border cursor-pointer"
-                                            onClick={() => setModalImage(`http://192.168.4.108:3000/uploads/${selectedRecord.image_path}`)}
-                                        />
+                                            onClick={() => setModalImage(BASE_URL_PHOTO + selectedRecord.image_path)}
+                                            />
                                     </div>
                                 )}
                                 {selectedRecord.image_path_out && (
                                     <div className="text-center">
                                         <p className="text-sm font-medium mb-2">Exit</p>
                                         <img
-                                            src={`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_out}`}
+                                            src={BASE_URL_PHOTO + selectedRecord.image_path_out}
                                             alt="Exit"
                                             className="w-full h-24 object-cover rounded border cursor-pointer"
-                                            onClick={() => setModalImage(`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_out}`)}
+                                            onClick={() => setModalImage(BASE_URL_PHOTO + selectedRecord.image_path_out)}
                                         />
                                     </div>
                                 )}
@@ -98,10 +126,10 @@ export default function EmployeeModal({
                                     <div className="text-center">
                                         <p className="text-sm font-medium mb-2">Leave Exit</p>
                                         <img
-                                            src={`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_leave_exit}`}
+                                            src={BASE_URL_PHOTO + selectedRecord.image_path_leave_exit}
                                             alt="Leave Exit"
                                             className="w-full h-24 object-cover rounded border cursor-pointer"
-                                            onClick={() => setModalImage(`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_leave_exit}`)}
+                                            onClick={() => setModalImage(BASE_URL_PHOTO + selectedRecord.image_path_leave_exit)}
                                         />
                                     </div>
                                 )}
@@ -109,10 +137,10 @@ export default function EmployeeModal({
                                     <div className="text-center">
                                         <p className="text-sm font-medium mb-2">Leave Return</p>
                                         <img
-                                            src={`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_leave_return}`}
+                                            src={BASE_URL_PHOTO + selectedRecord.image_path_leave_return}
                                             alt="Leave Return"
                                             className="w-full h-24 object-cover rounded border cursor-pointer"
-                                            onClick={() => setModalImage(`http://192.168.4.108:3000/uploads/${selectedRecord.image_path_leave_return}`)}
+                                            onClick={() => setModalImage(BASE_URL_PHOTO + selectedRecord.image_path_leave_return)}
                                         />
                                     </div>
                                 )}
@@ -121,7 +149,6 @@ export default function EmployeeModal({
                     </div>
                 </div>
             </div>
-
             {/* Image Modal */}
             {modalImage && (
                 <div

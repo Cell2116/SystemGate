@@ -1,18 +1,15 @@
 import { TruckHistoryRecord } from "@/types/truck.types";
 import { formatDateTime } from "@/lib/utils";
 import React from "react";
-
 type CardContentProps = {
     children: React.ReactNode;
     className?: string;
 };
-
 const CardContent = ({ children, className = "" }: CardContentProps) => (
     <div className={`p-6 ${className}`}>
         {children}
     </div>
 );
-
 interface TruckTableProps {
     loading: boolean;
     filteredRecords: TruckHistoryRecord[];
@@ -20,7 +17,6 @@ interface TruckTableProps {
     filterOpen: boolean;
     onViewDetails: (record: TruckHistoryRecord) => void;
 }
-
 export default function TruckTable({
     loading,
     filteredRecords,
@@ -28,7 +24,7 @@ export default function TruckTable({
     filterOpen,
     onViewDetails
 }: TruckTableProps) {
-
+    console.log("Current Records:", currentRecords)
     const getDisplayRecords = () => {
         if (typeof window !== 'undefined') {
             const isMobile = window.innerWidth < 1024;
@@ -37,19 +33,17 @@ export default function TruckTable({
         }
         return currentRecords.slice(0, 5);
     };
-
     const [displayRecords, setDisplayRecords] = React.useState(getDisplayRecords());
-
     React.useEffect(() => {
         const handleResize = () => {
+            // const updatedDisplayRecords = getDisplayRecords()
+            // console.log("Updated Display Records", updatedDisplayRecords)
             setDisplayRecords(getDisplayRecords());
         };
-
         handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, [currentRecords]);
-
     return (
         <CardContent className={`${filterOpen ? 'max-h-[35vh]' : 'max-h-[60vh]'} overflow-y-auto p-0`}>
             {loading ? (
@@ -101,6 +95,7 @@ export default function TruckTable({
                         <tbody className="bg-white divide-y divide-gray-200">
                             {displayRecords.map((record) => (
                                 <tr key={record.id} className="hover:bg-gray-50">
+                                    
                                     <td className="px-4 py-4 whitespace-nowrap">
                                         <div>
                                             <div className="text-sm font-medium text-gray-900">{record.goods || 'No goods info'}</div>

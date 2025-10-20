@@ -1,7 +1,6 @@
 /**
  * Audio utilities for playing notification sounds
  */
-
 export function playDingDongBell(): void {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -37,7 +36,6 @@ export function playDingDongBell(): void {
     console.warn('Audio playback failed:', error);
   }
 }
-
 export function playNotificationSound(type: 'success' | 'warning' | 'error' = 'success'): void {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();

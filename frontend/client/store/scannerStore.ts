@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 import { getIndonesianDateTime } from '../lib/timezone';
-
-// Centralized API base URL
 export const API_BASE_URL = "http://192.168.4.108:3000";
 
 interface ScanData {
@@ -9,7 +7,7 @@ interface ScanData {
     result: "loading" | "unloading" | null;
     timestamp: string;
     truckInfo?: {
-        plateNumber?: string;
+        platenumber?: string;
         status?: string;
         operation?: string;
     };
@@ -17,7 +15,7 @@ interface ScanData {
 
 interface TruckStatusUpdate {
     ticketNumber: string;
-    plateNumber: string;
+    platenumber: string;
     newStatus: string;
     operation: string;
     timestamp: string;
@@ -62,7 +60,7 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
     
     openActionModal: async (ticket, type) => {
         const suActions = [
-            "Masuk",
+            // "Masuk",
             "Mulai Timbang",
             "Selesai Timbang",
             "Menuju HPC",
@@ -71,40 +69,68 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
             "Selesai Muat/Bongkar",
             "Keluar",
         ];
-
         const cuActions = [
-            "Masuk",
+            // "Masuk",
+            "Mulai Timbang",
+            "Selesai Timbang",
             "Menuju HPC",
             "Masuk HPC",
             "Memulai Muat/Bongkar",
             "Selesai Muat/Bongkar",
             "Keluar",
         ];
-        
-        console.log('🔍 Opening action modal:', { ticket, type, actions: type === "SU" ? suActions : cuActions });
-        
-        // Ensure trucks data is loaded
         try {
             const { useTruckStore } = await import('./truckStore');
             const truckStoreState = useTruckStore.getState();
             
-            if (!truckStoreState.trucks || truckStoreState.trucks.length === 0) {
-                console.log('🔄 No trucks data found, fetching...');
-                await truckStoreState.fetchTrucks();
-            }
-            
-            const foundTruck = truckStoreState.trucks?.find((t: any) => t.noticket === ticket);
-            console.log('🔍 Truck search result:', { 
-                ticket, 
-                found: !!foundTruck,
-                totalTrucks: truckStoreState.trucks?.length || 0,
-                foundTruckDetails: foundTruck ? {
-                    id: foundTruck.id,
-                    noticket: foundTruck.noticket,
-                    plateNumber: foundTruck.plateNumber,
-                    status: foundTruck.status
-                } : null
+            console.log('🔍 Initial trucks state:', {
+                hasTrucks: !!truckStoreState.trucks,
+                trucksLength: truckStoreState.trucks?.length || 0,
+                trucksType: typeof truckStoreState.trucks
             });
+            
+            if (!truckStoreState.trucks || truckStoreState.trucks.length === 0) {
+                console.log('📡 Fetching trucks data...');
+                await truckStoreState.fetchTrucks();
+                const updatedState = useTruckStore.getState();
+                // console.log('📡 After fetchTrucks:', {
+                //     hasTrucks: !!updatedState.trucks,
+                //     trucksLength: updatedState.trucks?.length || 0,
+                //     trucksType: typeof updatedState.trucks,
+                //     firstTruck: updatedState.trucks?.[0] || null
+                // });
+            }            
+            const finalTruckState = useTruckStore.getState();
+            // console.log('🔍 Debug before search:', {
+            //     ticket: ticket,
+            //     ticketType: typeof ticket,
+            //     ticketLength: ticket?.length,
+            //     totalTrucks: finalTruckState.trucks?.length || 0,
+            //     sampleTrucks: finalTruckState.trucks?.slice(0, 3).map(t => ({
+            //         id: t.id,
+            //         noticket: t.noticket,
+            //         noticketType: typeof t.noticket,
+            //         exactMatch: t.noticket === ticket,
+            //         stringMatch: String(t.noticket).trim() === String(ticket).trim()
+            //     })),
+            //     allNotickets: finalTruckState.trucks?.map(t => t.noticket)
+            // });
+            
+            const foundTruck = finalTruckState.trucks?.find((t: any) =>
+                String(t.noticket).trim() === String(ticket).trim()
+            );
+            // console.log(foundTruck)
+            // console.log('🔍 Truck search result:', { 
+            //     ticket, 
+            //     found: !!foundTruck,
+            //     totalTrucks: truckStoreState.trucks?.length || 0,
+            //     foundTruckDetails: foundTruck ? {
+            //         id: foundTruck.id,
+            //         noticket: foundTruck.noticket,
+            //         platenumber: foundTruck.platenumber,
+            //         status: foundTruck.status
+            //     } : null
+            // });
         } catch (error) {
             console.error('❌ Error ensuring trucks data:', error);
         }
@@ -131,43 +157,28 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
     addToHistory: (scan) => set((state) => ({
         scanHistory: [scan, ...state.scanHistory.slice(0, 9)] 
     })),
-
     updateTruckStatus: async (ticketNumber: string) => {
         try {
-            console.log('🔍 Attempting to update truck status for ticket:', ticketNumber);
-            
-            // Import truck store dynamically to avoid circular dependency
             const { useTruckStore } = await import('./truckStore');
             const truckStoreState = useTruckStore.getState();
-            
-            // Find truck by ticket number
             const truck = truckStoreState.trucks?.find((t: any) => t.noticket === ticketNumber);
             if (!truck) {
-                console.log('❌ Truck not found for ticket:', ticketNumber);
                 return;
             }
-
-            console.log('✅ Truck found:', { id: truck.id, plate: truck.plateNumber, currentStatus: truck.status });
-
-            // Use Indonesian timezone for all timestamps
-            const currentTimeForDB = getIndonesianDateTime(); // Format: YYYY-MM-DD HH:mm:ss
-            console.log('🕐 Current Indonesian time for DB:', currentTimeForDB);
             
+            const currentTimeForDB = getIndonesianDateTime();
             let newStatus = truck.status;
             let updates: any = {};
-
-            // Status transition logic with proper timestamp
             if (truck.status === "waiting") {
                 newStatus = "loading";
                 updates.startLoadingTime = currentTimeForDB;
                 updates.status = newStatus;
-                console.log('🟡 Status change: Waiting → Loading, startloadingtime:', currentTimeForDB);
+                
             } else if (truck.status === "loading") {
                 newStatus = "finished";
                 updates.finishloadingtime = currentTimeForDB;
                 updates.status = newStatus;
                 
-                // Calculate total processing loading time if startLoadingTime exists
                 if (truck.startloadingtime) {
                     try {
                         const startTime = new Date(truck.startloadingtime);
@@ -178,36 +189,27 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
                         const minutes = diffMinutes % 60;
                         const totalTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
                         updates.totalProcessLoadingTime = totalTime;
-                        console.log('⏱️ Total processing time calculated:', totalTime);
+                        
                     } catch (timeError) {
                         console.error('⚠️ Error calculating processing time:', timeError);
                     }
                 }
-                
-                console.log('🟢 Status change: Loading → Finished, finishloadingtime:', currentTimeForDB);
             } else {
-                console.log('⚠️ Truck status cannot be updated. Current status:', truck.status);
+                
                 return;
             }
-
-            console.log('📤 Sending updates to database:', updates);
-
-            await truckStoreState.updateTruckAPI(truck.id, updates);
-            
-            // Refresh trucks to get latest data
+            await truckStoreState.updateTruckAPI(truck.id, updates);            
             await truckStoreState.refreshTrucks();
-            
-            console.log('✅ Database update successful');            
             const truckUpdate: TruckStatusUpdate = {
                 ticketNumber,
-                plateNumber: truck.plateNumber,
+                platenumber: truck.platenumber,
                 newStatus,
                 operation: truck.operation,
                 timestamp: new Date().toISOString()
             };
             
             set({ lastTruckUpdate: truckUpdate });
-            console.log('🎯 Truck status updated successfully:', truckUpdate);
+            
         } catch (error) {
             console.error('💥 Error updating truck status:', error);
             if (error && typeof error === 'object' && 'response' in error) {
@@ -217,25 +219,16 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
             }
         }
     },
-
     processScan: async (data) => {
         const timestamp = new Date().toLocaleTimeString();
         let result: "loading" | "unloading" | null = null;
         
-        console.log('🔍 Processing scan data:', data);
-        
-        // Check if scanned data is a ticket number (contains CU or SU)
         if (data.includes("CU") || data.includes("SU")) {
-            // result = data.includes("CU") ? "loading" : "unloading";
-            // console.log('🎯 Ticket detected:', data, 'Operation:', result);            
-            // console.log('📡 Calling updateTruckStatus for:', data);
-            // get().updateTruckStatus(data);
             const type = data.includes("SU") ? "SU" : "CU";
             await get().openActionModal(data, type);
         } else {
-            console.log('Not a ticket number, skipping truck update');
+            
         }
-        
         set({ 
             scannedData: data,
             scanResult: result,
@@ -244,22 +237,18 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
             scanBuffer: ""
         });
         
-        // Add to history with truck info if available
         const historyEntry: ScanData = {
             data,
             result,
             timestamp
         };
-        
         get().addToHistory(historyEntry);
-        
         setTimeout(() => {
             set({ isScanning: false });
         }, 500);
         
-        console.log('✅ Global scan processed:', { data, result, timestamp });
+        
     },
-
     updateTruckAPI: async (truckId: number, updateData: any) => {
         console.log('📡 Sending update to backend:', { 
             truckId,
@@ -274,7 +263,6 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
             },
             body: JSON.stringify(updateData)
         });
-
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ Backend error response:', {
@@ -284,9 +272,8 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
             });
             throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
-
         const result = await response.json();
-        console.log('✅ Truck updated successfully:', result);
+        
         return result;
     }
 }));

@@ -1,5 +1,4 @@
 // TODO Photo Still not Exist
-
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useTruckHistory } from "@/hooks/trucks/useTruckHistory";
@@ -12,11 +11,9 @@ import ExportButton from "@/components/trucks/tablehistory/ExportButton";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useState } from "react";
 import { TruckHistoryRecord } from "@/types/truck.types";
-
 export default function TruckHistory() {
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<TruckHistoryRecord | null>(null);
-
     // Custom hooks
     const { records, fetchTruckHistory, fetchData, loading, error } = useTruckHistory();
     const {
@@ -44,7 +41,6 @@ export default function TruckHistory() {
         indexOfLastRecord,
         clearFilters
     } = useTruckFilters(records);
-
     return (
         <>
             <div className="min-h-screen flex flex-col space-y-4 p-3 bg-gray-50">
@@ -81,13 +77,11 @@ export default function TruckHistory() {
                         </div>
                     )}
                 </div>
-
                 <div className="flex justify-center items-center xl:items-end xl:justify-end">
                     <div className="text-xs text-gray-500">
                         {filteredRecords.length} of {records.length} records
                     </div>
                 </div>
-
                 {/* Filters */}
                 <TruckFilters
                     filterOpen={filterOpen}
@@ -107,7 +101,6 @@ export default function TruckHistory() {
                     setSortOrder={setSortOrder}
                     onClearFilters={clearFilters}
                 />
-
                 {/* Records Table */}
                 <Card className={`${filterOpen ? 'hidden md:block' : 'block'}`}>
                     <TruckTable
@@ -118,7 +111,6 @@ export default function TruckHistory() {
                         onViewDetails={setSelectedRecord}
                     />
                 </Card>
-
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <TruckPagination
@@ -132,7 +124,6 @@ export default function TruckHistory() {
                     />
                 )}
             </div>
-
             {/* Detail Modal */}
             <TruckModal
                 selectedRecord={selectedRecord}

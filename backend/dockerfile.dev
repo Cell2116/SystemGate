@@ -1,0 +1,22 @@
+# FROM node:18-alpine
+
+# WORKDIR /app
+
+# # Install dependencies + ffmpeg
+# RUN apk add --no-cache ffmpeg
+
+# # Copy package.json dan install semua dependencies (termasuk dev)
+# COPY package*.json ./
+# RUN npm install -g nodemon && npm install
+
+# # Copy semua file (kode akan di-mount, tapi ini buat initial run)
+# COPY . .
+
+# # Set environment untuk development
+# ENV NODE_ENV=development
+# ENV FFMPEG_PATH=ffmpeg
+
+# EXPOSE 3000
+
+# # Gunakan nodemon agar auto-reload
+# CMD ["nodemon", "--legacy-watch", "server.js"]

@@ -27,7 +27,6 @@ coverage
 *.tmp.*
 log.txt
 uploads
-
 .DS_Store
 node_modules
 **/node_modules/**
@@ -35,7 +34,6 @@ build
 data
 .env
 load-ids.txt
-
 server
 tmp
 types
@@ -46,7 +44,6 @@ service
 tests
 fixtures-pages
 fixtures-apps
-
 # Netlify
 .netlify
 packages/ml-air/lib

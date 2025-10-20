@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { CameraTarget, CapturedImages } from "../types/truck.types";
-
 export function useCameraCapture() {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraTarget, setCameraTarget] = useState<CameraTarget | null>(null);
@@ -9,17 +8,14 @@ export function useCameraCapture() {
     sim: null,
     stnk: null,
   });
-
   const startCamera = (target: CameraTarget) => {
     setCameraTarget(target);
     setShowCamera(true);
   };
-
   const stopCamera = () => {
     setShowCamera(false);
     setCameraTarget(null);
   };
-
   const handlePhotoCapture = (target: CameraTarget, imageData: string) => {
     setCapturedImages(prev => ({
       ...prev,
@@ -28,14 +24,12 @@ export function useCameraCapture() {
     setShowCamera(false);
     setCameraTarget(null);
   };
-
   const clearCapturedImage = (target: CameraTarget) => {
     setCapturedImages(prev => ({
       ...prev,
       [target]: null,
     }));
   };
-
   const clearAllImages = () => {
     setCapturedImages({
       driver: null,
@@ -43,7 +37,6 @@ export function useCameraCapture() {
       stnk: null,
     });
   };
-
   const hasRequiredImages = (operation: "bongkar" | "muat", step: number) => {
     switch (operation) {
       case "bongkar":
@@ -68,7 +61,6 @@ export function useCameraCapture() {
         return true;
     }
   };
-
   return {
     // States
     showCamera,

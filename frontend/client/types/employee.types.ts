@@ -17,12 +17,24 @@ export interface HistoryRecord {
     planned_return_time?: string | null;
     actual_exittime?: string | null;
     actual_returntime?: string | null;
+    approval_level1_name?: string | null;
+    approval_level1_role?: string | null;
+    approval_level2_name?: string | null;
+    approval_level2_role?: string | null;
+    approval_level3_name?: string | null;
+    approval_level3_role?: string | null;
 }
-
 export interface FilterParams {
     searchTerm?: string;
     department?: string;
     status?: string;
     dateFrom?: string;
     dateTo?: string;
+}
+export interface User {
+    uid: string;
+    name: string;
+    department: string;
+    role: string;
+    licenseplate?: string;
 }

@@ -6,7 +6,6 @@ import {
   TimeFields,
   PhotoFields
 } from "../fields";
-
 interface BongkarStep1Props {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
@@ -18,7 +17,6 @@ interface BongkarStep1Props {
   onPhotoCapture: (target: CameraTarget, imageData: string) => void;
   validationError?: string;
 }
-
 export function BongkarStep1({
   formData,
   onFieldChange,
@@ -36,19 +34,16 @@ export function BongkarStep1({
         formData={formData}
         onFieldChange={onFieldChange}
       />
-
       <ContactFields
         formData={formData}
         onFieldChange={onFieldChange}
       />
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <CompanyFields
           formData={formData}
           onFieldChange={onFieldChange}
           showSupplier={true}
         />
-
         <TimeFields
           formData={formData}
           onFieldChange={onFieldChange}
@@ -56,7 +51,6 @@ export function BongkarStep1({
           showDate={false}
         />
       </div>
-
       <PhotoFields
         capturedImages={capturedImages}
         showCamera={showCamera}
@@ -68,7 +62,6 @@ export function BongkarStep1({
         showSim={false}
         showStnk={false}
       />
-
       {validationError && (
         <div className="text-red-500 text-xs mb-2 text-left">
           {validationError}

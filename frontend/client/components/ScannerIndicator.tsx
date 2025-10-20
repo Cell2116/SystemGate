@@ -1,10 +1,7 @@
 import { useScannerStore } from '../store/scannerStore';
-
 export const ScannerIndicator = () => {
     const { scanBuffer, scannedData, lastScanTime, lastTruckUpdate } = useScannerStore();
-
     if (!scanBuffer && !scannedData && !lastTruckUpdate) return null;
-
     return (
         <div className="fixed top-4 right-4 z-50 max-w-sm">
             {/* Scanning Buffer Indicator */}
@@ -29,7 +26,6 @@ export const ScannerIndicator = () => {
                     <div className="text-xs text-green-600 mt-1">{lastScanTime}</div>
                 </div>
             )}
-
             {/* Truck Status Update */}
             {lastTruckUpdate && (
                 <div className="bg-blue-100 border border-blue-400 text-blue-800 px-3 py-2 rounded-lg shadow-lg">
@@ -55,5 +51,4 @@ export const ScannerIndicator = () => {
         </div>
     );
 };
-
 export default ScannerIndicator;

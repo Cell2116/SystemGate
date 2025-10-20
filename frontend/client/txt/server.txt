@@ -22,13 +22,13 @@ const wss = new WebSocketServer({ server });
 
 // Middleware untuk serve static files dari uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-console.log('📁 Static files served from:', path.join(__dirname, 'uploads'));
+
 
 // Function untuk save image ke file
 function saveImageToFile(base64Data, filename) {
     return new Promise((resolve, reject) => {
         try {
-            console.log('📸 Saving image:', filename);
+            
             
             // Remove data:image/jpeg;base64, prefix
             const base64Image = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
@@ -36,16 +36,16 @@ function saveImageToFile(base64Data, filename) {
             
             // Ensure uploads/trucks directory exists
             const uploadDir = path.join(__dirname, 'uploads/trucks');
-            console.log('📁 Upload directory:', uploadDir);
+            
             
             if (!fs.existsSync(uploadDir)) {
                 fs.mkdirSync(uploadDir, { recursive: true });
-                console.log('📁 Created directory:', uploadDir);
+                
             }
             
             const filePath = path.join(uploadDir, filename);
             fs.writeFileSync(filePath, imageBuffer);
-            console.log('✅ Image saved to:', filePath);
+            
             
             // Return only filename for database storage
             resolve(filename);
@@ -58,7 +58,7 @@ function saveImageToFile(base64Data, filename) {
 
 // WebSocket broadcast function
 function broadcast(data) {
-    console.log("📢 Broadcasting to", wss.clients.size, "clients:", data.type || 'unknown');
+    
     wss.clients.forEach((client) => {
         if (client.readyState === 1) {
             client.send(JSON.stringify(data));
@@ -72,7 +72,7 @@ function broadcast(data) {
 
 // !! WEBSOCKET CONNECTION FUNCTION
 wss.on("connection", (ws) => {
-    console.log("✅ WebSocket client connected. Total clients:", wss.clients.size);
+    
 
     ws.send(JSON.stringify({
         type: "info",
@@ -81,11 +81,11 @@ wss.on("connection", (ws) => {
     }));
 
     ws.on("message", (message) => {
-        //console.log("Message from client:", message.toString());
+        //
     });
 
     ws.on("close", () => {
-        console.log("⚠️ WebSocket client disconnected. Remaining clients:", wss.clients.size);
+        
     });
 
     ws.on("error", (error) => {
@@ -103,7 +103,7 @@ const HIKVISION_POLL_INTERVAL = parseInt(process.env.HIKVISION_POLL_INTERVAL) ||
 let pollingActive = false;
 let pollingInterval = null;
 
-console.log(`🔧 Hikvision polling configured: ${HIKVISION_POLL_INTERVAL}ms interval`);
+
 
 // Process single attlog entry (sama persis dengan MQTT flow)
 async function processHikvisionEntry(attlogRecord) {
@@ -112,14 +112,14 @@ async function processHikvisionEntry(attlogRecord) {
     const personName = attlogRecord.personName;
     const direction = attlogRecord.direction;
 
-    console.log(`📡 Processing Hikvision entry: ${uid} - ${personName} - ${direction} at ${authDateTime.toISOString()}`);
+    
 
     try {
         // Get user info
         const userResult = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
 
         if (userResult.rows.length === 0) {
-            console.log(`❌ User not found: ${uid}`);
+            
             await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['user_not_found', attlogRecord.id]);
             return;
         }
@@ -128,7 +128,7 @@ async function processHikvisionEntry(attlogRecord) {
         const licensePlate = userInfo.licenseplate;
         const today = new Date().toISOString().split('T')[0];
 
-        console.log(`✅ Valid user: ${userInfo.name} (${uid})`);
+        
 
         // Check existing entry today
         const existingEntry = await db.query(
@@ -142,7 +142,7 @@ async function processHikvisionEntry(attlogRecord) {
 
         // SCENARIO 1: First tap (ENTRY)
         if (existingEntry.rows.length === 0) {
-            console.log(`🚪 ENTRY for ${userInfo.name}`);
+            
 
             // Capture entry photo
             const entryImagePath = await captureSnapshot(uid);
@@ -174,7 +174,7 @@ async function processHikvisionEntry(attlogRecord) {
                 status: 'entry'
             });
 
-            console.log(`✅ ENTRY broadcast sent for ${userInfo.name}`);
+            
 
             // Mark as processed
             await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['entry_processed', attlogRecord.id]);
@@ -183,7 +183,7 @@ async function processHikvisionEntry(attlogRecord) {
 
         // SCENARIO 2+: Subsequent taps
         const attendance = existingEntry.rows[0];
-        console.log(`🔄 Found existing entry for ${userInfo.name}, checking next action...`);
+        
 
         // Check for leave permission
         const leavePermission = await db.query(
@@ -203,11 +203,11 @@ async function processHikvisionEntry(attlogRecord) {
         // SCENARIO 2A: Has approved leave → LEAVE EXIT
         if (leavePermission.rows.length > 0) {
             const permission = leavePermission.rows[0];
-            console.log(`🏃 LEAVE EXIT for ${userInfo.name} - Leave ID: ${permission.id}`);
+            
 
             // Check if this is second/multiple leave
             if (attendance.leave_permission_id && attendance.leave_permission_id !== permission.id) {
-                console.log(`🔄 Creating NEW ROW for second leave`);
+                
 
                 // Capture leave exit photo
                 const leaveExitImagePath = await captureSnapshot(uid);
@@ -271,7 +271,7 @@ async function processHikvisionEntry(attlogRecord) {
                 broadcast({ type: 'data_change', table: 'attendance' });
             }
 
-            console.log(`✅ LEAVE EXIT broadcast sent`);
+            
             await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['leave_exit_processed', attlogRecord.id]);
             return;
         }
@@ -293,7 +293,7 @@ async function processHikvisionEntry(attlogRecord) {
         // SCENARIO 2C: LEAVE RETURN
         if (returningLeave.rows.length > 0) {
             const permission = returningLeave.rows[0];
-            console.log(`🔙 LEAVE RETURN for ${userInfo.name} - Leave ID: ${permission.id}`);
+            
 
             // Capture leave return photo
             const leaveReturnImagePath = await captureSnapshot(uid);
@@ -318,13 +318,13 @@ async function processHikvisionEntry(attlogRecord) {
 
             broadcast({ type: 'data_change', table: 'attendance' });
 
-            console.log(`✅ LEAVE RETURN broadcast sent`);
+            
             await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['leave_return_processed', attlogRecord.id]);
             return;
         }
 
         // SCENARIO 2D: REGULAR EXIT (no more leaves)
-        console.log(`🚪 REGULAR EXIT for ${userInfo.name} - closing all open records`);
+        
 
         // Capture exit photo
         const exitImagePath = await captureSnapshot(uid);
@@ -347,7 +347,7 @@ async function processHikvisionEntry(attlogRecord) {
 
         broadcast({ type: 'data_change', table: 'attendance' });
 
-        console.log(`✅ REGULAR EXIT broadcast sent`);
+        
         await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['exit_processed', attlogRecord.id]);
 
     } catch (error) {
@@ -360,7 +360,7 @@ async function processHikvisionEntry(attlogRecord) {
 // Main polling function
 async function pollHikvisionDatabase() {
     if (pollingActive) {
-        //console.log('⏭️ Skipping poll - already active');
+        //
         return;
     }
 
@@ -375,13 +375,13 @@ async function pollHikvisionDatabase() {
         );
 
         if (result.rows.length > 0) {
-            console.log(`\n📊 Found ${result.rows.length} unprocessed Hikvision records`);
+            
 
             for (const record of result.rows) {
                 await processHikvisionEntry(record);
             }
 
-            console.log(`✅ Processed ${result.rows.length} records\n`);
+            
         }
     } catch (error) {
         console.error('❌ Hikvision polling error:', error);
@@ -392,9 +392,9 @@ async function pollHikvisionDatabase() {
 
 // Start polling on server startup
 function startHikvisionPolling() {
-    console.log(`\n🔄 Starting Hikvision database polling...`);
-    console.log(`   Interval: ${HIKVISION_POLL_INTERVAL}ms (${HIKVISION_POLL_INTERVAL / 1000}s)`);
-    console.log(`   WebSocket clients: ${wss.clients.size}\n`);
+    
+    
+    
 
     // Run immediately
     pollHikvisionDatabase();
@@ -407,12 +407,12 @@ function startHikvisionPolling() {
 function stopHikvisionPolling() {
     if (pollingInterval) {
         clearInterval(pollingInterval);
-        console.log('⏹️ Hikvision polling stopped');
+        
     }
 }
 
 // Start polling after 2 seconds (give time for database connection)
-console.log('⏳ Scheduling Hikvision polling to start in 2 seconds...');
+
 setTimeout(startHikvisionPolling, 2000);
 
 // !! END OF HIKVISION POLLING SYSTEM
@@ -427,9 +427,9 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
-    //console.log("Checking leave permission for exit:", licensePlate);
+    //
     const attendanceDate = attendanceRecord.datein ? new Date(attendanceRecord.datein).toISOString().split('T')[0] : null;
-    //console.log("Query params:", { licensePlate, attendanceDate });
+    //
     const leavePermission = await db.query(
         `SELECT * FROM leave_permission 
         WHERE licenseplate = $1 
@@ -445,17 +445,17 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
         [licensePlate, attendanceDate]
     );
 
-    //console.log("leavePermission.rows:", leavePermission.rows);
+    //
 
     if (leavePermission.rows.length > 0) {
         const permission = leavePermission.rows[0];
-        //console.log(permission);
+        //
         const now = new Date();
         const plannedExitTime = new Date(permission.exittime);
 
-        //console.log("Found approved leave permission for:", licensePlate);
-        //console.log("Planned exit time:", plannedExitTime);
-        //console.log("Actual exit time:", now);
+        //
+        //
+        //
 
         // Update attendance_logs (leave permission exit)
         await db.query(
@@ -476,7 +476,7 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
             [permission.id]
         );
 
-        //console.log("Leave exit recorded - actual_exittime set in both attendance_logs and leave_permission");
+        //
 
         return {
             type: 'leave_exit',
@@ -485,7 +485,7 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
             isLate: now > plannedExitTime
         };
     } else {
-        //console.log("No approved leave permission found, treating as regular exit");
+        //
 
         // Regular exit
         await db.query(
@@ -503,7 +503,7 @@ async function handleEmployeeExit(uid, licensePlate, attendanceRecord) {
 }
 
 async function handleEmployeeReturn(uid, licensePlate) {
-    //console.log("Checking for active leave permission return:", licensePlate);
+    //
 
     // Check for leave that was exited but not returned (and not final)
     const activeLeavePermission = await db.query(
@@ -528,7 +528,7 @@ async function handleEmployeeReturn(uid, licensePlate) {
             leaveReason.includes('home');
 
         if (isNoReturnLeave) {
-            //console.log("User returned after final leave - treating as new entry");
+            //
             return {
                 type: 'new_entry_after_final'
             };
@@ -537,9 +537,9 @@ async function handleEmployeeReturn(uid, licensePlate) {
         const now = new Date();
         const plannedReturnTime = new Date(permission.returntime);
 
-        //console.log("Found active leave permission for return:", licensePlate);
-        //console.log("Planned return time:", plannedReturnTime);
-        //console.log("Actual return time:", now);
+        //
+        //
+        //
 
         // Update the attendance record for today with actual_returntime
         await db.query(
@@ -568,7 +568,7 @@ async function handleEmployeeReturn(uid, licensePlate) {
             isLate: now > plannedReturnTime
         };
     } else {
-        //console.log("No active leave permission found, treating as new entry");
+        //
         return {
             type: 'new_entry'
         };
@@ -585,12 +585,12 @@ async function handleEmployeeReturn(uid, licensePlate) {
 
 /* MQTT CODE DISABLED - NOW USING HIKVISION POLLING SYSTEM
 mqttClient.on('connect', () => {
-    //console.log('Connected to MQTT broker');
+    //
     mqttClient.subscribe('rfid/entry', (err) => {
         if (err) {
             console.error('Failed to subscribe to rfid/entry topic:', err);
         } else {
-            //console.log('Subscribed to rfid/entry topic');
+            //
         }
     });
 });
@@ -603,19 +603,19 @@ mqttClient.on('message', async (topic, message) => {
     if (topic === 'rfid/entry') {
         try {
             const payload = JSON.parse(message.toString());
-            //console.log('RFID payload:', payload);
+            //
 
             const { uid, timestamp } = payload;
 
             if (!uid) {
-                //console.log('Missing UID in payload');
+                //
                 return;
             }
 
             const user = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
 
             if (user.rows.length === 0) {
-                //console.log("UID not found:", uid);
+                //
 
                 mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
                     status: 'rejected',
@@ -626,7 +626,7 @@ mqttClient.on('message', async (topic, message) => {
 
             const userInfo = user.rows[0];
             const licensePlate = userInfo.licenseplate;
-            //console.log("Valid UID:", uid, "User:", userInfo.name);
+            //
 
             const today = new Date().toISOString().split('T')[0];
 
@@ -690,7 +690,7 @@ mqttClient.on('message', async (topic, message) => {
                 const leave = leavePermission.rows[0];
 
                 if (returningLeave) {
-                    //console.log("Processing LEAVE RETURN - specific attendance record");
+                    //
                     const imagePathLeaveReturn = await captureSnapshot(uid);
 
                     // Update the specific attendance record using attendance_log_id
@@ -839,7 +839,7 @@ mqttClient.on('message', async (topic, message) => {
                 }
 
                 else {
-                    console.log("Processing REGULAR EXIT - closing all open attendance");
+                    
 
                     const imagePathOut = await captureSnapshot(uid);
 
@@ -850,7 +850,7 @@ mqttClient.on('message', async (topic, message) => {
                         [uid, today]
                     );
 
-                    console.log("Found open records to close:", allOpenRecords.rows.length);
+                    
 
                     // Close all open records
                     for (const record of allOpenRecords.rows) {
@@ -858,7 +858,7 @@ mqttClient.on('message', async (topic, message) => {
                             'UPDATE attendance_logs SET image_path_out = $1, dateout = CURRENT_TIMESTAMP, status = $2 WHERE id = $3',
                             [imagePathOut, 'exit', record.id]
                         );
-                        console.log("Closed attendance record:", record.id);
+                        
                     }
 
                     // Broadcast the main record exit
@@ -884,7 +884,7 @@ mqttClient.on('message', async (topic, message) => {
             } else {
                 // =================== ENTRY LOGIC ===================
                 // Only allow entry if NO open attendance record exists for today
-                //console.log("Processing ENTRY for:", userInfo.name);
+                //
 
                 // Check for open records (dateout is NULL)
                 const doubleCheckEntry = await db.query(
@@ -894,7 +894,7 @@ mqttClient.on('message', async (topic, message) => {
                 );
 
                 if (doubleCheckEntry.rows.length > 0) {
-                    //console.log("Found open record, should not create new entry");
+                    //
                     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify({
                         status: 'rejected',
                         reason: 'Open Record Exists'
@@ -909,13 +909,13 @@ mqttClient.on('message', async (topic, message) => {
                 );
 
                 if (hadFinalLeaveToday.rows.length > 0) {
-                    //console.log("User returning after final leave, creating new entry");
+                    //
                 }
 
                 const returnResult = await handleEmployeeReturn(uid, licensePlate);
 
                 if (returnResult.type === 'leave_return') {
-                    //console.log("Processing LEAVE RETURN for:", userInfo.name);
+                    //
                     const imagePath = await captureSnapshot(uid);
 
                     await db.query(
@@ -960,7 +960,7 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     broadcast(returnDataFull);
-                    //console.log("LEAVE RETURN broadcasted to dashboard");
+                    //
 
                     const esp32Response = {
                         status: 'approved',
@@ -970,10 +970,10 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
-                    //console.log("Sent LEAVE RETURN approval to ESP32:", esp32Response);
+                    //
 
                 } else if (returnResult.type === 'new_entry_after_final') {
-                    //console.log("Processing NEW ENTRY after final leave for:", userInfo.name);
+                    //
 
                     const insertResult = await db.query(
                         'INSERT INTO attendance_logs (uid, licenseplate, status) VALUES ($1, $2, $3); SELECT * FROM attendance_logs WHERE id = SCOPE_IDENTITY()',
@@ -1004,7 +1004,7 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     broadcast(entryDataFull);
-                    //console.log("ENTRY AFTER FINAL broadcasted to dashboard");
+                    //
 
                     const esp32Response = {
                         status: 'approved',
@@ -1014,10 +1014,10 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
-                    //console.log("Sent RE-ENTRY approval to ESP32:", esp32Response);
+                    //
 
                 } else {
-                    //console.log("Processing NEW ENTRY for:", userInfo.name);
+                    //
 
                     const today = new Date().toISOString().split('T')[0];
                     const leavePermissionToday = await db.query(
@@ -1072,7 +1072,7 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     broadcast(entryDataFull);
-                    //console.log("ENTRY broadcasted to dashboard");
+                    //
 
                     const esp32Response = {
                         status: 'approved',
@@ -1082,7 +1082,7 @@ mqttClient.on('message', async (topic, message) => {
                     };
 
                     mqttClient.publish(`rfid/approval/${uid}`, JSON.stringify(esp32Response));
-                    //console.log("Sent ENTRY approval to ESP32:", esp32Response);
+                    //
                 }
             }
 
@@ -1178,7 +1178,7 @@ app.get('/logs', async (req, res) => {
             FROM leave_permission 
             WHERE actual_exittime IS NOT NULL OR actual_returntime IS NOT NULL
         `);
-        console.log("🔍 Records with actual times in leave_permission:", leavePermCheck.rows);
+        
 
         const result = await db.query(`
             SELECT
@@ -1211,7 +1211,7 @@ app.get('/logs', async (req, res) => {
             ORDER BY al.datein DESC
         `);
 
-        console.log("📊 Sample raw row from query:", result.rows[0]);
+        
 
         const formattedRows = result.rows.map(row => {
             // Use actual times from attendance_logs first, then from leave_permission as fallback
@@ -1257,7 +1257,7 @@ app.get('/logs', async (req, res) => {
             return formatted;
         });
 
-        console.log(`📈 Fetched ${formattedRows.length} log records. Records with actual times: ${formattedRows.filter(r => r.actual_exittime || r.actual_returntime).length}`);
+        
         res.json(formattedRows);
     } catch (e) {
         console.error("❌ Error fetching logs:", e);
@@ -1278,7 +1278,7 @@ app.get('/users', async (req, res) => {
             FROM users 
             ORDER BY name ASC
         `);
-        //console.log(`Fetched ${result.rows.length} users`);
+        //
         res.json(result.rows);
     } catch (error) {
         console.error('❌ Error fetching users:', error);
@@ -1301,7 +1301,7 @@ app.get('/users/department/:department', async (req, res) => {
             WHERE department = $1
             ORDER BY name ASC
         `, [department]);
-        //console.log(`Fetched ${result.rows.length} users for department: ${department}`);
+        //
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching users by department:', error);
@@ -1312,7 +1312,7 @@ app.get('/users/department/:department', async (req, res) => {
 app.get('/employee/:uid/leave-status', async (req, res) => {
     try {
         const { uid } = req.params;
-        console.log(`🔍 Fetching leave status for UID: ${uid}`);
+        
 
         const user = await db.query('SELECT * FROM users WHERE uid = $1', [uid]);
         if (user.rows.length === 0) {
@@ -1463,8 +1463,8 @@ app.post('/leave-permission', async (req, res) => {
 app.put('/leave-permission/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        console.log(`🔄 Updating leave permission ID: ${id}`);
-        console.log('📝 Update data:', req.body);
+        
+        
         
         const allowedFields = [
             'approval',
@@ -1503,14 +1503,14 @@ app.put('/leave-permission/:id', async (req, res) => {
         // First check if record exists
         const existsResult = await db.query('SELECT id FROM leave_permission WHERE id = $1', [id]);
         if (existsResult.rows.length === 0) {
-            console.log(`❌ Leave permission not found: ID ${id}`);
+            
             return res.status(404).json({ message: 'Leave permission not found' });
         }
         
         // Update the record
         const updateQuery = `UPDATE leave_permission SET ${setClauses.join(', ')} WHERE id = $${values.length}`;
-        console.log('🔧 Update query:', updateQuery);
-        console.log('🔧 Update values:', values);
+        
+        
         
         await db.query(updateQuery, values);
         
@@ -1522,7 +1522,7 @@ app.put('/leave-permission/:id', async (req, res) => {
         }
         
         const updatedRecord = result.rows[0];
-        console.log('✅ Leave permission updated successfully:', updatedRecord.id);
+        
         
         broadcast({
             type: 'leave_permission',
@@ -1546,7 +1546,7 @@ app.get('/leave-permission', async (req, res) => {
             row.actual_exittime || row.actual_returntime
         );
         
-        console.log(`📊 Leave Permission API: Total records: ${result.rows.length}, With actual times: ${recordsWithActualTimes.length}`);
+        
         
         if (recordsWithActualTimes.length > 0) {
             console.log("✅ Records with actual times:", recordsWithActualTimes.map(row => ({
@@ -1638,7 +1638,7 @@ app.post('/auth/login', async (req, res) => {
         );
         const { password: _, ...userWithoutPassword } = user;
 
-        //console.log(`User logged in: ${user.name} (${user.role})`);
+        //
 
         res.json({
             success: true,
@@ -1683,7 +1683,7 @@ app.get('/auth/me', authenticateToken, async (req, res) => {
 });
 
 app.post('/auth/logout', authenticateToken, (req, res) => {
-    //console.log(`User logged out: ${req.user.name}`);
+    //
     res.json({
         success: true,
         message: 'Logged out successfully'
@@ -1723,7 +1723,7 @@ app.post('/auth/register', async (req, res) => {
             [name, username, hashedPassword, department, role]
         );
 
-        //console.log(`New user registered: ${name} (${role})`);
+        //
 
         res.status(201).json({
             success: true,
@@ -1748,7 +1748,7 @@ app.post('/auth/register', async (req, res) => {
 // !! API FOR SURAT JALAN 
 app.get('/api/suratjalan', async (req, res) => {
     try {
-        console.log('Fetching surat jalan data from database...');
+        
 
         const query = `
             SELECT nosj, tanggal 
@@ -1757,8 +1757,8 @@ app.get('/api/suratjalan', async (req, res) => {
         `;
 
         const results = await db.query(query);
-        console.log('Surat jalan data fetched:', results);
-        console.log('Results rows:', results.rows);
+        
+        
 
         res.json(results.rows);
 
@@ -1784,7 +1784,7 @@ app.post('/api/suratjalan', async (req, res) => {
             });
         }
 
-        console.log('Saving new surat jalan:', { nosj, tanggal });
+        
 
         // Cek apakah nomor surat jalan sudah ada
         const checkQuery = 'SELECT nosj FROM suratjalan WHERE nosj = $1';
@@ -1805,7 +1805,7 @@ app.post('/api/suratjalan', async (req, res) => {
         const currentDate = tanggal || new Date().toISOString().slice(0, 10);
         await db.query(insertQuery, [nosj, currentDate]);
 
-        console.log('Surat jalan saved successfully');
+        
 
         res.json({
             success: true,
@@ -1833,8 +1833,8 @@ app.get('/api/trucks/history', async (req, res) => {
     try {
         const { searchTerm, status, type, dateFrom, dateTo } = req.query;
         
-        console.log('=== GET TRUCKS HISTORY API CALLED (3-TABLE) ===');
-        console.log('Query params:', { searchTerm, status, type, dateFrom, dateTo });
+        
+        
 
         // Connect to SQL Server
         const pool = await db.getPool();
@@ -1891,11 +1891,11 @@ app.get('/api/trucks/history', async (req, res) => {
         // Order by latest first
         query += ` ORDER BY t.date DESC, tt.arrivaltime DESC`;
 
-        console.log('History query:', query);
+        
 
         const result = await request.query(query);
         
-        console.log(`✅ Found ${result.recordset.length} truck history records`);
+        
         res.json(result.recordset);
         
     } catch (error) {
@@ -1910,7 +1910,7 @@ app.get('/api/trucks/history', async (req, res) => {
 // POST endpoint untuk membuat truck baru (3-table structure)
 app.post('/api/trucks', async (req, res) => {
     try {
-        console.log('=== RECEIVED TRUCK DATA (3-TABLE STRUCTURE) ===', req.body);
+        
 
         const {
             // Main truck data (trucks table)
@@ -2060,7 +2060,7 @@ app.post('/api/trucks', async (req, res) => {
 
             await transaction.commit();
             
-            console.log('=== NEW TRUCK CREATED (3-TABLE) ===', newTruck);
+            
             res.status(201).json(newTruck);
 
         } catch (error) {
@@ -2083,12 +2083,12 @@ app.post('/api/trucks', async (req, res) => {
 // PUT endpoint untuk update truck (3-table structure)
 app.put('/api/trucks/:id', async (req, res) => {
     try {
-        console.log('=== UPDATE TRUCK API CALLED (3-TABLE) ===');
+        
         const { id } = req.params;
         const updateData = req.body;
 
-        console.log('Truck ID:', id);
-        console.log('Update data received:', updateData);
+        
+        
 
         // Handle image saving
         const imageFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
@@ -2136,7 +2136,7 @@ app.put('/api/trucks/:id', async (req, res) => {
                 }).join(', ');
 
                 const mainQuery = `UPDATE trucks SET ${setClause} WHERE id = @id`;
-                console.log('Updating main table:', mainQuery);
+                
                 
                 await mainRequest.query(mainQuery);
             }
@@ -2157,7 +2157,7 @@ app.put('/api/trucks/:id', async (req, res) => {
                 }).join(', ');
 
                 const timeQuery = `UPDATE truck_times SET ${timeSetClause} WHERE truck_id = @truck_id`;
-                console.log('Updating time table:', timeQuery);
+                
                 
                 await timeRequest.query(timeQuery);
             }
@@ -2174,7 +2174,7 @@ app.put('/api/trucks/:id', async (req, res) => {
                 }).join(', ');
 
                 const photoQuery = `UPDATE truck_photos SET ${photoSetClause} WHERE truck_id = @truck_id`;
-                console.log('Updating photo table:', photoQuery);
+                
                 
                 await photoRequest.query(photoQuery);
             }
@@ -2200,7 +2200,7 @@ app.put('/api/trucks/:id', async (req, res) => {
 
             if (selectResult.recordset.length === 0) {
                 await transaction.rollback();
-                console.log('❌ Truck not found with ID:', id);
+                
                 return res.status(404).json({ error: 'Truck not found' });
             }
 
@@ -2208,8 +2208,8 @@ app.put('/api/trucks/:id', async (req, res) => {
 
             await transaction.commit();
             
-            console.log('✅ Truck updated successfully (3-table)');
-            console.log('Updated truck data:', updatedTruck);
+            
+            
 
             res.json(updatedTruck);
 
@@ -2253,8 +2253,8 @@ app.get('/api/trucks', async (req, res) => {
     try {
         const { searchTerm, status, type, operation, dateFrom, dateTo } = req.query;
         
-        console.log('=== GET TRUCKS API CALLED (3-TABLE) ===');
-        console.log('Query params:', { searchTerm, status, type, operation, dateFrom, dateTo });
+        
+        
 
         // Connect to SQL Server
         const pool = await db.getPool();
@@ -2325,11 +2325,11 @@ app.get('/api/trucks', async (req, res) => {
         // Order by latest first
         query += ` ORDER BY t.id DESC`;
 
-        console.log('Final query:', query);
+        
 
         const result = await request.query(query);
         
-        console.log(`✅ Found ${result.recordset.length} trucks`);
+        
         res.json(result.recordset);
         
     } catch (error) {
@@ -2347,8 +2347,8 @@ app.delete('/api/trucks/:id', async (req, res) => {
     try {
         const { id } = req.params;
         
-        console.log('=== DELETE TRUCK API CALLED (3-TABLE) ===');
-        console.log('Truck ID:', id);
+        
+        
 
         // Connect to SQL Server and execute transaction
         const pool = await db.getPool();
@@ -2392,7 +2392,7 @@ app.delete('/api/trucks/:id', async (req, res) => {
 
             await transaction.commit();
             
-            console.log('✅ Truck deleted successfully (3-table)');
+            
             res.json({ 
                 message: 'Truck deleted successfully', 
                 truck: truckData 
@@ -2445,7 +2445,7 @@ app.post('/api/trucks/upload-photo', async (req, res) => {
         // Return the relative path for database storage
         const relativePath = `trucks/${fileName}`;
 
-        console.log(`✅ Truck photo saved: ${relativePath}`);
+        
 
         res.json({
             success: true,
@@ -2470,8 +2470,8 @@ app.post('/api/trucks/upload-photo', async (req, res) => {
 //-------------------------------------------------------//
 
 server.listen(port, () => {
-    console.log(`\n🚀 Server + WebSocket listening on http://192.168.4.108:${port}`);
-    console.log(`📡 WebSocket endpoint: ws://192.168.4.108:${port}`);
-    console.log(`📁 Image uploads: http://192.168.4.108:${port}/uploads/`);
-    console.log(`⏰ Hikvision polling will start in 2 seconds...\n`);
+    
+    
+    
+    
 });

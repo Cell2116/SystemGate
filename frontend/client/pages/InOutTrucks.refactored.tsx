@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Table, TableBody, TableHeader, TableRow, TableCell, TableHead } from "../components/ui/table";
 import Clock2 from "../components/dashboard/clock";
 
-// Import hooks and types
+
 import { useFormSteps } from "../hooks/trucks/useFormSteps";
 import { useCameraCapture } from "../hooks/useCameraCapture";
 import { useTrucksWithFetch } from "../store/truckStore";
@@ -18,7 +18,7 @@ import { TruckFormData, OperationType } from "../types/truck.types";
 import { INITIAL_FORM_DATA } from "../constants/truck.constants";
 import { TrucksQueue } from "@/components/trucks/table/TruckQueueTable";
 
-// Import komponen form yang sudah direfactor
+
 import { 
   BongkarStep1, 
   BongkarStep2, 
@@ -38,7 +38,7 @@ export default function InOutTrucks() {
   const [formData, setFormData] = useState<TruckFormData>(INITIAL_FORM_DATA);
   const [inputMode, setInputMode] = useState<"select" | "manual">("select");
   
-  // Use form steps hook
+  
   const {
     formStep,
     operationType,
@@ -52,15 +52,13 @@ export default function InOutTrucks() {
     goToPreviousStep,
     goToNextStep,
   } = useFormSteps();
-
-  // Set default value for type field when operation type changes to "muat"
+  
   useEffect(() => {
     if (operationType === "muat" && formData.type === "") {
       setFormData(prev => ({ ...prev, type: "internal" }));
     }
   }, [operationType, formData.type]);
-
-  // Camera hook
+  
   const {
     showCamera,
     cameraTarget,
@@ -70,8 +68,7 @@ export default function InOutTrucks() {
     handlePhotoCapture,
     clearAllImages,
   } = useCameraCapture();
-
-  // Data hooks
+  
   const {
     trucks: allTrucks,
     loading: trucksLoading,
@@ -80,23 +77,20 @@ export default function InOutTrucks() {
     createTruck,
     updateTruckAPI,
   } = useTrucksWithFetch({});
-
-  // Validation hook
+  
   const { validationStep, getValidationMessage, validateAllSteps } = useFormValidation({
     formData,
     operationType,
     capturedImages
   });
-
-  // Ticket generation hook
+  
   const { previewTicketNumber, generateActualTicketNumber, handlePrintTicket } = useTicketGeneration({
     formData,
     operationType,
     formStep,
     trucks: allTrucks || []
   });
-
-  // Submission hook
+  
   const { submitTruck, isSubmitting } = useTruckSubmission({
     createTruck: async (truck) => {
       await createTruck(truck);
@@ -112,7 +106,6 @@ export default function InOutTrucks() {
       clearAllImages();
     }
   });
-
   const handleInputChange = (field: string, value: string) => {
     if (field === "reasonType" && value === "Sick") {
       setFormData((prev) => ({ ...prev, [field]: value, returnTime: "" }));
@@ -120,28 +113,18 @@ export default function InOutTrucks() {
       setFormData((prev) => ({ ...prev, [field]: value }));
     }
   };
-
   const handleNextStep = () => {
-    // Validate current step before proceeding
+    
     const currentStepValid = validationStep(formStep, operationType);
     if (!currentStepValid) {
       const errorMessage = getValidationMessage(formStep, operationType);
       setValidationError(errorMessage);
       return;
     }
-    
-    // Clear validation error and proceed
     setValidationError("");
     goToNextStep();
   };
-
   const trucks = allTrucks || [];
-  
-  // Debug log untuk melihat data trucks
-  console.log('Debug trucks data:', trucks);
-  console.log('Debug trucks type fields:', trucks.map(t => ({ id: t.id, type: t.type, plateNumber: t.plateNumber })));
-
-  // Submit functions
   const handleSubmitBongkar = async () => {
     try {
       if (!validateAllSteps) {
@@ -156,7 +139,6 @@ export default function InOutTrucks() {
       setValidationError("Gagal menyimpan data. Silakan coba lagi.");
     }
   };
-
   const handleSubmitMuat = async () => {
     try {
       if (!validateAllSteps) {
@@ -171,20 +153,15 @@ export default function InOutTrucks() {
       setValidationError("Gagal menyimpan data. Silakan coba lagi.");
     }
   };
-
-  // Stats functions
+  
   const getOperationStats = (operation: "bongkar" | "muat") => {
     const operationTrucks = trucks.filter((truck) => truck.operation === operation);
-    
-    // Debug: Log the trucks and their statuses
-    console.log(`${operation} trucks:`, operationTrucks);
-    console.log(`${operation} statuses:`, operationTrucks.map(t => t.status));
-    
-    // Based on actual database statuses: "waiting", "timbang", "loading", "unloading", "done", "on process", "finished"
     const pending = operationTrucks.filter((truck) => 
       truck.status === "waiting" || 
-      truck.status === "timbang" ||
       truck.status === "on process"
+    ).length;
+    const weighing = operationTrucks.filter((truck) => 
+      truck.status === "timbang"
     ).length;
     
     const loading = operationTrucks.filter((truck) => 
@@ -198,27 +175,16 @@ export default function InOutTrucks() {
     ).length;
     
     const total = operationTrucks.length;
-    
-    console.log(`${operation} stats:`, { pending, loading, finished, total });
-    
-    return { pending, loading, finished, total };
+    return { pending, weighing, loading, finished, total };
   };
-
   const muatStats = getOperationStats("muat");
   const bongkarStats = getOperationStats("bongkar");
-  
-  // Debug: Log all trucks data
-  console.log("All trucks data:", trucks);
-  console.log("Trucks length:", trucks.length);
-  
   const getDepartmentStats = (department: string) => {
     return trucks.filter((truck) => truck.department === department).length;
   };
-
   const getTypeStats = (type: string) => {
     return trucks.filter((truck) => truck.type === type).length;
   };
-
   return (
     <div className="space-y-6 p-3">
       {/* Header */}
@@ -236,7 +202,6 @@ export default function InOutTrucks() {
           <Clock2 />
         </div> */}
       </div>
-
       {/* Button */}
       <div>
         <div className="justify-center items-center flex sm:flex-col lg:flex-row gap-4">
@@ -245,7 +210,7 @@ export default function InOutTrucks() {
             onOpenChange={(open) => {
               setIsOpen(open);
               if (!open) {
-                // Reset everything when closing dialog
+                
                 setFormStep(0);
                 setOperationType("");
                 setInputMode("select");
@@ -262,7 +227,6 @@ export default function InOutTrucks() {
                 Add New Truck
               </Button>
             </DialogTrigger>
-
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card/95 border-border/50">
               <DialogHeader className="space-y-3">
                 <DialogTitle className="text-2xl font-bold text-center">
@@ -284,7 +248,6 @@ export default function InOutTrucks() {
                         : ""}
                 </DialogDescription>
               </DialogHeader>
-
               <form className="space-y-4 py-4">
                 {/* Step 0: Operation Selection */}
                 {formStep === 0 && (
@@ -295,7 +258,6 @@ export default function InOutTrucks() {
                     }}
                   />
                 )}
-
                 {/* Bongkar Forms */}
                 {formStep === 1 && operationType === "bongkar" && (
                   <BongkarStep1
@@ -310,7 +272,6 @@ export default function InOutTrucks() {
                     validationError={validationError}
                   />
                 )}
-
                 {formStep === 2 && operationType === "bongkar" && (
                   <BongkarStep2
                     formData={formData}
@@ -324,7 +285,6 @@ export default function InOutTrucks() {
                     validationError={validationError}
                   />
                 )}
-
                 {formStep === 3 && operationType === "bongkar" && (
                   <BongkarStep3
                     formData={formData}
@@ -332,7 +292,6 @@ export default function InOutTrucks() {
                     validationError={validationError}
                   />
                 )}
-
                 {formStep === 4 && operationType === "bongkar" && (
                   <TicketPreview
                     formData={formData}
@@ -341,7 +300,6 @@ export default function InOutTrucks() {
                     operationType="bongkar"
                   />
                 )}
-
                 {/* Muat Forms */}
                 {formStep === 1 && operationType === "muat" && (
                   <MuatStep1
@@ -356,7 +314,6 @@ export default function InOutTrucks() {
                     validationError={validationError}
                   />
                 )}
-
                 {formStep === 2 && operationType === "muat" && (
                   <MuatStep2
                     formData={formData}
@@ -370,7 +327,6 @@ export default function InOutTrucks() {
                     validationError={validationError}
                   />
                 )}
-
                 {formStep === 3 && operationType === "muat" && (
                   <TicketPreview
                     formData={formData}
@@ -379,7 +335,6 @@ export default function InOutTrucks() {
                     operationType="muat"
                   />
                 )}
-
                 {/* Navigation Buttons */}
                 <div className="flex flex-row justify-between gap-4 pt-4">
                   {canGoPrevious && (
@@ -393,7 +348,6 @@ export default function InOutTrucks() {
                       Kembali
                     </Button>
                   )}
-
                   {canGoNext && !isLastStep && (
                     <Button
                       type="button"
@@ -409,7 +363,6 @@ export default function InOutTrucks() {
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   )}
-
                   {isLastStep && (
                     <Button
                       type="button"
@@ -430,7 +383,6 @@ export default function InOutTrucks() {
                     </Button>
                   )}
                 </div>
-
                 {/* Display validation error */}
                 {validationError && (
                   <div className="text-red-500 text-sm mt-2 p-2 bg-red-50 border border-red-200 rounded">
@@ -450,7 +402,6 @@ export default function InOutTrucks() {
           </Button>
         </div>
       </div>
-
       {/* Main Content */}
       <div className="flex sm:flex-row lg:flex-row gap-4 md:h-[64vh] xl:h-[67vh] w-full xl:pr-9 2xl:pr-2">
         {/* Left Half - 6 Cards Total */}
@@ -460,20 +411,17 @@ export default function InOutTrucks() {
             muatStats={muatStats}
             bongkarStats={bongkarStats}
           />
-
           {/* Bottom Row: 4 Cards - Internal + External, PBPG, HPC, PT */}
           <CardDashboardTruck 
             getTypeStats={getTypeStats}
             getDepartmentStats={getDepartmentStats}
           />
         </div>
-
         {/* Right Half - Trucks in Queue */}
         <div className="w-1/2 h-full">
           <TrucksQueue/>
         </div>
       </div>
-
       {/* Analytics Dialog */}
       <AnalyticsDialog 
         isOpen={isAnalyticsOpen} 

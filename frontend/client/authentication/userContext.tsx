@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
-type Role = "Security" | "HR" | "Staff" | "Head Department" | "Director" | "Super User";
+type Role = "Security" | "HR" | "Staff" | "Head Department" | "Director" | "Super User" | "Admin";
 
 interface UserContextType {
   role: Role;
@@ -15,14 +15,13 @@ const defaultRole: Role = "Staff";
 const defaultName = "";
 const defaultDepartment = "";
 const UserContext = createContext<UserContextType | undefined>(undefined);
-//console.log("userContext Mounted");
+
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRoleState] = useState<Role>(defaultRole);
   const [name, setNameState] = useState<string>(defaultName);
   const [department, setDepartmentState] = useState<string>(defaultDepartment);
-
   useEffect(() => {
-    //console.log("User Provide mounted");
+    
     const storedRole = localStorage.getItem("userRole");
     const storedName = localStorage.getItem("userName");
     const storedDepartment = localStorage.getItem("userDepartment");
@@ -33,14 +32,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       normalized === "Staff" ||
       normalized === "Head Department" ||
       normalized === "Director" ||
-      normalized === "Super User"
+      normalized === "Super User" ||
+      normalized === "Admin"
     ) {
       setRoleState(normalized);
     }
     if (storedName) setNameState(storedName);
     if (storedDepartment) setDepartmentState(storedDepartment);
   }, []);
-
   const setRole = (newRole: Role) => {
     setRoleState(newRole);
     localStorage.setItem("userRole", newRole);
@@ -53,7 +52,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setDepartmentState(newDepartment);
     localStorage.setItem("userDepartment", newDepartment);
   };
-
   return (
     <UserContext.Provider value={{ role, setRole, name, setName, department, setDepartment }}>
       {children}

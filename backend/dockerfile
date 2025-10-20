@@ -1,38 +1,26 @@
 
-# FROM node:18
-
+# FROM node:18-alpine
 # WORKDIR /app
-
+# RUN apk add --no-cache ffmpeg
+# ENV FFMPEG_PATH=ffmpeg
 # COPY package*.json ./
-# RUN npm install
-
+# RUN npm ci --omit=dev
 # COPY . .
-
 # EXPOSE 3000
 # CMD ["node", "server.js"]
 
-# Alpine with FFmpeg
+
 FROM node:18-alpine
 WORKDIR /app
-
-# Install ffmpeg
 RUN apk add --no-cache ffmpeg
-# RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
-
-# Set ffmpeg path for the application
 ENV FFMPEG_PATH=ffmpeg
 
+# Install dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install -g nodemon && npm install
+
+# Copy source code
 COPY . .
+
 EXPOSE 3000
-CMD ["node", "server.js"]
-
-# FROM node:18-slim 
-# WORKDIR /app
-# COPY package*.json ./
-# RUN npm ci --only=production
-# COPY . .
-# EXPOSE 3000
-# CMD ["node", "server.js"]
-
+CMD ["nodemon", "server.js"]

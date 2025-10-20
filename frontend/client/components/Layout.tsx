@@ -1,8 +1,9 @@
-// TODO Operation Menu need one more new menu (queue for driver) (HPC, PT, PBPG)
 
-import { useState } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardStore } from "@/store/dashboardStore";
+import RoutingService from "../services/routingService";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,6 @@ import {
 import Clock2 from "../components/dashboard/clock.tsx"
 import { roleAccess, filterChildrenByRole, hasMenuAccess } from "../authentication/accessControl.ts";
 import { useUser } from "../authentication/userContext.tsx";
-import { useEffect, useRef } from "react";
 import NotificationCard from "../components/dashboard/notification.tsx"
 import { useAudio } from "@/hooks/useAudio";
 import Information from "./dashboard/information.tsx";
@@ -40,24 +40,67 @@ import Information from "./dashboard/information.tsx";
 function usePendingApprovalCount() {
   const leavePermissions = useDashboardStore(state => state.leavePermissions);
   const { role } = useUser();
-  if (!role) return 0;
-  if (role === "HR") {
-    return leavePermissions.filter((e: any) => {
-      const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
-      return e.statusFromHR === "pending" && !isGroupMember;
-    }).length;
-  } else if (role === "Head Department") {
-    return leavePermissions.filter((e: any) => {
-      const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
-      return e.statusFromDepartment === "pending" && !isGroupMember;
-    }).length;
-  } else if (role === "Director") {
-    return leavePermissions.filter((e: any) => {
-      const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
-      return e.statusFromDirector === "pending" && !isGroupMember;
-    }).length;
-  }
-  return 0;
+  const [pendingCount, setPendingCount] = useState(0);
+  
+  // Use effect to fetch pending approvals dynamically
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      if (!role) {
+        setPendingCount(0);
+        return;
+      }
+
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) {
+        setPendingCount(0);
+        return;
+      }
+      const currentUser = JSON.parse(storedUser);
+
+      try {
+        if (role === "HR") {
+          const pendingRequests = await RoutingService.getPendingRequestsForApprover(currentUser.name);          
+          if (Array.isArray(pendingRequests)) {
+            const filteredPending = pendingRequests.filter((e: any) => {
+              const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
+              return !isGroupMember;
+            });
+            setPendingCount(filteredPending.length);
+          } else {
+            console.warn('⚠️ getPendingRequestsForApprover did not return an array:', pendingRequests);
+            setPendingCount(0);
+          }
+        } else if (role === "Head Department") {
+          const pendingRequests = await RoutingService.getPendingRequestsForApprover(currentUser.name);
+          if (Array.isArray(pendingRequests)) {
+            const filteredPending = pendingRequests.filter((e: any) => {
+              const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
+              return !isGroupMember;
+            });
+            setPendingCount(filteredPending.length);
+          } else {
+            console.warn('⚠️ getPendingRequestsForApprover did not return an array for Head Department:', pendingRequests);
+            setPendingCount(0);
+          }
+        } else if (role === "Director") {
+          const pending = leavePermissions.filter((e: any) => {
+            const isGroupMember = e.reason && e.reason.includes('(Group with ') && e.approval === 'approved';
+            return e.statusFromDirector === "pending" && !isGroupMember;
+          });
+          setPendingCount(pending.length);
+        } else {
+          setPendingCount(0);
+        }
+      } catch (error) {
+        console.error('Error fetching pending approval count:', error);
+        setPendingCount(0);
+      }
+    };
+
+    fetchPendingCount();
+  }, [role, leavePermissions]);
+
+  return pendingCount;
 }
 
 function useNotificationSound() {
@@ -65,21 +108,17 @@ function useNotificationSound() {
   const { playDing } = useAudio();
   const prevCountRef = useRef(0);
   const isInitialLoadRef = useRef(true);
-
   useEffect(() => {
     if (isInitialLoadRef.current) {
       prevCountRef.current = count;
       isInitialLoadRef.current = false;
       return;
     }
-
     if (count > prevCountRef.current && count > 0) {
       playDing();
     }
-
     prevCountRef.current = count;
   }, [count, playDing]);
-
   return count;
 }
 
@@ -140,16 +179,15 @@ const navigation = [
   { name: "Leave Permission", href: "/leave", icon: DoorOpen }
 ];
 
-//console.log("Layout.tsx file loaded");
+
 
 export default function Layout() {
   const { role, name, department } = useUser();
-
-  //console.log("ROLE:", role); 
+  
   const filteredNavigation = navigation
     .filter(item => hasMenuAccess(item.name, role, name, department))
     .map(item => {
-      // Filter children menu berdasarkan role jika ada
+      
       if (item.children) {
         return {
           ...item,
@@ -159,7 +197,7 @@ export default function Layout() {
       return item;
     })
     .filter(item => {
-      // Hapus menu parent jika tidak ada children yang bisa diakses
+      
       if (item.children) {
         return item.children.length > 0;
       }
@@ -171,7 +209,6 @@ export default function Layout() {
     return localStorage.getItem("openMenu") || null;
   });
   const [user, setUser] = useState<{ name: string; role: string }>({ name: "", role: "" });
-
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -182,7 +219,6 @@ export default function Layout() {
       });
     }
   }, []);
-
   return (
     <div className="min-h-full bg-gray-50 flex">
       {/* Mobile sidebar backdrop */}
@@ -192,7 +228,6 @@ export default function Layout() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-
       <div
         className={cn(
           "fixed lg:relative inset-y-0 left-0 z-50 w-25 md:w-20 lg:w-[16vw] xl:w-[16vw] 2xl:w-[15vw] bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0",
@@ -220,13 +255,11 @@ export default function Layout() {
               <X className="h-3 w-3 md:h-4 md:w-4" />
             </Button>
           </div>
-
           {/* Much more compact navigation */}
           <nav className="flex-1 overflow-y-auto px-1.5 md:px-2 lg:px-3 xl:px-4 py-2 md:py-3 lg:py-4 space-y-0.5 md:space-y-1">
             {filteredNavigation.map((item) => {
               const hasChildren = item.children && item.children.length > 0;
               const isOpen = openMenu === item.name;
-
               return (
                 <div key={item.name}>
                   {hasChildren ? (
@@ -267,7 +300,6 @@ export default function Layout() {
                       <span className="truncate text-xs lg:text-sm xl:text-xs">{item.name}</span>
                     </NavLink>
                   )}
-
                   {/* Much more compact submenu */}
                   {hasChildren && isOpen && (
                     <div className="ml-3 md:ml-4 lg:ml-6 xl:ml-8 mt-0.5 md:mt-1 space-y-0.5">
@@ -294,7 +326,6 @@ export default function Layout() {
               );
             })}
           </nav>
-
           {/* Much smaller user profile section */}
           <div className="border-t border-gray-200 p-1.5 md:p-2 lg:p-3 xl:p-3">
             <div className="flex items-center">
@@ -304,7 +335,7 @@ export default function Layout() {
               </Avatar>
               <div className="ml-1.5 md:ml-2 lg:ml-3 flex-1 min-w-0">
                 <p className="text-xs lg:text-sm xl:text-xs font-medium text-gray-900 truncate">{user.name}</p>
-                <p className="text-xs text-gray-500 truncate">{user.role}</p>
+                <p className="text-xs text-gray-500 truncate">{user.name === 'KUSWARA' ? 'Director' : user.role }</p>
               </div>
               <Button variant="ghost" size="sm" className="p-0.5 md:p-1" onClick={() => {
                 localStorage.removeItem("user");
@@ -319,7 +350,6 @@ export default function Layout() {
           </div>
         </div>
       </div>
-
       {/* Responsive Main Content */}
       <div className="flex-1 min-w-0 h-screen overflow-hidden">
         {/* Much smaller header for 1366px */}
@@ -334,20 +364,18 @@ export default function Layout() {
               >
                 <Menu className="h-3 w-3 md:h-4 md:w-4" />
               </Button>
-
               {/* Much smaller search */}
               <div className="hidden sm:flex items-center ml-1 md:ml-2 lg:ml-4 flex-1 md:max-w-sm lg:max-w-md xl:max-w-lg">
                 <div className="relative w-full">
-                  <Search className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 h-2 w-3 md:h-4 md:w-4 text-gray-400" />
+                  {/* <Search className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 h-2 w-3 md:h-4 md:w-4 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search employees, documents..."
                     className="w-full pl-6 md:pl-8 lg:pl-10 pr-2 md:pr-3 py-1 md:py-1.5 lg:py-2 border border-gray-300 rounded-md lg:rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-xs md:text-sm lg:text-sm"
-                  />
+                  /> */}
                 </div>
               </div>
             </div>
-
             {/* Much smaller action buttons */}
             <div className="flex items-center space-x-1 md:space-x-2">
               <div className="w-fit">
@@ -359,7 +387,7 @@ export default function Layout() {
                   <Button variant="ghost" size="sm" className="relative p-1 md:p-1.5">
                     <Bell className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
                     {(() => {
-                      const count = useNotificationSound(); // Menggunakan hook yang memiliki sound
+                      const count = useNotificationSound(); 
                       return count > 0 ? (
                         <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white font-bold z-10">
                           {count}
@@ -372,8 +400,6 @@ export default function Layout() {
                   <NotificationCard />
                 </PopoverContent>
               </Popover>
-
-
               {/* User Profile */}
               <Dialog>
                 <DialogTrigger asChild>
@@ -389,8 +415,8 @@ export default function Layout() {
                     </Avatar>
                     <DialogHeader className="w-full text-center">
                       <DialogTitle className="text-lg font-bold">{user.name || "Unknown User"}</DialogTitle>
-                      <DialogDescription className="text-sm text-gray-500 mt-1">Department:
-                        <span className="text-slate-700"> {user.role || "-"}</span>
+                      <DialogDescription className="text-sm text-gray-500 mt-1">Role:
+                        <span className="text-slate-700"> {user.name === 'KUSWARA' ? 'Director as Head of Deparment' : user.role || "-"}</span>
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="w-full mt-4 flex flex-col gap-2">
@@ -413,7 +439,6 @@ export default function Layout() {
             </div>
           </div>
         </header>
-
         {/* Much smaller main content padding */}
         <main className="h-screen">
           <Outlet />

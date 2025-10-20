@@ -66,8 +66,7 @@ export default function EmployeeDashboard() {
     fetchLeavePermission,
     addLeavePermission,
   } = useDashboardStore();
-
-  // Function to get the last activity timestamp for sorting
+  
   const getLastActivity = (record: ExtendedAttendance) => {
     const timestamps = [
       new Date(record.datein).getTime(),
@@ -78,43 +77,28 @@ export default function EmployeeDashboard() {
     
     return Math.max(...timestamps);
   };
-
-  // Filter and sort records with memoization for performance
+  
   const sortedAndFilteredRecords = useMemo(() => {
     const now = new Date();
     
-    // Filter: hanya tampilkan data yang BELUM 24 jam ATAU BELUM keluar
+    
     const filtered = records.filter((record: ExtendedAttendance) => {
       const dateIn = new Date(record.datein);
       const isLessThan24h = (now.getTime() - dateIn.getTime()) < 24 * 60 * 60 * 1000;
       const notExited = !record.dateout && !record.actual_returntime;
-      // Tampilkan jika masih <24 jam ATAU belum keluar
+      
       return isLessThan24h || notExited;
     });
     
-    // Sort by last activity (most recent first)
+    
     return [...filtered].sort((a, b) => {
       const lastActivityA = getLastActivity(a);
       const lastActivityB = getLastActivity(b);
       return lastActivityB - lastActivityA;
     });
   }, [records]);
-
   const recordsCountRef = useRef(0);
   
-  // Monitor perubahan jumlah records untuk memainkan suara
-  // Disabled karena audio sudah dimainkan di onMessage untuk setiap tap card action
-  // useEffect(() => {
-  //   const currentCount = sortedAndFilteredRecords.length;
-  //   
-  //   // Jika ada penambahan record baru (count bertambah)
-  //   if (recordsCountRef.current > 0 && currentCount > recordsCountRef.current) {
-  //     // console.log(`Records increased from ${recordsCountRef.current} to ${currentCount} - playing sound`);
-  //     playDingDongBell();
-  //   }
-  //   
-  //   recordsCountRef.current = currentCount;
-  // }, [sortedAndFilteredRecords, playDingDongBell]);
   const formatCustomDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return null;
     
@@ -129,20 +113,15 @@ export default function EmployeeDashboard() {
     } else {
       date = new Date(dateString);
     }
-
     if (isNaN(date.getTime())) return dateString;
-
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
-
     return `${day}/${month}/${year}, ${hours}.${minutes}.${seconds}`;
   };
-
   const formatLocalDateTime = (dateString: string | null | undefined) => {
   if (!dateString) return null;
   const date = new Date(dateString);
@@ -159,19 +138,17 @@ export default function EmployeeDashboard() {
   });  
   return formatted;
 };
-
   useEffect(() => {
     let mounted = true;
     let unsubscribeDataChange: (() => void) | null = null;
     let unsubscribeLeaveChange: (() => void) | null = null;
-
     const setupRealTimeConnection = async () => {
       try {
-        //console.log("Setting up real-time connection...");
+        
         setConnectionStatus('connecting');        
         onConnectionChange((status) => {
           if (!mounted) return;
-         //console.log("WebSocket connection status changed:", status);
+         
           
           switch (status) {
             case 'open':
@@ -189,67 +166,45 @@ export default function EmployeeDashboard() {
         });
           unsubscribeDataChange = onDataChange('attendance', (data) => {
           if (!mounted) return;
-          // console.log("Global attendance data change received:", data);
-          // console.log("About to call fetchRecords...");          
+          
+          
           if (data.leaveInfo || data.leave_permission_id) {
-            // console.log("Leave permission data in global change:", {
-            //   leaveInfo: data.leaveInfo,
-            //   leave_permission_id: data.leave_permission_id,
-            //   leave_reason: data.leave_reason,
-            //   planned_exit_time: data.planned_exit_time,
-            //   planned_return_time: data.planned_return_time,
-            //   actual_exittime: data.actual_exittime,
-            //   actual_returntime: data.actual_returntime
-            // });
           }          
-          // console.log("Force refreshing records due to global data change");
           setTimeout(() => {
             if (mounted) {
-              // console.log("Calling fetchRecords NOW...");
               fetchRecords();
             }
           }, 100);
         });
         
         unsubscribeLeaveChange = onDataChange('leave_permission', (data) => {
-          if (!mounted) return;
-          
-          // console.log("Global leave permission data change received:", data);
-          // console.log("About to call fetchRecords and fetchLeavePermission...");          
+          if (!mounted) return;          
           setTimeout(() => {
             if (mounted) {
-              // console.log("Calling fetchRecords and fetchLeavePermission NOW...");
+              // 
               fetchRecords();
               fetchLeavePermission();
             }
           }, 100);
         });
-
         initWebSocket();
         await fetchLeavePermission();
         onMessage((data) => {
           if (!mounted) return;
-          
-          // console.log("WebSocket message received in dashboard:", data);
-          // console.log("Current records count before processing:", recordsCountRef.current);
-          
           if (data.type === 'info') {
-            // console.log("ℹReceived info message, updating connection status");
+            
             setConnectionStatus('connected');
             setError(null);
             return;
           }
           
           if (!data.licenseplate || !data.name || !data.department) {
-            // console.warn("Invalid WebSocket data:", data);
+            
             return;
           }
-          
-          // console.log("Processing message type:", data.type, "for UID:", data.uid);
-          
           switch (data.type) {
             case 'entry':
-              // console.log("Processing entry record:", data.uid);
+              
               const entryRecord = {
                 id: data.id || Date.now(),
                 uid: data.uid,
@@ -267,26 +222,18 @@ export default function EmployeeDashboard() {
                 actual_exittime: data.leaveInfo?.actualExitTime || null,
                 actual_returntime: data.leaveInfo?.actualReturnTime || null,
               } as ExtendedAttendance;
-              // console.log("Adding entry record:", entryRecord);
               addRecord(entryRecord);
-              // Play ding dong sound when new entry is added
               playDingDongBell();
               break;
-
             case 'exit':
             case 'leave_exit':
             case 'leave_return':
-              // console.log(`Processing ${data.type} - will be handled by global data change`);
-              // Play ding dong sound for all tap card actions
               playDingDongBell();
               break;
             
             case 'image_update':
-              // console.log(`Processing ${data.type} - will be handled by global data change`);
               break;
-
             default:
-              // console.log("Processing unknown format as new entry");
               const defaultRecord = {
                 id: data.id || Date.now(),
                 uid: data.uid,
@@ -304,24 +251,19 @@ export default function EmployeeDashboard() {
                 actual_exittime: data.actual_exittime || null,
                 actual_returntime: data.actual_returntime || null,
               } as ExtendedAttendance;
-              // console.log("Adding default record:", defaultRecord);
               addRecord(defaultRecord);
               playDingDongBell();
           }
           setConnectionStatus('connected');
           setError(null);
         });
-
         await fetchRecords();
       } catch (error) {
-        // console.error("❌ Error in setupRealTimeConnection:", error);
         setConnectionStatus('error');
         setError(error instanceof Error ? error.message : 'Connection failed');
       }
     };
-
     setupRealTimeConnection();
-
     return () => {
       mounted = false;
       if (unsubscribeDataChange) {
@@ -334,7 +276,6 @@ export default function EmployeeDashboard() {
       setConnectionStatus('disconnected');
     };
   }, []);
-
   const getStatusIndicator = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -347,7 +288,6 @@ export default function EmployeeDashboard() {
         return { icon: '⚪', text: 'Disconnected', color: 'text-gray-600' };
     }
   };
-
   const [modalImage, setModalImage] = useState<string | null>(null);
   const status = getStatusIndicator();
   return (
@@ -376,7 +316,6 @@ export default function EmployeeDashboard() {
             </div>
           </div>
         </div>
-
         {/* Main Content */}
         <Card 
           style={{ 
@@ -423,7 +362,6 @@ export default function EmployeeDashboard() {
             
             {/* Records List */}
             {sortedAndFilteredRecords.map((record: ExtendedAttendance, index) => {
-              // Check if this is the most recent activity
               const isLatestActivity = index === 0;
               
               return (
@@ -516,7 +454,6 @@ export default function EmployeeDashboard() {
                       </div>
                     </div>
                     </div>
-
                     {/* SECTION 2: Basic Attendance Info (License Plate, Name, Department, Entry, Exit) */}
                     <div className="w-full lg:w-1/4 flex flex-col text-left space-y-3">
                       <div className="flex items-center gap-2 mb-2">
@@ -557,7 +494,6 @@ export default function EmployeeDashboard() {
                           {formatLocalDateTime(record.datein)}
                         </span>
                       </div>
-
                       <div>
                         <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Exit:</span>
                         <span className={`ml-2 font-mono lg:text-xl sm:text-sm ${
@@ -567,7 +503,6 @@ export default function EmployeeDashboard() {
                         </span>
                       </div>
                     </div>
-
                     {/* SECTION 3: Leave Permission Details */}
                     <div className="w-full lg:w-1/4 flex flex-col text-left space-y-3">
                       <div className="flex items-center gap-2 mb-2">
@@ -647,7 +582,6 @@ export default function EmployeeDashboard() {
           </CardContent>
         </Card>
       </div>
-
       {modalImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"

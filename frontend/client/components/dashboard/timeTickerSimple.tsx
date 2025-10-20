@@ -5,11 +5,11 @@ type TimeTickerProps = {
     status: string | null | undefined;
 };
 
-// Simple duration formatter - max 23:59:59
+
 function formatDuration(ms: number) {
     if (ms < 0) return "00:00:00";
     
-    // Cap at 24 hours to prevent huge numbers
+    
     const cappedMs = Math.min(ms, 24 * 60 * 60 * 1000 - 1);
     
     const totalSeconds = Math.floor(cappedMs / 1000);
@@ -24,19 +24,15 @@ function formatDuration(ms: number) {
 
 export default function TimeTickerSimple({ startTime, status }: TimeTickerProps) {
     const [elapsed, setElapsed] = useState("00:00:00");
-
     useEffect(() => {
         if (!startTime || !status) {
             setElapsed("00:00:00");
             return;
         }
-
-        console.log('🕐 Simple TimeTicker - Input:', { startTime, status });
-
+        
         let startTimestamp: number;
-
         try {
-            // Method 1: If it looks like a time (HH:MM:SS), combine with today
+            
             if (/^\d{2}:\d{2}:\d{2}/.test(startTime)) {
                 const today = new Date();
                 const [hours, minutes, seconds] = startTime.split(':').map(Number);
@@ -44,8 +40,8 @@ export default function TimeTickerSimple({ startTime, status }: TimeTickerProps)
                 const startDate = new Date(today);
                 startDate.setHours(hours, minutes, seconds || 0, 0);
                 
-                // If the time seems to be in the future (more than 1 hour ahead), 
-                // assume it's from yesterday
+                
+                
                 if (startDate.getTime() - today.getTime() > 60 * 60 * 1000) {
                     startDate.setDate(startDate.getDate() - 1);
                 }
@@ -57,7 +53,7 @@ export default function TimeTickerSimple({ startTime, status }: TimeTickerProps)
                     timestamp: startTimestamp
                 });
             }
-            // Method 2: Try direct Date parsing
+            
             else {
                 const parsed = new Date(startTime);
                 if (isNaN(parsed.getTime())) {
@@ -75,7 +71,6 @@ export default function TimeTickerSimple({ startTime, status }: TimeTickerProps)
             setElapsed("--:--:--");
             return;
         }
-
         const updateTimer = () => {
             const now = Date.now();
             const diff = now - startTimestamp;
@@ -89,16 +84,13 @@ export default function TimeTickerSimple({ startTime, status }: TimeTickerProps)
                 setElapsed(formatDuration(diff));
             }
         };
-
-        // Initial update
+        
         updateTimer();
         
-        // Update every second
+        
         const interval = setInterval(updateTimer, 1000);
-
         return () => clearInterval(interval);
     }, [startTime, status]);
-
     return (
         <span className="ml-2 text-black font-bold lg:text-xl sm:text-sm animate-pulse">
             {elapsed}

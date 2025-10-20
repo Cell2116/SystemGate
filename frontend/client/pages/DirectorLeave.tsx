@@ -31,13 +31,11 @@ import Clock2 from "../components/dashboard/clock"
 import { Plus, Send, Sparkles, Zap, Eye, Calendar, Clock, User, MoreHorizontal, FileText, X, Crown } from "lucide-react";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { onConnectionChange, onDataChange } from "@/lib/ws";
-
 interface User {
   name: string;
   department: string;
   role: string;
 }
-
 export default function DirectorLeavePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,12 +49,10 @@ export default function DirectorLeavePage() {
   const loading = useDashboardStore(state => state.loading);
   const error = useDashboardStore(state => state.error);
   const updateLeavePermission = useDashboardStore(state => state.updateLeavePermission);
-
   useEffect(() => {
     let mounted = true;
     let unsubscribeDataChange: (() => void) | null = null;
     let unsubscribeLeaveChange: (() => void) | null = null;
-
     unsubscribeDataChange = onDataChange('attendance', (data) => {
       if (!mounted) return;
       setTimeout(() => {
@@ -69,31 +65,25 @@ export default function DirectorLeavePage() {
         if (mounted) fetchLeavePermission();
       }, 100);
     });
-
     fetchLeavePermission();
-
     return () => {
       mounted = false;
       if (unsubscribeDataChange) unsubscribeDataChange();
       if (unsubscribeLeaveChange) unsubscribeLeaveChange();
     };
   }, [fetchLeavePermission]);
-
   useEffect(() => {
     const loadUserFromStorage = () => {
       try {
         const storedUser = localStorage.getItem("user");
         const storedRole = localStorage.getItem("userRole");
         const isLoggedIn = localStorage.getItem("isLoggedIn");
-
         if (!isLoggedIn || isLoggedIn !== "true") {
           console.error("User not logged in");
           return;
         }
-
         if (storedUser && storedRole) {
           const parsedUser = JSON.parse(storedUser);
-
           if (storedRole === "Director" || parsedUser.role === "Director") {
             setCurrentUser({
               name: parsedUser.name,
@@ -114,7 +104,6 @@ export default function DirectorLeavePage() {
     };
     loadUserFromStorage();
   }, []);
-
   const [formData, setFormData] = useState({
     name: "",
     licensePlate: "",
@@ -128,7 +117,6 @@ export default function DirectorLeavePage() {
     statusFromDirector: "",
     statusFromHR: "",
   });
-
   useEffect(() => {
     if (currentUser) {
       setFormData(prev => ({
@@ -139,7 +127,6 @@ export default function DirectorLeavePage() {
       }));
     }
   }, [currentUser]);
-
   const getPendingDirectorEntries = () => {
     if (!currentUser) return [];
     return leavePermissions.filter(entry => 
@@ -148,7 +135,6 @@ export default function DirectorLeavePage() {
       !(entry as any).isGroupMember // Exclude group members, only show group leaders and individual requests
     );
   };
-
   const getProcessedDirectorEntries = () => {
     if (!currentUser) return [];
     return leavePermissions.filter(entry => 
@@ -167,7 +153,6 @@ export default function DirectorLeavePage() {
       return "pending";
     }
   };
-
   const handleInputChange = (field: string, value: string) => {
     if (field === "reasonType") {
       setFormData(prev => ({
@@ -179,7 +164,6 @@ export default function DirectorLeavePage() {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
   };
-
   const handleViewDetails = (entry: any) => {
     setSelectedEntry(entry);
     setIsDetailsOpen(true);
@@ -199,7 +183,6 @@ export default function DirectorLeavePage() {
     
     setIsDetailsOpen(false);
   };
-
   return (
     <div className="max-h-screen from-primary/5 via-background to-accent/20 p-3">
       <div className="z-10 sticky top-0 pb-2">
@@ -220,9 +203,7 @@ export default function DirectorLeavePage() {
         <div className="max-w-6xl md:w-[80vw] xl:w-[80vw] 2xl:w-[80vw] mx-auto text-center space-y-4 ">
           {/* Hero section */}
           {/* // Button entry and Pending */}
-
             <div className=" flex flex-col sm:flex-row gap-4 items-center justify-center">
-
             {/* Pending Card */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
               <DialogTrigger asChild>
@@ -314,7 +295,6 @@ export default function DirectorLeavePage() {
                 </div>
               </DialogContent>
             </Dialog>
-
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
               <DialogContent className="w-[90vw] h-[90vh] rounded-xl sm:max-w-2xl lg:w-full md:w-full bg-card/95 border-border/50 lg:h-[90vh] overflow-auto scrollbar-hide">
@@ -327,7 +307,6 @@ export default function DirectorLeavePage() {
                     Complete information for this Leave Permission Request
                   </DialogDescription>
                 </DialogHeader>
-
                 {selectedEntry && (
                   <div className="py-1 space-y-1 ">
                     <div className="flex justify-between items-start">
@@ -346,7 +325,6 @@ export default function DirectorLeavePage() {
                         {selectedEntry.statusFromDirector.charAt(0).toUpperCase() + selectedEntry.statusFromDirector.slice(1)}
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div>
@@ -362,7 +340,6 @@ export default function DirectorLeavePage() {
                           <p className="text-lg mt-1">{selectedEntry.date}</p>
                         </div>
                       </div>
-
                       <div className="space-y-4">
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">Return Time</label>
@@ -380,7 +357,6 @@ export default function DirectorLeavePage() {
                         </div>
                       </div>
                     </div>
-
                     <div className="pt-4 border-t border-border/30">
                       <label className="text-sm font-medium text-muted-foreground mb-3 block">Approval Status</label>
                       <div className="grid grid-cols-2 gap-4">
@@ -406,14 +382,12 @@ export default function DirectorLeavePage() {
                         </div>
                       </div>
                     </div>
-
                     <div className="pt-4 border-t border-border/30">
                       <label className="text-sm font-medium text-muted-foreground">Reason for Leave</label>
                       <p className="mt-2 text-sm leading-relaxed bg-muted/30 p-4 rounded-lg">
                         {selectedEntry.reason}
                       </p>
                     </div>
-
                     {selectedEntry.statusFromDirector === 'pending' && (
                       <div className="pt-4 border-t border-border/30">
                         <label className="text-sm font-medium text-muted-foreground mb-3 block">Director Actions</label>
@@ -441,7 +415,6 @@ export default function DirectorLeavePage() {
               </DialogContent>
             </Dialog>
           </div>
-
           {/* Recent Processed Entries Table */}
           {getProcessedDirectorEntries().length > 0 && (
             <div className="max-w-6xl mx-auto overflow-x-auto">
@@ -513,9 +486,7 @@ export default function DirectorLeavePage() {
               </div>
             </div>
           )}
-
           {/* CTA Buttons */}
-
         </div>
       </div>
     </div>

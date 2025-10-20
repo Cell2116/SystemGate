@@ -14,20 +14,19 @@ const dataChangeListeners: {
 };
 
 export function initWebSocket() {
-    // console.log("initWebSocket called, current socket state:", socket?.readyState);
+    
     
     if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
-        // console.log("WebSocket already connected or connecting");
+        
         return;
     }
-
     try {
-        // console.log("Creating new WebSocket connection to ws://localhost:3000");
+        
         socket = new WebSocket("ws://192.168.4.108:3000");
-        // console.log("WebSocket created, readyState:", socket.readyState);
+        
         notifyConnectionListeners('connecting');
         socket.onopen = () => {
-            // console.log("WebSocket connected successfully");
+            
             reconnectAttempts = 0;
             notifyConnectionListeners('open');
             
@@ -38,24 +37,23 @@ export function initWebSocket() {
         };
         socket.onmessage = (event) => {
             try {
-                // console.log("Raw WebSocket message:", event.data);
+                
                 const data = JSON.parse(event.data);
-                // console.log("Parsed WebSocket message:", data);
+                
                 listeners.forEach((cb) => {
                     try {
                         cb(data);
                     } catch (error) {
-                        // console.error("Error in message listener:", error);
+                        console.error("Error in message listener:", error);
                     }
                 });
                 broadcastDataChange(data);
             } catch (error) {
-                // console.error("Error parsing WebSocket message:", error, "Raw data:", event.data);
+                console.error("Error parsing WebSocket message:", error, "Raw data:", event.data);
             }
         };
-
         socket.onclose = (event) => {
-            // console.warn("WebSocket disconnected. Code:", event.code, "Reason:", event.reason);
+            console.warn("WebSocket disconnected. Code:", event.code, "Reason:", event.reason);
             socket = null;            
             notifyConnectionListeners('closed');
             if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
@@ -63,11 +61,11 @@ export function initWebSocket() {
             }
         };
         socket.onerror = (error) => {
-            // console.error("🚨 WebSocket error:", error);
+            console.error("🚨 WebSocket error:", error);
             notifyConnectionListeners('closed');
         };
     } catch (error) {
-        // console.error("❌ Failed to create WebSocket connection:", error);
+        console.error("❌ Failed to create WebSocket connection:", error);
         notifyConnectionListeners('closed');
         attemptReconnect();
     }
@@ -77,21 +75,20 @@ function notifyConnectionListeners(status: 'connecting' | 'open' | 'closing' | '
         try {
             cb(status);
         } catch (error) {
-            // console.error("Error in connection listener:", error);
+            console.error("Error in connection listener:", error);
         }
     });
 }
 
 function attemptReconnect() {
     if (reconnectAttempts >= maxReconnectAttempts) {
-        // console.error(`Max reconnection attempts (${maxReconnectAttempts}) reached`);
+        console.error(`Max reconnection attempts (${maxReconnectAttempts}) reached`);
         return;
     }
-
     reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000); 
     
-    // console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts}) in ${delay}ms...`);
+    
     
     reconnectTimeout = setTimeout(() => {
         initWebSocket();
@@ -100,12 +97,12 @@ function attemptReconnect() {
 
 export function onMessage(callback: (data: any) => void) {
     listeners.push(callback);
-    // console.log(`Added message listener. Total listeners: ${listeners.length}`);
+    
 }
 
 export function onConnectionChange(callback: (status: 'connecting' | 'open' | 'closing' | 'closed') => void) {
     connectionListeners.push(callback);
-    // console.log(`Added connection listener. Total connection listeners: ${connectionListeners.length}`);
+    
 }
 
 function broadcastDataChange(data: any) {
@@ -132,17 +129,17 @@ function broadcastDataChange(data: any) {
             dataTypes.push('trucks');
         }
         dataTypes.forEach(dataType => {
-            // console.log(`Broadcasting ${dataType} data change to ${dataChangeListeners[dataType]?.length || 0} listeners`);            
+                        
             (dataChangeListeners[dataType] || []).forEach((cb) => {
                 try {
                     cb(data);
                 } catch (error) {
-                    // console.error(`Error in ${dataType} data change listener:`, error);
+                    console.error(`Error in ${dataType} data change listener:`, error);
                 }
             });
         });
     } catch (error) {
-        // console.error("Error in broadcastDataChange:", error);
+        console.error("Error in broadcastDataChange:", error);
     }
 }
 
@@ -151,12 +148,12 @@ export function onDataChange(dataType: 'attendance' | 'leave_permission' | 'truc
         dataChangeListeners[dataType] = [];
     }    
     dataChangeListeners[dataType].push(callback);
-    // console.log(`Added ${dataType} data listener. Total ${dataType} listeners: ${dataChangeListeners[dataType].length}`);
+    
     return () => {
         const index = dataChangeListeners[dataType].indexOf(callback);
         if (index > -1) {
             dataChangeListeners[dataType].splice(index, 1);
-            // console.log(`Removed ${dataType} data listener. Remaining ${dataType} listeners: ${dataChangeListeners[dataType].length}`);
+            
         }
     };
 }
@@ -168,7 +165,7 @@ export function closeWebSocket() {
     }
     
     if (socket) {
-        // console.log("Manually closing WebSocket");
+        
         socket.close(1000, "Manual close");
         socket = null;
     }

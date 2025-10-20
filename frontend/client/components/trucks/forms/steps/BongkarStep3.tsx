@@ -1,12 +1,10 @@
 import { TruckFormData } from "../../../../types/truck.types";
 import { DocumentFields } from "../fields";
-
 interface BongkarStep3Props {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
   validationError?: string;
 }
-
 export function BongkarStep3({
   formData,
   onFieldChange,
@@ -20,12 +18,10 @@ export function BongkarStep3({
           <span className="text-blue-700">Surat Jalan</span>.
         </p>
       </div>
-
       <DocumentFields 
         formData={formData} 
         onFieldChange={onFieldChange} 
       />
-
       {validationError && (
         <div className="text-red-500 text-xs mb-2 text-left">
           {validationError}

@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "../../ui/button";
 import { CameraTarget } from "../../../types/truck.types";
 import { CAMERA_LABELS } from "../../../constants/truck.constants";
-
 interface PhotoCaptureProps {
     target: CameraTarget;
     onCapture: (target: CameraTarget, imageData: string) => void;
@@ -11,7 +10,6 @@ interface PhotoCaptureProps {
     onStartCamera: (target: CameraTarget) => void;
     onStopCamera: () => void;
 }
-
 export function PhotoCapture({
     target,
     onCapture,
@@ -23,15 +21,14 @@ export function PhotoCapture({
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [stream, setStream] = useState<MediaStream | null>(null);
-
-    // Effect untuk mengelola camera stream
+    
     useEffect(() => {
         if (showCamera && videoRef.current) {
-            // Start camera stream
+            
             navigator.mediaDevices
                 .getUserMedia({
                     video: {
-                        facingMode: "environment", // Use back camera on mobile
+                        facingMode: "environment", 
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     }
@@ -45,7 +42,7 @@ export function PhotoCapture({
                 })
                 .catch((err) => {
                     console.error("Error accessing camera:", err);
-                    // Fallback to front camera if back camera fails
+                    
                     navigator.mediaDevices
                         .getUserMedia({ video: true })
                         .then((mediaStream) => {
@@ -61,8 +58,7 @@ export function PhotoCapture({
                         });
                 });
         }
-
-        // Cleanup function
+        
         return () => {
             if (stream) {
                 stream.getTracks().forEach((track) => track.stop());
@@ -70,15 +66,13 @@ export function PhotoCapture({
             }
         };
     }, [showCamera]);
-
-    // Stop camera when component unmounts or camera is turned off
+    
     useEffect(() => {
         if (!showCamera && stream) {
             stream.getTracks().forEach((track) => track.stop());
             setStream(null);
         }
     }, [showCamera, stream]);
-
     const capturePhoto = () => {
         if (videoRef.current && canvasRef.current) {
             const ctx = canvasRef.current.getContext("2d");
@@ -92,19 +86,15 @@ export function PhotoCapture({
                     canvasRef.current.width,
                     canvasRef.current.height,
                 );
-
-                // Convert canvas to base64 image data
+                
                 const imageData = canvasRef.current.toDataURL("image/jpeg", 0.8);
-
-                // Call the parent callback with captured image
+                
                 onCapture(target, imageData);
-
-                // Stop camera
+                
                 handleStopCamera();
             }
         }
     };
-
     const handleStopCamera = () => {
         if (stream) {
             stream.getTracks().forEach((track) => track.stop());
@@ -112,11 +102,9 @@ export function PhotoCapture({
         }
         onStopCamera();
     };
-
     const getTargetLabel = () => {
         return CAMERA_LABELS[target] || "Foto";
     };
-
     return (
         <div className="space-y-2">
             {/* Tombol untuk mulai camera */}
@@ -129,7 +117,6 @@ export function PhotoCapture({
                     Ambil Foto
                 </Button>
             )}
-
             {/* Camera preview saat sedang aktif */}
             {showCamera && (
                 <div className="space-y-2">
@@ -161,7 +148,6 @@ export function PhotoCapture({
                     </div>
                 </div>
             )}
-
             {/* Preview gambar yang sudah diambil */}
             {capturedImage && (
                 <div className="space-y-2">
@@ -179,7 +165,6 @@ export function PhotoCapture({
                     </Button>
                 </div>
             )}
-
             {/* Hidden canvas untuk capture */}
             <canvas
                 ref={canvasRef}

@@ -9,8 +9,6 @@ import DepartmentLeavePage from "./DepartmentLeave"
 // import DepartmentLeavePage from "../pages/DepartmentLeaveRefactor2"
 import { useEffect } from "react"
 import { initWebSocket } from "@/lib/ws"
-
-
 export default function LeavePermission(){
   const { role } = useUser();
   useEffect(() => {

@@ -2,7 +2,6 @@ interface PlaceholderPageProps {
   title: string;
   description: string;
 }
-
 const PlaceholderPage = ({ title, description }: PlaceholderPageProps) => {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -29,5 +28,4 @@ const PlaceholderPage = ({ title, description }: PlaceholderPageProps) => {
     </div>
   );
 };
-
 export default PlaceholderPage;

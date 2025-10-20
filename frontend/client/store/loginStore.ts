@@ -27,7 +27,6 @@ interface LoginStore{
   loading: boolean;
   error: string | null;
   token: string | null;
-
   login:(credentials: LoginCredential) => Promise <LoginResponse>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
@@ -35,7 +34,7 @@ interface LoginStore{
   setUser: (user: UserLogin | null) => void;
 }
 
-// axios base URL
+
 const API_BASE_URL = "http://192.168.4.108:3000";
 axios.defaults.baseURL = API_BASE_URL;
 
@@ -45,20 +44,15 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
   loading: false,
   error: null,
   token: typeof window !== 'undefined' ? localStorage.getItem('token') : null, 
-
-  // Login function
   login: async (credentials) => {
     set({ loading: true, error: null });
-
     try{
       const response = await axios.post("/auth/login", credentials);
       const { success, message, user, token } = response.data;
-
       if(success && user && token){
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('isLoggedIn', 'true'); // Add this for compatibility
-
+        localStorage.setItem('isLoggedIn', 'true');
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         set({
           user,
@@ -67,7 +61,6 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
           loading: false,
           error: null
         });
-        //console.log(`Login Successful for user: ${user.name}`);
         return { success: true, message: "Login Successful", user, token };
       }
       else{
@@ -88,12 +81,11 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
       return { success: false, message: errorMessage };
     }
   },
-
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn'); // Add this for compatibility
-    localStorage.removeItem('userRole'); // Add this for compatibility
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userRole');
     delete axios.defaults.headers.common['Authorization'];
     
     set({
@@ -103,9 +95,7 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
       error: null
     });
     
-    //console.log("User logged out");
   },
-
   checkAuth: async () => {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
@@ -114,11 +104,9 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
       set({ isAuthenticated: false, user: null, token: null });
       return false;
     }
-
     try {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      // Verify token with backend
       const response = await axios.get('/auth/me');
       if (response.data.success) {
         const user = JSON.parse(userStr);
@@ -138,11 +126,9 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
       return false;
     }
   },
-
   clearError: () => {
     set({ error: null });
   },
-
   setUser: (user) => {
     set({ user });
     if(user){
@@ -151,7 +137,7 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
   }
 }));
 
-// Initialize auth check
+
 if(typeof window !== 'undefined'){
   useLoginStore.getState().checkAuth();
 }

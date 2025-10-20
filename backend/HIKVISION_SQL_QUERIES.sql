@@ -1,16 +1,13 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- HIKVISION IVMS - QUICK SQL REFERENCE
 -- ═══════════════════════════════════════════════════════════════════════
-
 -- ───────────────────────────────────────────────────────────────────────
 -- 1. MONITORING QUERIES
 -- ───────────────────────────────────────────────────────────────────────
-
 -- Check unprocessed records
 SELECT COUNT(*) as pending_count 
 FROM attlog 
 WHERE processed = 0 OR processed IS NULL;
-
 -- View recent unprocessed records
 SELECT TOP 20 
     id, employeeID, personName, authDateTime, 
@@ -18,7 +15,6 @@ SELECT TOP 20
 FROM attlog 
 WHERE processed = 0 OR processed IS NULL
 ORDER BY authDateTime DESC;
-
 -- View processed records today
 SELECT 
     id, employeeID, personName, authDateTime, 
@@ -27,7 +23,6 @@ FROM attlog
 WHERE processed = 1 
   AND CAST(authDateTime AS DATE) = CAST(GETDATE() AS DATE)
 ORDER BY authDateTime DESC;
-
 -- Count processing status
 SELECT 
     status, 
@@ -36,11 +31,9 @@ FROM attlog
 WHERE CAST(authDateTime AS DATE) = CAST(GETDATE() AS DATE)
 GROUP BY status
 ORDER BY count DESC;
-
 -- ───────────────────────────────────────────────────────────────────────
 -- 2. TESTING QUERIES
 -- ───────────────────────────────────────────────────────────────────────
-
 -- Insert test ENTRY
 INSERT INTO attlog (
     employeeID, authDateTime, authDate, authTime, 
@@ -59,7 +52,6 @@ INSERT INTO attlog (
     0,                           -- processed (0 = not processed)
     NULL                         -- status
 );
-
 -- Insert test EXIT (setelah 5 detik)
 WAITFOR DELAY '00:00:05';
 INSERT INTO attlog (
@@ -70,14 +62,11 @@ INSERT INTO attlog (
     'EMP001', GETDATE(), CAST(GETDATE() AS DATE), CAST(GETDATE() AS TIME),
     'out', 'Main Gate', 'HKV001', 'John Doe', 'B1234ABC', 0, NULL
 );
-
 -- ───────────────────────────────────────────────────────────────────────
 -- 3. DEBUGGING QUERIES
 -- ───────────────────────────────────────────────────────────────────────
-
 -- Check employee exists in users table
 SELECT * FROM users WHERE uid = 'EMP001';
-
 -- Check today's attendance for employee
 SELECT 
     al.*,
@@ -89,7 +78,6 @@ LEFT JOIN leave_permission lp ON al.leave_permission_id = lp.id
 WHERE al.uid = 'EMP001'
   AND CAST(al.datein AS DATE) = CAST(GETDATE() AS DATE)
 ORDER BY al.datein DESC;
-
 -- Check active leave permissions
 SELECT * 
 FROM leave_permission
@@ -98,29 +86,23 @@ WHERE licenseplate = 'B1234ABC'
   AND statusfromhr = 'approved'
   AND statusfromdept = 'approved'
 ORDER BY exittime;
-
 -- ───────────────────────────────────────────────────────────────────────
 -- 4. CLEANUP QUERIES
 -- ───────────────────────────────────────────────────────────────────────
-
 -- Reset processed flag (untuk re-process)
 UPDATE attlog 
 SET processed = 0, status = NULL
 WHERE CAST(authDateTime AS DATE) = CAST(GETDATE() AS DATE);
-
 -- Delete test data
 DELETE FROM attlog 
 WHERE employeeID IN ('EMP001', 'EMP002', 'EMP003');
-
 -- Delete old processed records (keep 30 days)
 DELETE FROM attlog
 WHERE processed = 1
   AND authDateTime < DATEADD(DAY, -30, GETDATE());
-
 -- ───────────────────────────────────────────────────────────────────────
 -- 5. PERFORMANCE QUERIES
 -- ───────────────────────────────────────────────────────────────────────
-
 -- Check index usage
 SELECT 
     OBJECT_NAME(s.object_id) AS table_name,
@@ -133,7 +115,6 @@ FROM sys.dm_db_index_usage_stats s
 INNER JOIN sys.indexes i ON s.object_id = i.object_id AND s.index_id = i.index_id
 WHERE OBJECT_NAME(s.object_id) = 'attlog'
 ORDER BY s.user_seeks + s.user_scans + s.user_lookups DESC;
-
 -- Check table size
 SELECT 
     t.name AS table_name,
@@ -145,11 +126,9 @@ INNER JOIN sys.partitions p ON t.object_id = p.object_id
 INNER JOIN sys.allocation_units a ON p.partition_id = a.container_id
 WHERE t.name = 'attlog'
 GROUP BY t.name, p.rows;
-
 -- ───────────────────────────────────────────────────────────────────────
 -- 6. REPORTING QUERIES
 -- ───────────────────────────────────────────────────────────────────────
-
 -- Daily summary
 SELECT 
     CAST(authDateTime AS DATE) as date,
@@ -160,7 +139,6 @@ FROM attlog
 WHERE authDateTime >= DATEADD(DAY, -7, GETDATE())
 GROUP BY CAST(authDateTime AS DATE)
 ORDER BY date DESC;
-
 -- Employee activity today
 SELECT 
     a.employeeID,
@@ -174,7 +152,6 @@ WHERE CAST(a.authDateTime AS DATE) = CAST(GETDATE() AS DATE)
   AND a.processed = 1
 GROUP BY a.employeeID, a.personName
 ORDER BY first_tap;
-
 -- Leave usage report
 SELECT 
     lp.name,
@@ -195,26 +172,21 @@ WHERE lp.date = CAST(GETDATE() AS DATE)
   AND lp.statusfromhr = 'approved'
   AND lp.statusfromdept = 'approved'
 ORDER BY lp.exittime;
-
 -- ───────────────────────────────────────────────────────────────────────
 -- 7. TROUBLESHOOTING
 -- ───────────────────────────────────────────────────────────────────────
-
 -- Find stuck records (processed but no status)
 SELECT * FROM attlog
 WHERE processed = 1 AND status IS NULL
 ORDER BY authDateTime DESC;
-
 -- Find error records
 SELECT * FROM attlog
 WHERE status LIKE 'error%'
 ORDER BY authDateTime DESC;
-
 -- Find records with unknown users
 SELECT * FROM attlog
 WHERE status = 'user_not_found'
 ORDER BY authDateTime DESC;
-
 -- Check duplicate processing
 SELECT 
     employeeID, 
@@ -224,19 +196,15 @@ FROM attlog
 WHERE processed = 1
 GROUP BY employeeID, authDateTime
 HAVING COUNT(*) > 1;
-
 -- ───────────────────────────────────────────────────────────────────────
 -- 8. MAINTENANCE
 -- ───────────────────────────────────────────────────────────────────────
-
 -- Rebuild indexes
 ALTER INDEX idx_attlog_processed ON attlog REBUILD;
 ALTER INDEX idx_attlog_employeeid ON attlog REBUILD;
 ALTER INDEX idx_attlog_datetime ON attlog REBUILD;
-
 -- Update statistics
 UPDATE STATISTICS attlog;
-
 -- Check fragmentation
 SELECT 
     OBJECT_NAME(ps.object_id) AS table_name,
@@ -246,5 +214,4 @@ FROM sys.dm_db_index_physical_stats(DB_ID(), OBJECT_ID('attlog'), NULL, NULL, 'L
 INNER JOIN sys.indexes i ON ps.object_id = i.object_id AND ps.index_id = i.index_id
 WHERE ps.avg_fragmentation_in_percent > 10
 ORDER BY ps.avg_fragmentation_in_percent DESC;
-
 -- ═══════════════════════════════════════════════════════════════════════

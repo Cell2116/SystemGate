@@ -10,13 +10,11 @@ import EmployeeModal from "@/components/employee/employeeHistory/EmployeeModal";
 import ExportButton from "@/components/employee/employeeHistory/ExportButton";
 
 export default function EmployeeHistory() {
-    // Store connection
+    
     const { records, loading, error, fetchData } = useEmployeeHistory();
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<HistoryRecord | null>(null);
-
-
-    // Filters and pagination
+    
     const {
         filteredRecords,
         searchTerm,
@@ -41,13 +39,11 @@ export default function EmployeeHistory() {
         indexOfFirstRecord,
         indexOfLastRecord
     } = useEmployeeFilters(records);
-
-    // Initial data load
+    
     useEffect(() => {
         fetchData({});
     }, []);
-
-    // Debounced search and filter effect
+    
     useEffect(() => {
         const debounceTimer = setTimeout(() => {
             fetchData({
@@ -60,7 +56,6 @@ export default function EmployeeHistory() {
         }, 500);
         return () => clearTimeout(debounceTimer);
     }, [searchTerm, selectedDepartment, selectedStatus, dateFrom, dateTo]);
-
     return (
         <>
             <div className="min-h-screen flex flex-col space-y-4 p-3 bg-gray-50">
@@ -88,7 +83,6 @@ export default function EmployeeHistory() {
                             >
                                 {filterOpen ? 'Hide Filter ▲' : 'Show Filter ▼'}
                             </button>
-
                         </div>
                     </div>
                     {error && (
@@ -102,7 +96,6 @@ export default function EmployeeHistory() {
                         {filteredRecords.length} of {records.length} records
                     </div>
                 </div>
-
                 {/* Filters */}
                 <EmployeeFilters
                     filterOpen={filterOpen}
@@ -124,7 +117,6 @@ export default function EmployeeHistory() {
                     clearFilters={clearFilters}
                     records={records}
                 />
-
                 {/* Records Table */}
                 <EmployeeTable
                     filterOpen={filterOpen}
@@ -133,7 +125,6 @@ export default function EmployeeHistory() {
                     currentRecords={currentRecords}
                     setSelectedRecord={setSelectedRecord}
                 />
-
                 {/* Pagination */}
                 <EmployeePagination
                     filterOpen={filterOpen}
@@ -145,7 +136,6 @@ export default function EmployeeHistory() {
                     filteredRecords={filteredRecords}
                 />
             </div>
-
             {/* Detail Modal */}
             <EmployeeModal
                 selectedRecord={selectedRecord}

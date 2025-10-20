@@ -2,14 +2,11 @@ import React from 'react';
 import { usePWA } from '../hooks/usePWA';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
-
 export function PWAUpdatePrompt() {
   const { offlineReady, updateAvailable, updateApp, close } = usePWA();
-
   if (!offlineReady && !updateAvailable) {
     return null;
   }
-
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm">
       {offlineReady && (

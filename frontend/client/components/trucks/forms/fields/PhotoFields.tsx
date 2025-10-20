@@ -1,7 +1,6 @@
 import { Label } from "../../../ui/label";
 import { PhotoCapture } from "../../camera/PhotoCapture";
 import { CameraTarget } from "../../../../types/truck.types";
-
 interface PhotoFieldsProps {
   capturedImages: Record<CameraTarget, string | null>;
   showCamera: boolean;
@@ -13,7 +12,6 @@ interface PhotoFieldsProps {
   showSim?: boolean;
   showStnk?: boolean;
 }
-
 export function PhotoFields({
   capturedImages,
   showCamera,
@@ -48,7 +46,6 @@ export function PhotoFields({
           />
         </div>
       )}
-
       {showSim && (
         <div className="grid grid-cols-1 gap-4">
           <Label
@@ -67,7 +64,6 @@ export function PhotoFields({
           />
         </div>
       )}
-
       {showStnk && (
         <div className="grid grid-cols-1 gap-4">
           <Label

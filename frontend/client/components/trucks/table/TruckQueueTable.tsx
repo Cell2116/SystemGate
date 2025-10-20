@@ -3,10 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableHeader, TableRow, TableCell, TableHead } from "@/components/ui/table";
 import { useTrucksWithFetch } from "@/store/truckStore";
 import { useState } from "react"
-
 export function TrucksQueue() {
     const [ selectedDepartment, setSelectedDepartment ] = useState("HPC");
-
     const {
         trucks: allTrucks,
         loading: trucksLoading,
@@ -169,4 +167,3 @@ export function TrucksQueue() {
         </div>
     )
 }
-

@@ -13,8 +13,6 @@ import {
   AlertCircle,
   ArrowUpRight,
 } from "lucide-react";
-
-
 export default function Dashboard() {
   return (
     <div className="relative h-[calc(80vh-1rem)]"> 

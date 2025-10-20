@@ -1,6 +1,5 @@
 import { Label } from "../../../ui/label";
 import { TruckFormData } from "../../../../types/truck.types";
-
 interface VehicleSelectFieldsProps {
   formData: TruckFormData;
   onFieldChange: (field: string, value: string) => void;
@@ -9,7 +8,6 @@ interface VehicleSelectFieldsProps {
   showCondition?: boolean;
   showTransporter?: boolean;
 }
-
 export function VehicleSelectFields({ 
   formData, 
   onFieldChange, 
@@ -46,7 +44,6 @@ export function VehicleSelectFields({
           </select>
         </div>
       )}
-
       {showVehicleType && (
         <div className="flex flex-col space-y-2">
           <Label
@@ -76,7 +73,6 @@ export function VehicleSelectFields({
           </select>
         </div>
       )}
-
       {showCondition && (
         <div className="flex flex-col space-y-2">
           <Label
@@ -102,7 +98,6 @@ export function VehicleSelectFields({
           </select>
         </div>
       )}
-
       {showTransporter && (
         <div className="flex flex-col space-y-2">
           <Label

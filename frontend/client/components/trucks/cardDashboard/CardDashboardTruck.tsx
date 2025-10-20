@@ -1,29 +1,28 @@
 import { TruckIcon, ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 interface CardDashboardTruckProps {
     getTypeStats: (type: string) => number;
     getDepartmentStats: (department: string) => number;
 }
-
 interface OperationStatsCardProps {
     muatStats: {
         total: number;
         pending: number;
+        weighing: number;
         loading: number;
         finished: number;
     };
     bongkarStats: {
         total: number;
         pending: number;
+        weighing: number;
         loading: number;
         finished: number;
     };
 }
-
 export function OperationStatsCard({ muatStats, bongkarStats }: OperationStatsCardProps) {
     return (
-        <div className="flex flex-row gap-4 h-1/2">
+        <div className="flex flex-row gap-1 h-1/2">
             {/* Loading Trucks Card */}
             <div className="w-1/2">
                 <Card className="h-full flex flex-col">
@@ -68,6 +67,16 @@ export function OperationStatsCard({ muatStats, bongkarStats }: OperationStatsCa
                                     </span>
                                 </div>
                             </Card>
+                            <Card className="bg-cyan-100 w-[4vw] h-[6vh] flex justify-center items-center">
+                                <div className="flex flex-col text-center">
+                                    <span className="text-cyan-600 text-xs font-bold pb-1">
+                                        {muatStats.weighing}
+                                    </span>
+                                    <span className="text-cyan-600 text-xs pb-1">
+                                        Weighing
+                                    </span>
+                                </div>
+                            </Card>
                             <Card className="bg-blue-100 w-[4vw] h-[6vh] flex justify-center items-center">
                                 <div className="flex flex-col text-center">
                                     <span className="text-blue-600 text-xs font-bold pb-1">
@@ -92,7 +101,6 @@ export function OperationStatsCard({ muatStats, bongkarStats }: OperationStatsCa
                     </CardContent>
                 </Card>
             </div>
-
             {/* Unloading Trucks Card */}
             <div className="w-1/2">
                 <Card className="h-full flex flex-col">
@@ -137,6 +145,16 @@ export function OperationStatsCard({ muatStats, bongkarStats }: OperationStatsCa
                                     </span>
                                 </div>
                             </Card>
+                            <Card className="bg-cyan-100 w-[4vw] h-[6vh] flex justify-center items-center">
+                                <div className="flex flex-col text-center">
+                                    <span className="text-cyan-600 text-xs font-bold pb-1">
+                                        {bongkarStats.weighing}
+                                    </span>
+                                    <span className="text-cyan-600 text-xs pb-1">
+                                        Weighing
+                                    </span>
+                                </div>
+                            </Card>
                             <Card className="bg-blue-100 w-[4vw] h-[6vh] flex justify-center items-center">
                                 <div className="flex flex-col text-center">
                                     <span className="text-blue-600 text-xs font-bold pb-1">
@@ -164,7 +182,6 @@ export function OperationStatsCard({ muatStats, bongkarStats }: OperationStatsCa
         </div>
     );
 }
-
 export function CardDashboardTruck({ getTypeStats, getDepartmentStats }: CardDashboardTruckProps) {
     // Get dynamic counts from getTypeStats function
     const internalCount = getTypeStats("internal");
@@ -210,7 +227,6 @@ export function CardDashboardTruck({ getTypeStats, getDepartmentStats }: CardDas
                     </div>
                 </Card>
             </div>
-
             {/* Department HPC */}
             <div className="w-1/4">
                 <Card className="h-full flex flex-col">
@@ -250,7 +266,6 @@ export function CardDashboardTruck({ getTypeStats, getDepartmentStats }: CardDas
                     </CardContent>
                 </Card>
             </div>
-
             {/* Department PT */}
             <div className="w-1/4">
                 <Card className="h-full flex flex-col">

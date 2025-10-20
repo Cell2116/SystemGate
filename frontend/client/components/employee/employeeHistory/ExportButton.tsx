@@ -1,15 +1,12 @@
 import { HistoryRecord } from "@/types/employee.types";
 import { exportToXLSX } from "@/lib/export";
-
 interface ExportButtonProps {
     filteredRecords: HistoryRecord[];
 }
-
 export default function ExportButton({ filteredRecords }: ExportButtonProps) {
     const handleExport = () => {
         exportToXLSX(filteredRecords);
     };
-
     return (
         <button
             onClick={handleExport}

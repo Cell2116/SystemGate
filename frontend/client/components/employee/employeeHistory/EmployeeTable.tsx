@@ -2,30 +2,25 @@ import { ReactNode, CSSProperties } from "react";
 import { HistoryRecord } from "@/types/employee.types";
 import { formatDateTime } from "@/lib/utils";
 import React from "react";
-
 type CardProps = {
     children: ReactNode;
     className?: string;
     style?: CSSProperties;
 };
-
 const Card = ({ children, className = "", style = {} }: CardProps) => (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`} style={style}>
         {children}
     </div>
 );
-
 type CardContentProps = {
     children: ReactNode;
     className?: string;
 };
-
 const CardContent = ({ children, className = "" }: CardContentProps) => (
     <div className={`p-6 ${className}`}>
         {children}
     </div>
 );
-
 interface EmployeeTableProps {
     filterOpen: boolean;
     loading: boolean;
@@ -33,7 +28,6 @@ interface EmployeeTableProps {
     currentRecords: HistoryRecord[];
     setSelectedRecord: (record: HistoryRecord) => void;
 }
-
 export default function EmployeeTable({
     filterOpen,
     loading,
@@ -41,7 +35,6 @@ export default function EmployeeTable({
     currentRecords,
     setSelectedRecord
 }: EmployeeTableProps) {
-
     const getDisplayRecords = () => {
             if (typeof window !== 'undefined') {
                 const isMobile = window.innerWidth < 1024;
@@ -62,7 +55,6 @@ export default function EmployeeTable({
             window.addEventListener('resize', handleResize);
             return () => window.removeEventListener('resize', handleResize);
         }, [currentRecords]);
-
     return (
         <Card className={`${filterOpen ? 'hidden md:block' : 'block'}`}>
             <CardContent className={`${filterOpen ? 'max-h-[35vh]' : 'max-h-[60vh]'} overflow-y-auto p-0`}>

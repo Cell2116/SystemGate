@@ -1,28 +1,23 @@
 import { ReactNode, CSSProperties } from "react";
-
 type CardProps = {
     children: ReactNode;
     className?: string;
     style?: CSSProperties;
 };
-
 const Card = ({ children, className = "", style = {} }: CardProps) => (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`} style={style}>
         {children}
     </div>
 );
-
 type CardContentProps = {
     children: ReactNode;
     className?: string;
 };
-
 const CardContent = ({ children, className = "" }: CardContentProps) => (
     <div className={`p-6 ${className}`}>
         {children}
     </div>
 );
-
 interface EmployeePaginationProps {
     filterOpen: boolean;
     totalPages: number;
@@ -32,7 +27,6 @@ interface EmployeePaginationProps {
     indexOfLastRecord: number;
     filteredRecords: any[];
 }
-
 export default function EmployeePagination({
     filterOpen,
     totalPages,
@@ -43,7 +37,6 @@ export default function EmployeePagination({
     filteredRecords
 }: EmployeePaginationProps) {
     if (totalPages <= 1) return null;
-
     return (
         <Card className={`mt-4 ${filterOpen ? 'hidden md:block' : 'block'}`}>
             <CardContent className="p-3 sm:p-4">
@@ -59,16 +52,13 @@ export default function EmployeePagination({
                         >
                             Previous
                         </button>
-
                         {/* Show page numbers */}
                         {(() => {
                             const maxVisiblePages = 5;
                             const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
                             const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
                             const adjustedStartPage = Math.max(1, endPage - maxVisiblePages + 1);
-
                             const pages = [];
-
                             // First page if not in range
                             if (adjustedStartPage > 1) {
                                 pages.push(
@@ -84,7 +74,6 @@ export default function EmployeePagination({
                                     pages.push(<span key="ellipsis1" className="px-1 text-gray-400">...</span>);
                                 }
                             }
-
                             // Visible page range
                             for (let page = adjustedStartPage; page <= endPage; page++) {
                                 pages.push(
@@ -100,7 +89,6 @@ export default function EmployeePagination({
                                     </button>
                                 );
                             }
-
                             // Last page if not in range
                             if (endPage < totalPages) {
                                 if (endPage < totalPages - 1) {
@@ -116,10 +104,8 @@ export default function EmployeePagination({
                                     </button>
                                 );
                             }
-
                             return pages;
                         })()}
-
                         <button
                             onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
                             disabled={currentPage === totalPages}

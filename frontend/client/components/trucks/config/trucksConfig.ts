@@ -1,6 +1,5 @@
 // src/components/trucks/config/trucksConfig.ts
 import { TrucksTableConfig } from '@/types/truck.types';
-
 export const loadingTrucksConfig: TrucksTableConfig = {
     operation: 'muat',
     title: 'Loading Trucks / ',
@@ -8,15 +7,16 @@ export const loadingTrucksConfig: TrucksTableConfig = {
     subtitleColor: 'text-green-600',
     statusMapping: {
         waiting: ['waiting'],
+        weighing: ['timbang'],
         loading: ['loading'],
-        finished: ['finished', 'done']
+        finished: ['finished'],
+        exit: ['exit'],
     },
     features: {
         suratJalanRecommendations: true
     },
     emptyMessage: 'No loading trucks found. Only trucks with "muat" operation are shown here.'
 };
-
 export const unloadingTrucksConfig: TrucksTableConfig = {
     operation: 'bongkar',
     title: 'Unloading Trucks / ',
@@ -26,14 +26,14 @@ export const unloadingTrucksConfig: TrucksTableConfig = {
         waiting: ['waiting'],
         weighing: ['timbang'],
         loading: ['loading', 'unloading'],
-        finished: ['finished', 'done']
+        finished: ['finished'],
+        exit: ['exit']
     },
     features: {
         suratJalanRecommendations: false
     },
     emptyMessage: 'No unloading trucks found. Only trucks with "bongkar" operation are shown here.'
 };
-
 export const weighingTrucksConfig: TrucksTableConfig = {
     operation: 'bongkar',
     title: 'Weighing Trucks / ',
@@ -43,7 +43,8 @@ export const weighingTrucksConfig: TrucksTableConfig = {
         waiting: [],
         weighing: ['timbang'],
         loading: [],
-        finished: []
+        finished: [],
+        exit: []
     },
     features: {
         suratJalanRecommendations: false
