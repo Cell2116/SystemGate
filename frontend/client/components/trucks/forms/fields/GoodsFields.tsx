@@ -54,6 +54,31 @@ export function GoodsFields({ formData, onFieldChange, operationType = "bongkar"
           required
         />
       </div>
+      <div>
+        <Label
+          htmlFor="descin"
+          className="text-sm font-semibold"
+        >
+          Jenis Barang /
+          <span className="italic opacity-50 text-xs">
+            {" "}
+            Goods Type
+          </span>
+        </Label>
+        <select
+          id="jenisbarang"
+          value={formData.jenisbarang}
+          onChange={(e) => onFieldChange("jenisbarang", e.target.value)}
+          className="h-9 border border-gray-300 rounded-md px-3 py-2 bg-background text-gray-500 text-sm focus:border-blue-500 focus:outline-none w-full"
+          required
+        >
+          <option value="">Pilih Jenis Barang</option>
+          <option value="BB">Bahan Baku</option>
+          <option value="BP">Bahan Pembantu</option>
+          <option value="Mesin">Mesin</option>
+          <option value="Lainnya">Lainnya</option>
+        </select>
+      </div>
     </div>
   );
 }

@@ -93,6 +93,7 @@ interface DashboardStore {
 function formatToDateTime(date = new Date()) {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
+const baseurl = import.meta.env.VITE_API_BASE_URL
 
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
   records: [],
@@ -106,7 +107,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchLeavePermission: async() =>{
     set({ loading: true, error: null });
     try {
-      const res = await axios.get("http://192.168.4.108:3000/leave-permission");
+      const res = await axios.get(`${baseurl}/leave-permission`);
+      // const res = await axios.get("http://192.168.4.108:3000/leave-permission");
       const mapped = res.data.map((item: any) => {
         const date = item.date ? new Date(item.date).toISOString().split('T')[0] : '';
         const formatDateTime = (dateTimeString: string | null) => {
@@ -178,7 +180,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         submittedAt: formatted,
       };
       
-      const res = await axios.post("http://192.168.4.108:3000/leave-permission", mappedEntry);
+      const res = await axios.post(`${baseurl}/leave-permission`, mappedEntry);
+      // const res = await axios.post("http://192.168.4.108:3000/leave-permission", mappedEntry);
       
       set((state) => ({
         leavePermissions: [res.data, ...state.leavePermissions],
@@ -218,7 +221,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         return result;
       };
       const mappedUpdates = mapToSnake(updates);
-      const res = await axios.put(`http://192.168.4.108:3000/leave-permission/${id}`, mappedUpdates);
+      const res = await axios.put(`${baseurl}/leave-permission/${id}`, mappedUpdates);
+      // const res = await axios.put(`http://192.168.4.108:3000/leave-permission/${id}`, mappedUpdates);
       set((state) => ({
         leavePermissions: state.leavePermissions.map(lp => lp.id === id ? { ...lp, ...updates } : lp),
         loading: false,
@@ -234,7 +238,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
     
-      const res = await axios.get("http://192.168.4.108:3000/logs");
+      const res = await axios.get(`${baseurl}/logs`);
+      // const res = await axios.get("http://192.168.4.108:3000/logs");
       const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
         new Date(b.datein).getTime() - new Date(a.datein).getTime()
       );
@@ -245,20 +250,21 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       });
       return sortedRecords;
     } catch (error: any) {
-      console.error("❌ fetchRecords failed:", error);
+      console.error("fetchRecords failed:", error);
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to fetch data";
       set({
         error: errorMessage,
         loading: false,
       });
-      console.error("❌ Error fetching records:", errorMessage);
+      console.error("Error fetching records:", errorMessage);
       throw error;
     }
   },
   fetchUsers: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.get("http://192.168.4.108:3000/users");
+      const res = await axios.get(`${baseurl}/users`);
+      // const res = await axios.get("http://192.168.4.108:3000/users");
       set({ 
         users: res.data, 
         loading: false,
@@ -273,20 +279,19 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         error: errorMessage,
         loading: false,
       });
-      console.error("❌ Error fetching users:", errorMessage);
+      console.error("Error fetching users:", errorMessage);
       throw error;
     }
   },
   fetchUsersByDepartment: async (department: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.get(`http://192.168.4.108:3000/users/department/${encodeURIComponent(department)}`);
+      const res = await axios.get(`${baseurl}/users/department/${encodeURIComponent(department)}`);
+      // const res = await axios.get(`http://192.168.4.108:3000/users/department/${encodeURIComponent(department)}`);
       set({ 
         loading: false,
         error: null 
       });
-      
-      
       return res.data;
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to fetch users by department";
@@ -294,7 +299,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         error: errorMessage,
         loading: false,
       });
-      console.error("❌ Error fetching users by department:", errorMessage);
+      console.error("Error fetching users by department:", errorMessage);
       throw error;
     }
   },
@@ -342,7 +347,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         .filter(r => r.uid === uid)
         .sort((a, b) => new Date(b.datein).getTime() - new Date(a.datein).getTime())[0];
       if (!targetRecord) {
-        console.warn(`⚠️ No record found for UID ${uid}`);
+        console.warn(`No record found for UID ${uid}`);
         return state;
       }
       const updatedRecords = state.records.map((record) =>
@@ -368,7 +373,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   setError: (error) => {
     set({ error });
     if (error) {
-      console.error("❌ Store error:", error);
+      console.error("Store error:", error);
     }
   },
   clearRecords: () => {
@@ -386,7 +391,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       if (filters.dateFrom) queryParams.append('dateFrom', filters.dateFrom);
       if (filters.dateTo) queryParams.append('dateTo', filters.dateTo);
 
-      const url = `http://192.168.4.108:3000/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      const url = `${baseurl}/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      // const url = `http://192.168.4.108:3000/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const res = await axios.get(url);
       const sortedRecords = res.data.sort((a: Attendance, b: Attendance) => 
         new Date(b.datein).getTime() - new Date(a.datein).getTime()
@@ -398,7 +404,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       });
       return sortedRecords;
     } catch (error: any) {
-      console.error("❌ fetchHistoryRecords failed:", error);
+      console.error("fetchHistoryRecords failed:", error);
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to fetch history data";
       set({
         error: errorMessage,

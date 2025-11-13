@@ -27,7 +27,8 @@ import {
   LogOut,
   User,
   DoorOpen,
-  PackageOpen
+  PackageOpen,
+  Headset
 } from "lucide-react";
 
 import Clock2 from "../components/dashboard/clock.tsx"
@@ -176,7 +177,8 @@ const navigation = [
       { key: "trucks-history", name: "Trucks History", href: "/truckshistory" }
     ]
   },
-  { name: "Leave Permission", href: "/leave", icon: DoorOpen }
+  { name: "Leave Permission", href: "/leave", icon: DoorOpen },
+  { name: "Contact Support", href: "/contact", icon: Headset }
 ];
 
 

@@ -49,11 +49,7 @@ export const GlobalScanner: React.FC<GlobalScannerProps> = ({ children }) => {
                 }, 100);
             }
         };
-        
-        
         document.addEventListener('keydown', handleGlobalKeyDown, true);
-        
-        
         return () => {
             document.removeEventListener('keydown', handleGlobalKeyDown, true);
             if (scanTimeout) {

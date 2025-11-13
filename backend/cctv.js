@@ -23,7 +23,7 @@ async function captureSnapshot(uid) {
         
         exec(cmd, { timeout: 30000 }, (error) => {
             if (error) {
-                console.error('❌ FFmpeg capture failed:', error);
+                console.error('FFmpeg capture failed:', error);
                 return reject(error);
             }
             

@@ -1,5 +1,8 @@
 import create from "zustand";
 import axios from "axios";
+// import dotenv from "dotenv";
+
+// dotenv.config();
 
 interface UserLogin {
   id: number;
@@ -35,7 +38,7 @@ interface LoginStore{
 }
 
 
-const API_BASE_URL = "http://192.168.4.108:3000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;;
 axios.defaults.baseURL = API_BASE_URL;
 
 export const useLoginStore = create <LoginStore>((set, get) => ({

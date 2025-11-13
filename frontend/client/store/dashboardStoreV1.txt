@@ -96,7 +96,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchLeavePermission: async() =>{
     set({ loading: true, error: null });
     try {
-      const res = await axios.get("http://192.168.4.108:3000/leave-permission");
+      const res = await axios.get("http://192.168.1.37:3000/leave-permission");
       const mapped = res.data.map((item: any) => {
         const date = item.date ? new Date(item.date).toISOString().split('T')[0] : '';
         const formatDateTime = (dateTimeString: string | null) => {
@@ -170,7 +170,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         submittedAt: formatted,
       };
       //
-      const res = await axios.post("http://192.168.4.108:3000/leave-permission", mappedEntry);
+      const res = await axios.post("http://192.168.1.37:3000/leave-permission", mappedEntry);
       //
       set((state) => ({
         leavePermissions: [res.data, ...state.leavePermissions],
@@ -211,7 +211,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         return result;
       };
       const mappedUpdates = mapToSnake(updates);
-      const res = await axios.put(`http://192.168.4.108:3000/leave-permission/${id}`, mappedUpdates);
+      const res = await axios.put(`http://192.168.1.37:3000/leave-permission/${id}`, mappedUpdates);
       set((state) => ({
         leavePermissions: state.leavePermissions.map(lp => lp.id === id ? { ...lp, ...updates } : lp),
         loading: false,
@@ -228,7 +228,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       //
-      const res = await axios.get("http://192.168.4.108:3000/logs");
+      const res = await axios.get("http://192.168.1.37:3000/logs");
       //
       //
       
@@ -260,7 +260,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchUsers: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.get("http://192.168.4.108:3000/users");
+      const res = await axios.get("http://192.168.1.37:3000/users");
       set({ 
         users: res.data, 
         loading: false,
@@ -283,7 +283,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   fetchUsersByDepartment: async (department: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.get(`http://192.168.4.108:3000/users/department/${encodeURIComponent(department)}`);
+      const res = await axios.get(`http://192.168.1.37:3000/users/department/${encodeURIComponent(department)}`);
       set({ 
         loading: false,
         error: null 
@@ -406,7 +406,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       if (filters.dateFrom) queryParams.append('dateFrom', filters.dateFrom);
       if (filters.dateTo) queryParams.append('dateTo', filters.dateTo);
 
-      const url = `http://192.168.4.108:3000/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      const url = `http://192.168.1.37:3000/logs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       //
       
       const res = await axios.get(url);

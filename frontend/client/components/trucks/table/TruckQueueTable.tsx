@@ -15,7 +15,11 @@ export function TrucksQueue() {
     } = useTrucksWithFetch({});
     
     const trucks = allTrucks || [];
-    const filteredTrucks = trucks.filter(truck => truck.department === selectedDepartment); 
+    const getTodayData = new Date().toISOString().split('T')[0];
+    const filteredTrucks = trucks.filter(
+        truck => truck.department === selectedDepartment &&
+        new Date(truck.date).toISOString().split('T')[0] === getTodayData
+    ); 
     return (
         <div className="h-full">
             <Card className="h-full flex flex-col">
@@ -103,7 +107,7 @@ export function TrucksQueue() {
                                                 <TableCell>
                                                     <div>
                                                         <div className="font-semibold text-xs">
-                                                            {truck.plateNumber}
+                                                            {truck.platenumber}
                                                         </div>
                                                         <div className="font-light text-xs">
                                                             {truck.driver}
@@ -128,12 +132,12 @@ export function TrucksQueue() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {truck.type === "internal" && (
+                                                    {truck.type === "Inbound" && (
                                                         <div className="rounded-full flex bg-green-50 text-green-500 text-xs font-bold px-2 py-1 w-fit mx-auto">
                                                             Internal
                                                         </div>
                                                     )}
-                                                    {truck.type === "external" && (
+                                                    {truck.type === "Outbound" && (
                                                         <div className="rounded-full flex bg-red-50 text-red-500 text-xs font-bold px-2 py-1 w-fit mx-auto">
                                                             External
                                                         </div>

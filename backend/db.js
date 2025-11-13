@@ -1,4 +1,7 @@
 import sql from 'mssql';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const config = {
   server: process.env.DB_HOST || '192.168.4.108',

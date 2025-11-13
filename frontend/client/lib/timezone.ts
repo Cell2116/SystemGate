@@ -31,11 +31,16 @@ export const getIndonesianDateTime = (): string => {
  * Mendapatkan waktu dalam timezone Indonesia (UTC+7)
  * @returns string format HH:mm:ss
  */
+// export const getIndonesianTime = (): string => {
+//     const now = new Date();
+//     const indonesianTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+//     return indonesianTime.toTimeString().split(' ')[0];
+// };
 export const getIndonesianTime = (): string => {
     const now = new Date();
-    const indonesianTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-    return indonesianTime.toTimeString().split(' ')[0];
+    return now.toTimeString().split(' ')[0]; // tidak menambah offset
 };
+
 /**
  * Konversi UTC Date ke Indonesian Time
  * @param utcDate - Date object dalam UTC

@@ -154,8 +154,12 @@ export default function InOutTrucks() {
     }
   };
   
+  const getTodayData = new Date().toISOString().split('T')[0];
   const getOperationStats = (operation: "bongkar" | "muat") => {
-    const operationTrucks = trucks.filter((truck) => truck.operation === operation);
+    const operationTrucks = trucks.filter(
+      (truck) => truck.operation === operation &&
+      new Date(truck.date).toISOString().split('T')[0] === getTodayData
+    );
     const pending = operationTrucks.filter((truck) => 
       truck.status === "waiting" || 
       truck.status === "on process"
@@ -170,7 +174,7 @@ export default function InOutTrucks() {
     ).length;
     
     const finished = operationTrucks.filter((truck) => 
-      truck.status === "done" || 
+      truck.status === "exit" || 
       truck.status === "finished"
     ).length;
     
@@ -179,11 +183,18 @@ export default function InOutTrucks() {
   };
   const muatStats = getOperationStats("muat");
   const bongkarStats = getOperationStats("bongkar");
+
   const getDepartmentStats = (department: string) => {
-    return trucks.filter((truck) => truck.department === department).length;
+    return trucks.filter(
+      (truck) => truck.department === department &&
+      new Date(truck.date).toISOString().split('T')[0] === getTodayData
+    ).length;
   };
   const getTypeStats = (type: string) => {
-    return trucks.filter((truck) => truck.type === type).length;
+    return trucks.filter(
+      (truck) => truck.type === type &&
+        new Date(truck.date).toISOString().split('T')[0] === getTodayData
+    ).length;
   };
   return (
     <div className="space-y-6 p-3">
@@ -378,7 +389,7 @@ export default function InOutTrucks() {
                         ? "Menyimpan..." 
                         : operationType === "bongkar" 
                           ? "Simpan Bongkar" 
-                          : "Simpan Muat"
+                          : "Simpan Muat" 
                       }
                     </Button>
                   )}

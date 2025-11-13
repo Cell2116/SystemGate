@@ -23,7 +23,14 @@ const transformTruckRecordToHistory = (truck: any): TruckHistoryRecord => {
         armada: truck.armada || '',
         kelengkapan: truck.kelengkapan || '',
         jenismobil: truck.jenismobil || '',
+        skipped_steps: truck.skipped_steps || '',
+        skip_reason: truck.skip_reason || '',
+        loading_cycle: truck.loading_cycle || '',
+        department_history: truck.department_history || '',
+        jenisbarang: truck.jenisbarang || '',
+
         date: truck.date || '',
+        cycle_number: truck.cycle_number || '',
         arrivaltime: truck.arrivaltime || '',
         exittime: truck.exittime || '',
         waitingfortimbang: truck.waitingfortimbang || '',
@@ -38,9 +45,22 @@ const transformTruckRecordToHistory = (truck: any): TruckHistoryRecord => {
         finishloadingtime: truck.finishloadingtime || '',
         totalprocessloadingtime: truck.totalprocessloadingtime || '',
         actualwaitloadingtime: truck.actualwaitloadingtime || '',
+        runtopt: truck.runtopt || '',
+        waitingforarrivalpt: truck.waitingforarrivalpt || '',
+        waitingforexit: truck.waitingforexit || '',
+        totalprocesstimbangneto: truck.totalprocesstimbangneto || '',
+        starttimbangneto: truck.starttimbangneto || '',
+        finishtimbangneto: truck.finishtimbangneto || '',
+        totaltruckcompletiontime: truck.totaltruckcompletiontime || '',
+        entrypt: truck.entrypt || '',
+        waitingfortimbangneto: truck.waitingfortimbangneto || '',
+
         driver_photo: truck.driver_photo || '',
         stnk_photo: truck.stnk_photo || '',
         sim_photo: truck.sim_photo || '',
+
+        queue_position: truck.queue_position || '',
+        queue_ticket: truck.queue_ticket || '',
     };
 };
 export const useTruckHistory = () => {

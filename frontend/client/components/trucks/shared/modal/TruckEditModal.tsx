@@ -25,6 +25,7 @@ export default function TruckEditModal({
     onSelectSuratJalan
 }: TruckEditModalProps) {
     const { formatTimeForInput } = useFormatTime();
+    const baseurl = import.meta.env.VITE_API_BASE_URL;
     if (!truck) return null;
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -232,7 +233,8 @@ export default function TruckEditModal({
                                         <img 
                                             src={truck.driver_photo.startsWith('data:image') 
                                                 ? truck.driver_photo 
-                                                : `http://192.168.4.108:3000/uploads/trucks/${truck.driver_photo}`}
+                                                : `${baseurl}/uploads/trucks/${truck.driver_photo}`}
+                                                // : `http://192.168.4.108:3000/uploads/trucks/${truck.driver_photo}`}
                                             alt="Driver" 
                                             className="w-full h-32 object-cover rounded-lg border mx-auto"
                                             onError={(e) => {
@@ -256,7 +258,8 @@ export default function TruckEditModal({
                                         <img 
                                             src={truck.sim_photo.startsWith('data:image') 
                                                 ? truck.sim_photo 
-                                                : `http://192.168.4.108:3000/uploads/trucks/${truck.sim_photo}`}
+                                                : `${baseurl}/uploads/trucks/${truck.sim_photo}`}
+                                                // : `http://192.168.4.108:3000/uploads/trucks/${truck.sim_photo}`}
                                             alt="SIM" 
                                             className="w-full h-32 object-cover rounded-lg border mx-auto"
                                             onError={(e) => {
@@ -280,7 +283,8 @@ export default function TruckEditModal({
                                         <img 
                                             src={truck.stnk_photo.startsWith('data:image') 
                                                 ? truck.stnk_photo 
-                                                : `http://192.168.4.108:3000/uploads/trucks/${truck.stnk_photo}`}
+                                                : `${baseurl}/uploads/trucks/${truck.stnk_photo}`}
+                                                // : `http://192.168.4.108:3000/uploads/trucks/${truck.stnk_photo}`}
                                             alt="STNK" 
                                             className="w-full h-32 object-cover rounded-lg border mx-auto"
                                             onError={(e) => {

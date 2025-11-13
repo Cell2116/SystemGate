@@ -44,6 +44,17 @@ export const formatDateTime = (dateString: string | null | undefined) => {
     hour12: false
   });
 };
+export const formatDateTime2 = (dateString: string | null | undefined) => {
+  if (!dateString) return "N/A";
+  return new Date(dateString).toLocaleString("id-ID", {
+    
+    timeZone: "UTC", 
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+};
 export const formatCustomDateTime = (dateString: string | null | undefined) => {
   if (!dateString) return null;
   let date: Date;

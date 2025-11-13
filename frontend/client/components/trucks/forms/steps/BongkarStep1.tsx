@@ -42,14 +42,29 @@ export function BongkarStep1({
         <CompanyFields
           formData={formData}
           onFieldChange={onFieldChange}
+          showArmada={true}
+        />
+        <CompanyFields
+          formData={formData}
+          onFieldChange={onFieldChange}
           showSupplier={true}
         />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TimeFields
           formData={formData}
           onFieldChange={onFieldChange}
           showArrivalTime={true}
           showDate={false}
         />
+        {/* <VehicleSelectFields
+          formData={formData}
+          onFieldChange={onFieldChange}
+          showDepartment={false}
+          showVehicleType={false}
+          showCondition={true}
+          showTransporter={false}
+        /> */}
       </div>
       <PhotoFields
         capturedImages={capturedImages}

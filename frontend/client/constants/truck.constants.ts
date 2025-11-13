@@ -23,6 +23,7 @@ export const INITIAL_FORM_DATA: TruckFormData = {
     armada: "",
     kelengkapan: "",
     jenismobil: "",
+    jenisbarang: "",
 };
 export const DEPARTMENT_OPTIONS = [
     { value: "HPC", label: "HPC" },
@@ -44,6 +45,12 @@ export const TRUCK_STATUS_OPTIONS = [
 export const TRANSPORTER_OPTIONS = [
     { value: "internal", label: "Kendaraan Internal" },
     { value: "external", label: "Kendaraan External" },
+];
+export const GOODS_OPTIONS = [
+    { value: "BP", label: "Bahan Pembantu" },
+    { value: "BB", label: "Bahan Baku" },
+    { value: "Mesin", label: "Mesin" },
+    { value: "Lainnya", label: "Lainnya" },
 ];
 export const CAMERA_LABELS = {
     driver: "Pengemudi",

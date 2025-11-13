@@ -1,11 +1,12 @@
 // TODO Add Select Option For Action Scan ( use Modal Dialog )
 
 import Clock2 from "../components/dashboard/clock"
-import { PackageOpen, Scan as ScanIcon, Truck, Package } from "lucide-react"
+import { PackageOpen, Scan as ScanIcon, Truck, Package, Camera } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { useDashboardStore } from "@/store/dashboardStore"
 import { useScannerStore } from "../store/scannerStore"
 import ActionModal from "@/components/trucks/actionModal"
+import CameraScannerModal from "@/components/BarcodeScanCamera"
 
 export default function Scan() {
     const openActionModal = useScannerStore((state) => state.openActionModal);
@@ -14,7 +15,7 @@ export default function Scan() {
     // }, [openActionModal]);
     const scanInputRef = useRef<HTMLInputElement>(null);
     const [countdown, setCountdown] = useState<number | null>(null);
-    
+    const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);    
     const {
         scannedData,
         scanResult,
@@ -26,6 +27,10 @@ export default function Scan() {
         clearScan,
         processScan
     } = useScannerStore();
+
+    const handleCameraScan = async (scannedData: string) => {
+        await processScan(scannedData);
+    };
     useEffect(() => {
         if (scanInputRef.current) {
             scanInputRef.current.focus();
@@ -36,9 +41,7 @@ export default function Scan() {
         let countdownInterval: NodeJS.Timeout;
         let autoClearTimeout: NodeJS.Timeout;
         if (scannedData && (scanResult || lastTruckUpdate)) {
-            
             setCountdown(5);
-            
             countdownInterval = setInterval(() => {
                 setCountdown(prev => {
                     if (prev === null || prev <= 1) {
@@ -81,6 +84,20 @@ export default function Scan() {
                     <p className="text-xs sm:text-sm text-green-600">
                         Scan truck QR code using Ultron scanner
                     </p>
+                    <div className="text-center mt-3">
+                        <button
+                            onClick={() => setIsCameraModalOpen(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            <Camera className="w-4 h-4" />
+                            Scan with Camera
+                        </button>
+                    </div>
+                    <CameraScannerModal
+                        isOpen={isCameraModalOpen}
+                        onClose={() => setIsCameraModalOpen(false)}
+                        onScan={handleCameraScan}
+                    />
                     <ActionModal/>
                 </div>
                 {/* Main Scan Area - Better mobile spacing */}
@@ -155,7 +172,7 @@ export default function Scan() {
                                     disabled
                                 />
                                 <p className="text-xs text-gray-500 mt-1 text-center">
-                                    🔒 Scanner Only - Manual input disabled
+                                    Scanner Only - Manual input disabled
                                 </p>
                             </div>
                             {/* Display scanned data - Responsive text */}

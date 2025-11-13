@@ -10,7 +10,7 @@ export default function EmployeeModal({
     setSelectedRecord
 }: EmployeeModalProps) {
     const [modalImage, setModalImage] = useState<string | null>(null);
-    const BASE_URL_PHOTO = 'http://192.168.4.108:3000/uploads/';
+    const BASE_URL_PHOTO = import.meta.env.VITE_API_BASE_URL_PHOTOS;
 
     // Helper function to get approver display name
     const getApproverDisplay = (name: string | null | undefined, role: string | null | undefined) => {

@@ -31,12 +31,12 @@ export function TicketPreview({
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
     const pad = (n: number) => String(n).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `;
+    return `${date.getDate()}-${pad(date.getMonth() + 1)}-${pad(date.getFullYear())} `;
   };
   const formatTime = (isoString: string): string => {
     if (!isoString) return 'Not set';
 
-    const dateTimeStr = isoString.replace('T', ' ').split('.')[0]; 
+    const dateTimeStr = isoString.replace('T', ' ').split('.')[0];
     if (dateTimeStr.includes(' ')) {
       const timePart = dateTimeStr.split(' ')[1];
       return timePart || 'Not set';
@@ -80,13 +80,21 @@ export function TicketPreview({
           className="bg-white w-[25vw] flex flex-col p-5"
         >
           {/* Header */}
-          <div className="flex items-center gap-2 mb-2">
-            <img
-              src="../../dist/spa/alkindo-naratama-tbk--600-removebg-preview.png"
-              alt="alkindo"
-              className="w-8 h-8"
-            />
-            <p className="font-bold text-base">Gateway System</p>
+          <div className="flex flex-row justify-between pt-1">
+            <div className="flex items-center gap-2 mb-2">
+              <img
+                src="../../../../public/alkindo-naratama-tbk--600-removebg-preview.png"
+                alt="alkindo"
+                className="w-8 h-8"
+              />
+              <p className="font-bold text-base">Gateway System</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold">No. Antrean</p>
+              <p id="queue" className="text-center text-xl font-bold">
+                {previewTicketNumber.slice(-2)}
+              </p>
+            </div>
           </div>
 
           {/* Info Section */}
@@ -95,21 +103,28 @@ export function TicketPreview({
               <div className="text-xs">
                 <p id="driver">{formData.driver}</p>
                 <p id="plate">{formData.platenumber}</p>
-                <p id="company">
-                  {operationType === "muat" ? formData.armada : formData.supplier}
-                </p>
+                <p id="armada">{formData.armada}</p>
               </div>
               <div className="text-xs">
                 <p id="date">{formatDate(formData.date)}</p>
                 <p id="time">{formatTime(formData.arrivalTime)}</p>
+                <p id="department">{formData.department}</p>
               </div>
             </div>
-
-            <div className="text-right">
-              <p className="text-sm font-semibold">No. Antrean</p>
-              <p id="queue" className="text-center text-xl font-bold">
-                {previewTicketNumber.slice(-2)}
-              </p>
+            <div className="flex justify-center items-center">
+              <div className="text-xs font-semibold">
+                <p id="supplier">{formData.supplier}</p>
+                <p id="jenisbarang">{
+                  formData.jenisbarang === "BP"
+                    ? "Bahan Pembantu"
+                    : formData.jenisbarang === "BB"
+                    ? "Bahan Baku"
+                    : formData.jenisbarang === "mesin"
+                    ? "Mesin"
+                    : "Lainnya"
+                }</p>
+                <p id="descin">{formData.descin}</p>
+              </div>
             </div>
           </div>
 

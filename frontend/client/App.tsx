@@ -29,12 +29,11 @@ import { NetworkStatus } from "./components/NetworkStatus";
 import GlobalScanner from "./components/GlobalScanner";
 import ScannerIndicator from "./components/ScannerIndicator";
 import TruckQueuePage from "./pages/TruckQueuePage";
+import Contact from "./pages/Contact";
 const queryClient = new QueryClient();
 const App = () => {
   useEffect(() => {
-    
     initWebSocket();
-    
   }, []);
   // if (import.meta.env.MODE === 'development') {
   //   console.log = () => { };
@@ -68,6 +67,7 @@ const App = () => {
                 <Route path="/unloadingtrucks" element={<UnloadingTrucks />} />
                 <Route path="/scan" element={<Scan />} />
                 <Route path="/truck-queue" element={<TruckQueuePage />} />
+                <Route path="/contact" element={<Contact />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

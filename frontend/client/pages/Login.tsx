@@ -22,7 +22,7 @@ export default function LoginPage() {
   const {setRole, setName, setDepartment} = useUser();
   const navigate = useNavigate();
   const { login, loading, error: storeError, clearError } = useLoginStore();
-  const validRoles = ["Security", "HR", "Staff", "Head Department", "Director", "Super User"] as const;
+  const validRoles = ["Security", "HR", "Staff", "Head Department", "Director", "Super User", "Admin"] as const;
   type Role = typeof validRoles[number];
   const handleLogin = async () => {
     if (!username || !password) {
@@ -50,6 +50,9 @@ export default function LoginPage() {
             navigate("/leave");
             break;
           case "Security":
+            navigate("/dashboard");
+            break;
+          case "Admin":
             navigate("/dashboard");
             break;
           default:

@@ -304,38 +304,6 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
                         </tbody>
                     </table>
                 </div>
-                {/* No data message */}
-                {/* {filteredTrucks.length === 0 && (
-                    <div className="text-center py-6 sm:py-8 px-4">
-                        {searchTerm ? (
-                            <div>
-                                <p className="text-gray-500 mb-2 text-sm sm:text-base">No trucks found matching "{searchTerm}"</p>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setSearchTerm("")}
-                                    className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm"
-                                >
-                                    Clear search
-                                </Button>
-                            </div>
-                        ) : selectedStatus !== "all" ? (
-                            <div>
-                                <p className="text-gray-500 mb-2 text-sm sm:text-base">No trucks found with status "{selectedStatus}"</p>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setSelectedStatus("all")}
-                                    className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm"
-                                >
-                                    Show all trucks
-                                </Button>
-                            </div>
-                        ) : (
-                            <p className="text-gray-500 text-sm sm:text-base">{config.emptyMessage}</p>
-                        )}
-                    </div>
-                )} */}
             </div>
             {/* Detail Modal */}
             <TruckDetailModal

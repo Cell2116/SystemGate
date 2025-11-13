@@ -67,6 +67,7 @@ export default function EmployeeDashboard() {
     addLeavePermission,
   } = useDashboardStore();
   
+  const baseurl = import.meta.env.VITE_API_BASE_URL
   const getLastActivity = (record: ExtendedAttendance) => {
     const timestamps = [
       new Date(record.datein).getTime(),
@@ -80,8 +81,6 @@ export default function EmployeeDashboard() {
   
   const sortedAndFilteredRecords = useMemo(() => {
     const now = new Date();
-    
-    
     const filtered = records.filter((record: ExtendedAttendance) => {
       const dateIn = new Date(record.datein);
       const isLessThan24h = (now.getTime() - dateIn.getTime()) < 24 * 60 * 60 * 1000;
@@ -89,8 +88,6 @@ export default function EmployeeDashboard() {
       
       return isLessThan24h || notExited;
     });
-    
-    
     return [...filtered].sort((a, b) => {
       const lastActivityA = getLastActivity(a);
       const lastActivityB = getLastActivity(b);
@@ -384,14 +381,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path 
-                            ? `http://192.168.4.108:3000/uploads/${record.image_path}` 
+                            ? `${baseurl}/uploads/${record.image_path}` 
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="entry"
                           className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
                           onClick={() => {
                             if (record.image_path)
-                              setModalImage(`http://192.168.4.108:3000/uploads/${record.image_path}`);
+                              setModalImage(`${baseurl}/uploads/${record.image_path}`);
                           }}
                         />
                       </div>
@@ -403,14 +400,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_out
-                            ? `http://192.168.4.108:3000/uploads/${record.image_path_out}`
+                            ? `${baseurl}/uploads/${record.image_path_out}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="exit"
                           className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_out)
-                              setModalImage(`http://192.168.4.108:3000/uploads/${record.image_path_out}`);
+                              setModalImage(`${baseurl}/uploads/${record.image_path_out}`);
                           }}
                         />
                       </div>
@@ -423,14 +420,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_exit
-                            ? `http://192.168.4.108:3000/uploads/${record.image_path_leave_exit}`
+                            ? `${baseurl}/uploads/${record.image_path_leave_exit}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_exit"
                           className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_exit)
-                              setModalImage(`http://192.168.4.108:3000/uploads/${record.image_path_leave_exit}`);
+                              setModalImage(`${baseurl}/uploads/${record.image_path_leave_exit}`);
                           }}
                         />
                       </div>
@@ -441,14 +438,14 @@ export default function EmployeeDashboard() {
                         </h3>
                         <img
                           src={record.image_path_leave_return
-                            ? `http://192.168.4.108:3000/uploads/${record.image_path_leave_return}`
+                            ? `${baseurl}/uploads/${record.image_path_leave_return}`
                             : "https://via.placeholder.com/150x150?text=No+Photo"
                           }
                           alt="leave_return"
                           className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm cursor-pointer text-gray-300 border-none text-center"
                           onClick={() => {
                             if (record.image_path_leave_return)
-                              setModalImage(`http://192.168.4.108:3000/uploads/${record.image_path_leave_return}`);
+                              setModalImage(`${baseurl}/uploads/${record.image_path_leave_return}`);
                           }}
                         />
                       </div>

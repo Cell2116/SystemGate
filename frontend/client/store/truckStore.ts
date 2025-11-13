@@ -1,9 +1,9 @@
 import React from "react";
 import { create } from "zustand";
 import axios from "axios";
-import { TruckMainData, TruckTimesData, TruckPhotosData } from "@/types/truck.types";
+import { TruckMainData, TruckTimesData, TruckPhotosData, TruckQueueData, TruckExportData } from "@/types/truck.types";
 
-export type CombinedTruckData = TruckMainData & TruckPhotosData & TruckTimesData;
+export type CombinedTruckData = TruckMainData & TruckPhotosData & TruckTimesData & TruckQueueData;
 interface TruckStore {
     trucks: CombinedTruckData[];
     trucksLoading: boolean;
@@ -18,6 +18,13 @@ interface TruckStore {
         dateFrom?: string;
         dateTo?: string;
     }) => Promise<CombinedTruckData[]>;
+    fetchTrucksForExport: (filters?: {
+        startDate?: string;
+        endDate?: string;
+        department?: string;
+        status?: string;
+    }) => Promise<TruckExportData[]>;
+    fetchTruckQueue: (id: string) => Promise<TruckQueueData | null>;
     createTruck: (data: Omit<CombinedTruckData, "id">) => Promise<CombinedTruckData>;
     updateTruckAPI: (
         id: string,
@@ -38,7 +45,8 @@ interface TruckStore {
     setTrucksError: (error: string | null) => void;
     clearErrors: () => void;
 }
-const API_BASE_URL = "http://192.168.4.108:3000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+// const API_BASE_URL = "http://192.168.4.108:8080"
 const USE_DUMMY_DATA = false;
 const convertIntervalToString = (interval: any): string | null => {
     if (!interval) return null;
@@ -65,7 +73,7 @@ const convertIntervalToString = (interval: any): string | null => {
     return null;
 };
 
-const transformTruckFromDB = (dbTruck: any): TruckMainData & TruckPhotosData & TruckTimesData => {
+const transformTruckFromDB = (dbTruck: any): CombinedTruckData => {
     return {
         id: dbTruck.id?.toString() || "",
         platenumber: dbTruck.platenumber || "",
@@ -88,8 +96,14 @@ const transformTruckFromDB = (dbTruck: any): TruckMainData & TruckPhotosData & T
         armada: dbTruck.armada || "",
         kelengkapan: dbTruck.kelengkapan || "",
         jenismobil: dbTruck.jenismobil || "",
+        jenisbarang: dbTruck.jenisbarang || "",
         date: dbTruck.date || "",
-        exittime: dbTruck.exittime || "",
+
+        skipped_steps: dbTruck.skipped_steps || undefined,
+        skip_reason: dbTruck.skip_reason || undefined,
+        loading_cycle: dbTruck.loading_cycle || 1,
+        department_history: dbTruck.department_history || undefined,
+        cycle_number: dbTruck.cycle_number || undefined,
         
         arrivaltime: dbTruck.arrivaltime || dbTruck.arrivalTime || "",
         waitingfortimbang: convertIntervalToString(dbTruck.waitingfortimbang) || "",
@@ -100,15 +114,32 @@ const transformTruckFromDB = (dbTruck: any): TruckMainData & TruckPhotosData & T
         waitingforarrivalhpc: convertIntervalToString(dbTruck.waitingforarrivalhpc) || "",
         entryhpc: dbTruck.entryhpc || "",
         totalwaitingarrival: convertIntervalToString(dbTruck.totalwaitingarrival) || "",
+        starttimbangneto: dbTruck.starttimbangneto || "",
+        finishtimbangneto: dbTruck.finishtimbangneto || "",
+        waitingfortimbangneto: dbTruck.waitingfortimbangneto || "",
+        totalprocesstimbangneto: dbTruck.totalprocesstimbangneto || "",
+        exittime: dbTruck.exittime || "",
+
+        runtopt: dbTruck.runtopt || "",
+        waitingforarrivalpt: convertIntervalToString(dbTruck.waitingforarrivalpt) || "",
+        entrypt: dbTruck.entrypt || "",
         startloadingtime: dbTruck.startloadingtime || "",
         finishloadingtime: dbTruck.finishloadingtime || "",
         totalprocessloadingtime: convertIntervalToString(dbTruck.totalprocessloadingtime) || "",
         actualwaitloadingtime: convertIntervalToString(dbTruck.actualwaitloadingtime) || "",
+        waitingforexit: dbTruck.waitingforexit || "",
+        totaltruckcompletiontime: dbTruck.totaltruckcompletiontime || "",
         
         truck_id: dbTruck.truck_id || '',
         driver_photo: dbTruck.driver_photo || "",
         sim_photo: dbTruck.sim_photo || "",
-        stnk_photo: dbTruck.stnk_photo || "",        
+        stnk_photo: dbTruck.stnk_photo || "",    
+
+
+
+
+        queue_ticket: dbTruck.queue_ticket || undefined,
+        queue_position: dbTruck.queue_position || undefined,    
     }; 
 };
 
@@ -204,8 +235,44 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
             throw error;
         }
     },
+    fetchTruckQueue: async (id: string) => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/api/trucks/actualqueue/${id}`);
+            return {
+                queue_ticket: response.data.queue_ticket,
+                queue_position: response.data.queue_position,
+            };
+        } catch (error: any) {
+            if (error.response?.status === 404) {
+                // Truck tidak ada di queue
+                return null;
+            }
+            console.error("Error fetching truck queue:", error);
+            throw error;
+        }
+    },
     refreshTrucks: async () => {
         await get().fetchTrucks();
+    },
+    fetchTrucksForExport: async (filters = {}) => {
+        try {
+            const params = new URLSearchParams();
+            if (filters.startDate) params.append('startDate', filters.startDate);
+            if (filters.endDate) params.append('endDate', filters.endDate);
+            if (filters.department) params.append('department', filters.department);
+            if (filters.status) params.append('status', filters.status);
+            const url = `${API_BASE_URL}/api/trucks/export${params.toString() ? `?${params.toString()}` : ''}`;
+            console.log('📥 Fetching truck data for export...', url);
+            const response = await axios.get(url);
+            if (!response.data.success) {
+                throw new Error(response.data.error || 'Failed to fetch export data');
+            }
+            console.log(`✅ Fetched ${response.data.count} records for export`);
+            return response.data.data;
+        } catch (error) {
+            console.error('❌ Error fetching trucks for export:', error);
+            throw error;
+        }
     },
     createTruck: async (data) => {
         try {
@@ -231,7 +298,7 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 armada: data.armada,
                 kelengkapan: data.kelengkapan,
                 jenismobil: data.jenismobil,
-                exittime: null,
+                jenisbarang: data.jenisbarang,
                 
                 arrivaltime: data.arrivaltime || null,
                 waitingfortimbang: null,
@@ -278,12 +345,13 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
             const truckMainFields = ['platenumber', 'noticket', 'department', 'nikdriver', 'tlpdriver', 
                                     'nosj', 'tglsj', 'driver', 'supplier', 'eta', 'status', 'type', 
                                     'operation', 'goods', 'descin', 'descout', 'statustruck', 'armada', 
-                                    'kelengkapan', 'jenismobil', 'date', 'exittime'];
+                                    'kelengkapan', 'jenismobil', 'jenisbarang', 'date', 'exittime'];
             
             const truckTimeFields = ['arrivaltime', 'waitingfortimbang', 'starttimbang', 'finishtimbang', 
                                     'totalprocesstimbang', 'runtohpc', 'waitingforarrivalhpc', 'entryhpc', 
                                     'totalwaitingarrival', 'startloadingtime', 'finishloadingtime', 
-                                    'totalprocessloadingtime', 'actualwaitloadingtime'];
+                                    'totalprocessloadingtime', 'actualwaitloadingtime', 'starttimbangneto', 
+                                    'finishtimbangneto', 'waitingfortimbangneto', 'totalprocesstimbangneto'];
             const truckPhotoFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
             const fieldMapping = {
                 platenumber: 'platenumber',
@@ -306,6 +374,7 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 statustruck: 'statustruck',
                 armada: 'armada',
                 kelengkapan: 'kelengkapan',
+                jenisbarang: 'jenisbarang',
                 jenismobil: 'jenismobil',
                 date: 'date',
                 exittime: 'exittime',
@@ -322,6 +391,10 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 finishloadingtime: 'finishloadingtime',
                 totalprocessloadingtime: 'totalprocessloadingtime',
                 actualwaitloadingtime: 'actualwaitloadingtime',
+                starttimbangneto: 'starttimbangneto',
+                finishtimbangneto: 'finishtimbangneto',
+                waitingfortimbangneto: 'waitingfortimbangneto',
+                totalprocesstimbangneto: 'totalprocesstimbangneto',
                 driver_photo: 'driver_photo',
                 sim_photo: 'sim_photo',
                 stnk_photo: 'stnk_photo',
@@ -479,6 +552,7 @@ export const useTrucksWithFetch = (filters?: {
         refetch: () => store.fetchTrucks(filters),
         createTruck: store.createTruck,
         updateTruckAPI: store.updateTruckAPI,
+        fetchTruckQueue: store.fetchTruckQueue,
         deleteTruck: store.deleteTruck,
         refreshTrucks: store.refreshTrucks,
         updateTruck: store.updateTruck,

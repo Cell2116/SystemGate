@@ -1,5 +1,5 @@
 import { TruckHistoryRecord } from "@/types/truck.types";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatDateTime2 } from "@/lib/utils";
 import React from "react";
 type CardContentProps = {
     children: React.ReactNode;
@@ -25,6 +25,11 @@ export default function TruckTable({
     onViewDetails
 }: TruckTableProps) {
     console.log("Current Records:", currentRecords)
+    React.useEffect(() => {
+        currentRecords.forEach((r) => {
+            console.log("Type:", typeof r.totaltruckcompletiontime, "Value:", r.totaltruckcompletiontime);
+        });
+    }, [currentRecords]);
     const getDisplayRecords = () => {
         if (typeof window !== 'undefined') {
             const isMobile = window.innerWidth < 1024;
@@ -85,6 +90,9 @@ export default function TruckTable({
                                     Finish Time
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Total Completion Time
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -118,13 +126,16 @@ export default function TruckTable({
                                         {record.arrivaltime ? formatDateTime(record.arrivaltime) : '-'}
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                                        {record.finishloadingtime ? formatDateTime(record.finishloadingtime) : '-'}
+                                        {record.exittime ? formatDateTime(record.exittime) : '-'}
+                                    </td>
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                                        {record.totaltruckcompletiontime || '-'}
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${record.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :
-                                            record.status === 'Loading' ? 'bg-blue-100 text-blue-800' :
-                                                record.status === 'Finished' ? 'bg-green-100 text-green-800' :
-                                                    record.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${record.status === 'waiting' ? 'bg-yellow-100 text-yellow-800' :
+                                            record.status === 'loading' ? 'bg-blue-100 text-blue-800' :
+                                                record.status === 'finished' ? 'bg-green-100 text-green-800' :
+                                                    record.status === 'exit' ? 'bg-red-100 text-red-800' :
                                                         'bg-gray-100 text-gray-800'
                                             }`}>
                                             {record.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}

@@ -32,82 +32,6 @@ BEGIN
     CREATE INDEX idx_attlog_datetime ON attlog(authDateTime);
 END
 GO
-
--- -- Table daftar login
--- IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[userlogin]') AND type in (N'U'))
--- BEGIN
---     CREATE TABLE userlogin (
---         id INT IDENTITY(1,1) PRIMARY KEY,
---         name NVARCHAR(MAX) NOT NULL,
---         username NVARCHAR(MAX) NOT NULL,
---         password VARCHAR(255) NOT NULL,
---         department VARCHAR(50) NOT NULL,
---         role VARCHAR(50) NOT NULL
---     );
--- END
--- GO
-
--- -- Table daftar pengguna RFID
--- IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[users]') AND type in (N'U'))
--- BEGIN
---     CREATE TABLE users (
---         id INT IDENTITY(1,1) PRIMARY KEY,
---         name NVARCHAR(MAX) NOT NULL,
---         uid VARCHAR(50) UNIQUE NOT NULL,
---         licenseplate VARCHAR(50),
---         department VARCHAR(50) NOT NULL,
---         role VARCHAR(50) NOT NULL
---     );
--- END
--- GO
-
--- -- Table Leave Permission
--- IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[leave_permission]') AND type in (N'U'))
--- BEGIN
---     CREATE TABLE leave_permission (
---         id INT IDENTITY(1,1) PRIMARY KEY,
---         name NVARCHAR(MAX) NOT NULL,
---         uid VARCHAR(50),
---         licenseplate VARCHAR(50),
---         department VARCHAR(50),
---         role VARCHAR(50),
---         date DATE,
---         exittime DATETIME2,
---         returntime DATETIME2,
---         actual_exittime DATETIME2,
---         actual_returntime DATETIME2,
---         reason VARCHAR(255),
---         approval VARCHAR(50),
---         statusfromhr VARCHAR(50),
---         statusfromdept VARCHAR(50),
---         statusfromdirector VARCHAR(50),
---         submittedat DATETIME2
---     );
--- END
--- GO
-
--- -- Table log absensi
--- IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[attendance_logs]') AND type in (N'U'))
--- BEGIN
---     CREATE TABLE attendance_logs (
---         id INT IDENTITY(1,1) PRIMARY KEY,
---         uid VARCHAR(50),
---         licenseplate VARCHAR(50),
---         image_path NVARCHAR(MAX),
---         image_path_out NVARCHAR(MAX),
---         image_path_leave_exit VARCHAR(255),
---         image_path_leave_return VARCHAR(255),
---         datein DATETIME2 DEFAULT GETDATE(),
---         dateout DATETIME2,
---         exitTime DATETIME2,
---         returnTime DATETIME2,
---         actual_exittime DATETIME2,
---         actual_returntime DATETIME2,
---         status NVARCHAR(MAX),
---         leave_permission_id INT FOREIGN KEY REFERENCES leave_permission(id)
---     );
--- END
--- GO
 -- ===========================================
 --  DATABASE STRUCTURE FOR LEAVE APPROVAL SYSTEM
 -- ===========================================
@@ -138,6 +62,7 @@ BEGIN
         uid VARCHAR(50) UNIQUE NOT NULL,
         licenseplate VARCHAR(50),
         department VARCHAR(50) NOT NULL,
+        no_telp VARCHAR(50),
         role VARCHAR(50) NOT NULL
     );
 END
@@ -299,6 +224,21 @@ VALUES
 GO
 
 
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[truck_queue_actual]') AND type = N'U')
+BEGIN
+    CREATE TABLE truck_queue_actual (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        department VARCHAR(50),
+        truck_id INT FOREIGN KEY REFERENCES trucks(id) ON DELETE CASCADE,
+        queue_position INT,
+        queue_ticket INT NULL,
+        last_update DATETIME2 DEFAULT GETDATE()
+    );
+END
+GO
+
+
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[trucks]') AND type = N'U')
 BEGIN
     CREATE TABLE trucks (
@@ -323,11 +263,29 @@ BEGIN
         armada VARCHAR(50),
         kelengkapan VARCHAR(50),
         jenismobil VARCHAR(50),
+        jenisbarang VARCHAR(50),
         date DATE,
-        exittime DATETIME2
+        skipped_steps VARCHAR(255) NULL,
+        skip_reason VARCHAR(255) NULL,
+        loading_cycle VARCHAR(255) NULL,
+        department_history VARCHAR(255) NULL,
     );
 END
 GO
+
+-- IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[truck_queue]') AND type = N'U')
+-- BEGIN
+--     CREATE TABLE truck_queue_actual (
+--         id INT IDENTITY(1,1) PRIMARY KEY,
+--         truck_id INT FOREIGN KEY REFERENCES trucks(id) ON DELETE CASCADE,
+--         department VARCHAR(50),
+--         step_status VARCHAR(50),
+--         position_order INT,
+--         ready_flag BIT DEFAULT 1,
+--         updated_at DATETIME2 DEFAULT SYSDATETIME()
+--     );
+-- END
+-- GO
 
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[truck_times]') AND type = N'U')
 BEGIN
@@ -339,14 +297,26 @@ BEGIN
         starttimbang TIME,
         finishtimbang TIME,
         totalprocesstimbang TIME,
-        runtohpc TIME,
+        runtohpc TIME,  
         waitingforarrivalhpc TIME,
         entryhpc TIME,
+        runtopt TIME,
+        waitingforarrivalpt TIME,
+        entrypt TIME,
         totalwaitingarrival TIME,
         startloadingtime TIME,
         finishloadingtime TIME,
         totalprocessloadingtime TIME,
-        actualwaitloadingtime TIME
+        actualwaitloadingtime TIME,
+        starttimbangneto TIME,
+        finishtimbangneto TIME,
+        totalprocesstimbangneto TIME, 
+        waitingfortimbangneto TIME,
+        exittime TIME,
+        totaltruckcompletiontime VARCHAR(10),
+        -- totaltruckcompletiontime TIME, -> Change to Varchar SQL SERVER Limitation
+        waitingforexit TIME,
+        cycle_number INT DEFAULT 1
     );
 END
 GO
@@ -363,6 +333,117 @@ BEGIN
 END
 GO
 
+
+CREATE OR ALTER PROCEDURE sp_update_truck_queue_actual
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    ;WITH latest_times AS (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY truck_id ORDER BY id DESC) AS rn
+        FROM truck_times
+    ),
+    current_step AS (
+        SELECT
+            t.id AS truck_id,
+            t.platenumber,
+            t.department,
+            t.status,
+            tt.arrivaltime,
+            tt.starttimbang,
+            tt.finishtimbang,
+            tt.startloadingtime,
+            tt.finishloadingtime,
+            tt.starttimbangneto,
+            tt.finishtimbangneto,
+            TRY_CAST(RIGHT(t.noticket, 2) AS INT) AS queue_ticket,
+            CASE 
+                WHEN tt.starttimbangneto IS NOT NULL AND tt.finishtimbangneto IS NULL THEN 'timbang_netto'
+                WHEN tt.startloadingtime IS NOT NULL AND tt.finishloadingtime IS NULL THEN 'loading'
+                WHEN tt.starttimbang IS NOT NULL AND tt.finishtimbang IS NULL THEN 'timbang_gross'
+                WHEN t.status = 'waiting' THEN 'waiting'
+                WHEN t.status = 'finished' THEN 'finished'
+                ELSE 'waiting'
+            END AS current_phase,
+            COALESCE(
+                tt.starttimbangneto,
+                tt.startloadingtime,
+                tt.starttimbang,
+                tt.arrivaltime
+            ) AS active_time
+        FROM trucks t
+        JOIN latest_times tt ON t.id = tt.truck_id AND tt.rn = 1
+    )
+
+    SELECT 
+        truck_id,
+        platenumber,
+        department,
+        current_phase,
+        queue_ticket,
+        active_time,
+        ROW_NUMBER() OVER (
+            PARTITION BY department
+            ORDER BY
+                CASE current_phase
+                    WHEN 'waiting' THEN 1
+                    WHEN 'timbang_gross' THEN 2
+                    WHEN 'loading' THEN 3
+                    WHEN 'timbang_netto' THEN 4
+                    ELSE 5
+                END,
+                active_time ASC
+        ) AS queue_position
+    INTO #ranked
+    FROM current_step
+    WHERE current_phase <> 'finished';
+
+
+    -- UPDATE existing
+    UPDATE q
+    SET 
+        q.department = r.department,
+        q.queue_position = r.queue_position,
+        q.queue_ticket = r.queue_ticket,
+        q.last_update = GETDATE()
+    FROM truck_queue_actual q
+    JOIN #ranked r ON q.truck_id = r.truck_id;
+
+    -- INSERT new
+    INSERT INTO truck_queue_actual (truck_id, department, queue_ticket, queue_position, last_update)
+    SELECT 
+        r.truck_id, 
+        r.department, 
+        r.queue_ticket,
+        r.queue_position, 
+        GETDATE()
+    FROM #ranked r
+    LEFT JOIN truck_queue_actual q ON q.truck_id = r.truck_id
+    WHERE q.truck_id IS NULL;
+
+    DROP TABLE #ranked;
+END
+GO
+
+CREATE OR ALTER TRIGGER trg_update_queue_on_truck_times
+ON truck_times
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    EXEC sp_update_truck_queue_actual;
+END
+GO
+
+
+CREATE OR ALTER TRIGGER trg_update_queue_on_trucks
+ON trucks
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    EXEC sp_update_truck_queue_actual;
+END
+GO
 
 
 -- Table surat jalan

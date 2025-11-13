@@ -11,13 +11,16 @@ import { WebSocketServer } from "ws";
 import { captureSnapshot } from './cctv.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import broadcastTwillio from './broadcastTwillio.js'
+// import broadcastTwillio from './broadcastTwillio.js'
+import dotenv from "dotenv"
+
+dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = 3000;
+const port = process.env.BACKEND_PORT || 3000;
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
@@ -36,7 +39,7 @@ function saveImageToFile(base64Data, filename) {
             fs.writeFileSync(filePath, imageBuffer);
             resolve(filename);
         } catch (error) {
-            console.error('❌ Error saving image:', error);
+            console.error('Error saving image:', error);
             reject(error);
         }
     });
@@ -65,7 +68,7 @@ wss.on("connection", (ws) => {
     ws.on("close", () => {
     });
     ws.on("error", (error) => {
-        console.error("❌ WebSocket error:", error);
+        console.error(" WebSocket error:", error);
     });
 });
 // !! END OF WEBSOCKET FUNCTION
@@ -76,7 +79,7 @@ wss.on("connection", (ws) => {
 // !! HELPER FUNCTIONS FOR ROUTING-BASED APPROVAL SYSTEM
 async function isLeavePermissionApproved(licensePlate) {
     try {
-        //console.log(`🔍 Routing check for license plate: ${licensePlate}`);
+        //console.log(`Routing check for license plate: ${licensePlate}`);
 
         const leaveQuery = `
             SELECT lp.*, u.role, u.department as user_department, u.name as employee_name
@@ -87,15 +90,15 @@ async function isLeavePermissionApproved(licensePlate) {
             AND lp.actual_exittime IS NULL
         `;
         const leaveResult = await db.query(leaveQuery, [licensePlate]);
-        //console.log(`📋 Found ${leaveResult.rows.length} leave requests for today`);
+        //console.log(`Found ${leaveResult.rows.length} leave requests for today`);
 
         if (leaveResult.rows.length === 0) {
-            //console.log(`❌ No leave requests found for ${licensePlate}`);
+            //console.log(`No leave requests found for ${licensePlate}`);
             return false;
         }
 
         const leave = leaveResult.rows[0];
-        //console.log(`📄 Leave request details:`, {
+        //console.log(`Leave request details:`, {
         //     id: leave.id,
         //     role: leave.role,
         //     department: leave.user_department,
@@ -113,15 +116,15 @@ async function isLeavePermissionApproved(licensePlate) {
             ORDER BY CASE WHEN employee_name IS NOT NULL THEN 1 ELSE 2 END
         `;
         const routingResult = await db.query(routingQuery, [leave.user_department, leave.employee_name]);
-        //console.log(`🗂️ Found ${routingResult.rows.length} routing rules`);
+        //console.log(`Found ${routingResult.rows.length} routing rules`);
 
         if (routingResult.rows.length === 0) {
-            //console.log(`❌ No routing rules found for department: ${leave.user_department}, employee: ${leave.employee_name}`);
+            //console.log(`No routing rules found for department: ${leave.user_department}, employee: ${leave.employee_name}`);
             return false;
         }
 
         const routing = routingResult.rows[0];
-        //console.log(`📊 Routing rule:`, {
+        //console.log(`Routing rule:`, {
         //     level1_role: routing.approval_level1_role,
         //     level2_role: routing.approval_level2_role,
         //     level1_name: routing.approval_level1_name,
@@ -135,7 +138,7 @@ async function isLeavePermissionApproved(licensePlate) {
             const level2Approved = (routing.approval_level2_role === 'HEAD DEPARTMENT' && leave.statusfromdept === 'approved') ||
                 (routing.approval_level2_role === 'HR' && leave.statusfromhr === 'approved');
 
-            //console.log(`📊 Staff approval check:`, {
+            //console.log(`Staff approval check:`, {
             //     level1Approved,
             //     level2Approved,
             //     level1Required: routing.approval_level1_role,
@@ -145,16 +148,16 @@ async function isLeavePermissionApproved(licensePlate) {
             isApproved = level1Approved && level2Approved;
         } else if (leave.role === 'Head Department') {
             isApproved = leave.statusfromhr === 'approved';
-            //console.log(`📊 Head Department approval check:`, {
+            //console.log(`Head Department approval check:`, {
             //     statusfromhr: leave.statusfromhr,
             //     isApproved
             // });
         }
 
-        //console.log(`✅ Final approval result: ${isApproved}`);
+        //console.log(`Final approval result: ${isApproved}`);
         return isApproved;
     } catch (error) {
-        console.error('❌ Error checking leave permission approval:', error);
+        console.error(' Error checking leave permission approval:', error);
         return false;
     }
 }
@@ -219,12 +222,7 @@ async function processHikvisionEntry(attlogRecord) {
             return;
         }
         const attendance = existingEntry.rows[0];
-        //console.log(`🔄 Found existing entry for ${userInfo.name}, checking next action...`);
-
-        // Check for leave permission using the routing system
-        //console.log(`🔍 Checking leave permission for ${licensePlate}...`);
         const hasApprovedLeave = await isLeavePermissionApproved(licensePlate);
-        //console.log(`✅ Leave permission approved via routing: ${hasApprovedLeave}`);
 
         let leavePermission = { rows: [] };
         if (hasApprovedLeave) {
@@ -236,9 +234,7 @@ async function processHikvisionEntry(attlogRecord) {
                 ORDER BY exittime ASC`,
                 [licensePlate]
             );
-            //console.log(`📋 Found ${leavePermission.rows.length} approved leave permissions via routing`);
         } else {
-            //console.log(`🔄 Trying fallback approval logic...`);
             leavePermission = await db.query(
                 `SELECT TOP 1 * FROM leave_permission 
                 WHERE licenseplate = $1 
@@ -252,7 +248,6 @@ async function processHikvisionEntry(attlogRecord) {
                 ORDER BY exittime ASC`,
                 [licensePlate]
             );
-            //console.log(`📋 Found ${leavePermission.rows.length} approved leave permissions via fallback`);
         }
         if (leavePermission.rows.length > 0) {
             const permission = leavePermission.rows[0];
@@ -357,12 +352,11 @@ async function processHikvisionEntry(attlogRecord) {
         broadcast({ type: 'data_change', table: 'attendance' });
         await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2', ['exit_processed', attlogRecord.id]);
     } catch (error) {
-        console.error('❌ Error processing Hikvision entry:', error);
+        console.error('Error processing Hikvision entry:', error);
         await db.query('UPDATE attlog SET processed = 1, status = $1 WHERE id = $2',
             ['error: ' + error.message, attlogRecord.id]);
     }
 }
-
 
 async function pollHikvisionDatabase() {
     if (pollingActive) {
@@ -382,7 +376,7 @@ async function pollHikvisionDatabase() {
             }
         }
     } catch (error) {
-        console.error('❌ Hikvision polling error:', error);
+        console.error('Hikvision polling error:', error);
     } finally {
         pollingActive = false;
     }
@@ -664,7 +658,7 @@ app.get('/logs', async (req, res) => {
                 approval_level3_role: row.approval_level3_role
             };
             if (row.exittime || row.returntime || actual_exittime || actual_returntime) {
-                //console.log("✅ Record with times:", {
+                //console.log("Record with times:", {
                 //     id: formatted.id,
                 //     name: formatted.name,
                 //     exittime: formatted.exittime,
@@ -678,7 +672,7 @@ app.get('/logs', async (req, res) => {
         });
         res.json(formattedRows);
     } catch (e) {
-        console.error("❌ Error fetching logs:", e);
+        console.error(" Error fetching logs:", e);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
@@ -692,14 +686,15 @@ app.get('/users', async (req, res) => {
                 uid,
                 licenseplate,
                 department,
-                role
-            FROM users 
+                role,
+                no_hp
+            FROM users
             ORDER BY name ASC
         `);
 
         res.json(result.rows);
     } catch (error) {
-        console.error('❌ Error fetching users:', error);
+        console.error(' Error fetching users:', error);
         res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
@@ -864,42 +859,42 @@ app.post('/leave-permission', async (req, res) => {
         });
 
         // Send WhatsApp notification for new leave permission
-        try {
-            const whatsappMessage = `🔔 New Leave Permission Request\n\n` +
-                `Name: ${name}\n` +
-                `Department: ${department}\n` +
-                `Role: ${role}\n` +
-                `Date: ${new Date(date).toLocaleDateString('id-ID')}\n` +
-                `Exit Time: ${exitTime}\n` +
-                `Return Time: ${returnTime || 'Not specified'}\n` +
-                `Reason: ${reason}\n` +
-                `Status: ${approval}\n\n` +
-                `Submitted at: ${new Date(submittedAt).toLocaleString('id-ID')}`;
+        // try {
+        //     const whatsappMessage = `🔔 New Leave Permission Request\n\n` +
+        //         `Name: ${name}\n` +
+        //         `Department: ${department}\n` +
+        //         `Role: ${role}\n` +
+        //         `Date: ${new Date(date).toLocaleDateString('id-ID')}\n` +
+        //         `Exit Time: ${exitTime}\n` +
+        //         `Return Time: ${returnTime || 'Not specified'}\n` +
+        //         `Reason: ${reason}\n` +
+        //         `Status: ${approval}\n\n` +
+        //         `Submitted at: ${new Date(submittedAt).toLocaleString('id-ID')}`;
 
-            // Call the WhatsApp broadcast function
-            const whatsappResponse = await fetch('http://localhost:3000/api/whatsapp/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: whatsappMessage
-                })
-            });
+        //     // Call the WhatsApp broadcast function
+        //     const whatsappResponse = await fetch('http://192.168.4.108:3000/api/whatsapp/send', {
+        //         method: 'POST',
+        //         headers: {
+        //             'Content-Type': 'application/json',
+        //         },
+        //         body: JSON.stringify({
+        //             message: whatsappMessage
+        //         })
+        //     });
 
-            if (whatsappResponse.ok) {
-                //console.log('✅ WhatsApp notification sent successfully for leave permission:', inserted.id);
-            } else {
-                console.error('❌ Failed to send WhatsApp notification:', await whatsappResponse.text());
-            }
-        } catch (whatsappError) {
-            console.error('❌ Error sending WhatsApp notification:', whatsappError);
-            // Don't fail the main request if WhatsApp fails
-        }
+        //     if (whatsappResponse.ok) {
+        //         //console.log('WhatsApp notification sent successfully for leave permission:', inserted.id);
+        //     } else {
+        //         console.error('Failed to send WhatsApp notification:', await whatsappResponse.text());
+        //     }
+        // } catch (whatsappError) {
+        //     console.error('Error sending WhatsApp notification:', whatsappError);
+        //     // Don't fail the main request if WhatsApp fails
+        // }
 
         res.status(201).json(result.rows[0]);
     } catch (e) {
-        console.error("❌ Error inserting leave permission:", e);
+        console.error("Error inserting leave permission:", e);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
@@ -1036,7 +1031,7 @@ app.get('/leave-permission', async (req, res) => {
     }
 });
 
-app.use("/api/whatsapp", broadcastTwillio);
+// app.use("/api/whatsapp", broadcastTwillio);
 
 //-------------------------------------------------------//
 //-------------------------------------------------------//
@@ -1044,15 +1039,6 @@ app.use("/api/whatsapp", broadcastTwillio);
 // !! ROUTING-BASED APPROVAL API ENDPOINTS
 //-------------------------------------------------------//
 
-
-// app.get('/leavepermission/:nameApproval', async (req, res) => {
-//     try{
-//         const {}
-//     }
-//     catch (e){
-
-//     }
-// })
 
 app.get('/routing/:department/:role', async (req, res) => {
     try {
@@ -1609,20 +1595,26 @@ app.post('/api/suratjalan', async (req, res) => {
 // !! API FOR TRUCKS 
 app.get('/api/trucks/history', async (req, res) => {
     try {
-        const { searchTerm, status, type, dateFrom, dateTo } = req.query;
+        const { searchTerm, status, type, dateFrom, dateTo, offset } = req.query;
 
         const pool = await db.getPool();
         const request = pool.request();
+        const cycleOffset = offset !== undefined ? parseInt(offset) : 0;
+        const targetCycle = 1 + cycleOffset;
+        request.input('targetCycle', db.sql.Int, targetCycle);
 
         let query = `
             SELECT 
                 t.*,
-                tt.arrivaltime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
+                tt.cycle_number, tt.arrivaltime, tt.exittime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
                 tt.runtohpc, tt.waitingforarrivalhpc, tt.entryhpc, tt.totalwaitingarrival,
+                tt.runtopt, tt.waitingforarrivalpt, tt.entrypt,
                 tt.startloadingtime, tt.finishloadingtime, tt.totalprocessloadingtime, tt.actualwaitloadingtime,
+                tt.starttimbangneto, tt.finishtimbangneto, tt.waitingfortimbangneto, tt.totalprocesstimbangneto,
+                tt.waitingforexit, tt.totaltruckcompletiontime,
                 tp.driver_photo, tp.sim_photo, tp.stnk_photo
             FROM trucks t
-            LEFT JOIN truck_times tt ON t.id = tt.truck_id
+            LEFT JOIN truck_times tt ON t.id = tt.truck_id AND tt.cycle_number = @targetCycle
             LEFT JOIN truck_photos tp ON t.id = tp.truck_id
             WHERE 1=1
         `;
@@ -1660,7 +1652,7 @@ app.get('/api/trucks/history', async (req, res) => {
         const result = await request.query(query);
         res.json(result.recordset);
     } catch (error) {
-        console.error('💥 Error fetching truck history (3-table):', error);
+        console.error('Error fetching truck history (3-table):', error);
         res.status(500).json({
             error: 'Internal server error',
             details: error.message
@@ -1668,26 +1660,91 @@ app.get('/api/trucks/history', async (req, res) => {
     }
 });
 
+app.get('/api/trucks/actualqueue/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await db.getPool()
+        const result = await pool
+            .request()
+            .input("truck_id", db.sql.Int, id)
+            .query(`
+                SELECT 
+                    q.*, 
+                    t.platenumber, 
+                    t.noticket, 
+                    t.status,
+                    t.operation,
+                    t.department
+                FROM truck_queue_actual q
+                JOIN trucks t ON q.truck_id = t.id
+                WHERE q.truck_id = @truck_id
+                `);
+
+        if (result.recordset.length === 0)
+        {
+            return res.status(404).json({ message: "Truck Not Found" });
+        }    
+        res.json(result.recordset[0])
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).send("Error fetching truck queue by id");
+    }
+})
+
+// Helper function to validate and format time
+const validateAndFormatTime = (timeValue, fieldName) => {
+    if (!timeValue) return null;
+
+    let timeString = String(timeValue).trim();
+
+    // Handle various time formats
+    if (timeString.match(/^\d{1,3}:\d{1,2}:\d{1,2}$/)) {
+        // Format: H:mm:ss or HH:mm:ss
+        const parts = timeString.split(':');
+        const hours = parts[0].padStart(2, '0');
+        const minutes = parts[1].padStart(2, '0');
+        const seconds = parts[2].padStart(2, '0');
+
+        // Validate ranges
+        if (parseInt(hours) > 838 || parseInt(minutes) > 59 || parseInt(seconds) > 59) {
+            throw new Error(`Invalid time values for '${fieldName}': ${timeString}`);
+        }
+
+        return `${hours}:${minutes}:${seconds}`;
+    } else if (timeString.match(/^\d{1,3}:\d{1,2}$/)) {
+        // Format: H:mm or HH:mm - add seconds
+        const parts = timeString.split(':');
+        const hours = parts[0].padStart(2, '0');
+        const minutes = parts[1].padStart(2, '0');
+
+        // Validate ranges
+        if (parseInt(hours) > 838 || parseInt(minutes) > 59) {
+            throw new Error(`Invalid time values for '${fieldName}': ${timeString}`);
+        }
+
+        return `${hours}:${minutes}:00`;
+    } else {
+        throw new Error(`Invalid time format for '${fieldName}': ${timeString}. Expected format: HH:mm:ss or HH:mm`);
+    }
+};
 
 app.post('/api/trucks', async (req, res) => {
     try {
         const {
-
             platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
             driver, supplier, eta, status, type, operation, goods,
-            descin, descout, statustruck, armada, kelengkapan, jenismobil, date, exittime,
+            descin, descout, statustruck, armada, kelengkapan, jenismobil, jenisbarang, date, exittime,
 
             arrivaltime, waitingfortimbang, starttimbang, finishtimbang, totalprocesstimbang,
             runtohpc, waitingforarrivalhpc, entryhpc, totalwaitingarrival,
+            runtopt, waitingforarrivalpt, entrypt,
             startloadingtime, finishloadingtime, totalprocessloadingtime, actualwaitloadingtime,
+            starttimbangneto, finishtimbangneto, waitingfortimbangneto, totalprocesstimbangneto,
+            waitingforexit, totaltruckcompletiontime,
 
             driver_photo, sim_photo, stnk_photo
         } = req.body;
-        //console.log('=== EXTRACTED VALUES ===', {
-        //     platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
-        //     driver, supplier, eta, status, type, operation, goods,
-        //     descin, descout, statustruck, armada, kelengkapan, jenismobil, date
-        // });
 
         const imageFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
         const savedImages = {};
@@ -1704,7 +1761,6 @@ app.post('/api/trucks', async (req, res) => {
         const transaction = pool.transaction();
         await transaction.begin();
         try {
-
             const mainRequest = transaction.request();
             mainRequest.input('platenumber', db.sql.VarChar, platenumber);
             mainRequest.input('noticket', db.sql.VarChar, noticket);
@@ -1712,7 +1768,7 @@ app.post('/api/trucks', async (req, res) => {
             mainRequest.input('nikdriver', db.sql.VarChar, nikdriver);
             mainRequest.input('tlpdriver', db.sql.VarChar, tlpdriver);
             mainRequest.input('nosj', db.sql.VarChar, nosj);
-            mainRequest.input('tglsj', db.sql.Date, tglsj);
+            mainRequest.input('tglsj', db.sql.Date, tglsj || null);
             mainRequest.input('driver', db.sql.VarChar, driver);
             mainRequest.input('supplier', db.sql.VarChar, supplier);
             mainRequest.input('eta', db.sql.VarChar, eta);
@@ -1725,48 +1781,80 @@ app.post('/api/trucks', async (req, res) => {
             mainRequest.input('statustruck', db.sql.VarChar, statustruck);
             mainRequest.input('armada', db.sql.VarChar, armada);
             mainRequest.input('kelengkapan', db.sql.VarChar, kelengkapan);
+            mainRequest.input('jenisbarang', db.sql.VarChar, jenisbarang);
             mainRequest.input('jenismobil', db.sql.VarChar, jenismobil);
-            mainRequest.input('date', db.sql.Date, date);
-            mainRequest.input('exittime', db.sql.DateTime2, exittime);
+            mainRequest.input('date', db.sql.Date, date || null);
+            // mainRequest.input('exittime', db.sql.DateTime2, exittime || null);
+            // Test Version, SQL SYNTAX Forbidden hehe 
             const mainQuery = `
                 INSERT INTO trucks (
                     platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
                     driver, supplier, eta, status, type, operation, goods,
-                    descin, descout, statustruck, armada, kelengkapan, jenismobil, date, exittime
-                ) OUTPUT INSERTED.id
+                    descin, descout, statustruck, armada, kelengkapan, jenismobil, jenisbarang, date
+                ) 
                 VALUES (
                     @platenumber, @noticket, @department, @nikdriver, @tlpdriver, @nosj, @tglsj,
                     @driver, @supplier, @eta, @status, @type, @operation, @goods,
-                    @descin, @descout, @statustruck, @armada, @kelengkapan, @jenismobil, @date, @exittime
-                )
+                    @descin, @descout, @statustruck, @armada, @kelengkapan, @jenismobil, @jenisbarang, @date
+                );
+                SELECT SCOPE_IDENTITY() AS id;
             `;
+            // const mainQuery = `
+            //     INSERT INTO trucks (
+            //         platenumber, noticket, department, nikdriver, tlpdriver, nosj, tglsj,
+            //         driver, supplier, eta, status, type, operation, goods,
+            //         descin, descout, statustruck, armada, kelengkapan, jenismobil, jenisbarang, date
+            //     ) OUTPUT INSERTED.id
+            //     VALUES (
+            //         @platenumber, @noticket, @department, @nikdriver, @tlpdriver, @nosj, @tglsj,
+            //         @driver, @supplier, @eta, @status, @type, @operation, @goods,
+            //         @descin, @descout, @statustruck, @armada, @kelengkapan, @jenismobil, @jenisbarang, @date
+            //     )
+            // `;
             const mainResult = await mainRequest.query(mainQuery);
             const truckId = mainResult.recordset[0].id;
 
             const timesRequest = transaction.request();
             timesRequest.input('truck_id', db.sql.Int, truckId);
-            timesRequest.input('arrivaltime', db.sql.DateTime2, arrivaltime);
-            timesRequest.input('waitingfortimbang', db.sql.Time, waitingfortimbang);
-            timesRequest.input('starttimbang', db.sql.Time, starttimbang);
-            timesRequest.input('finishtimbang', db.sql.Time, finishtimbang);
-            timesRequest.input('totalprocesstimbang', db.sql.Time, totalprocesstimbang);
-            timesRequest.input('runtohpc', db.sql.Time, runtohpc);
-            timesRequest.input('waitingforarrivalhpc', db.sql.Time, waitingforarrivalhpc);
-            timesRequest.input('entryhpc', db.sql.Time, entryhpc);
-            timesRequest.input('totalwaitingarrival', db.sql.Time, totalwaitingarrival);
-            timesRequest.input('startloadingtime', db.sql.Time, startloadingtime);
-            timesRequest.input('finishloadingtime', db.sql.Time, finishloadingtime);
-            timesRequest.input('totalprocessloadingtime', db.sql.Time, totalprocessloadingtime);
-            timesRequest.input('actualwaitloadingtime', db.sql.Time, actualwaitloadingtime);
+            timesRequest.input('cycle_number', db.sql.Int, 1);
+            timesRequest.input('arrivaltime', db.sql.DateTime2, arrivaltime || null);
+            timesRequest.input('waitingfortimbang', db.sql.VarChar(8), validateAndFormatTime(waitingfortimbang, 'waitingfortimbang'));
+            timesRequest.input('starttimbang', db.sql.VarChar(8), validateAndFormatTime(starttimbang, 'starttimbang'));
+            timesRequest.input('finishtimbang', db.sql.VarChar(8), validateAndFormatTime(finishtimbang, 'finishtimbang'));
+            timesRequest.input('totalprocesstimbang', db.sql.VarChar(8), validateAndFormatTime(totalprocesstimbang, 'totalprocesstimbang'));
+            timesRequest.input('runtohpc', db.sql.VarChar(8), validateAndFormatTime(runtohpc, 'runtohpc'));
+            timesRequest.input('waitingforarrivalhpc', db.sql.VarChar(8), validateAndFormatTime(waitingforarrivalhpc, 'waitingforarrivalhpc'));
+            timesRequest.input('entryhpc', db.sql.VarChar(8), validateAndFormatTime(entryhpc, 'entryhpc'));
+            timesRequest.input('totalwaitingarrival', db.sql.VarChar(8), validateAndFormatTime(totalwaitingarrival, 'totalwaitingarrival'));
+            timesRequest.input('runtopt', db.sql.VarChar(8), validateAndFormatTime(runtopt, 'runtopt'));
+            timesRequest.input('waitingforarrivalpt', db.sql.VarChar(8), validateAndFormatTime(waitingforarrivalpt, 'waitingforarrivalpt'));
+            timesRequest.input('entrypt', db.sql.VarChar(8), validateAndFormatTime(entrypt, 'entrypt'));
+            timesRequest.input('startloadingtime', db.sql.VarChar(8), validateAndFormatTime(startloadingtime, 'startloadingtime'));
+            timesRequest.input('finishloadingtime', db.sql.VarChar(8), validateAndFormatTime(finishloadingtime, 'finishloadingtime'));
+            timesRequest.input('totalprocessloadingtime', db.sql.VarChar(8), validateAndFormatTime(totalprocessloadingtime, 'totalprocessloadingtime'));
+            timesRequest.input('actualwaitloadingtime', db.sql.VarChar(8), validateAndFormatTime(actualwaitloadingtime, 'actualwaitloadingtime'));
+            timesRequest.input('starttimbangneto', db.sql.VarChar(8), validateAndFormatTime(starttimbangneto, 'starttimbangneto'));
+            timesRequest.input('finishtimbangneto', db.sql.VarChar(8), validateAndFormatTime(finishtimbangneto, 'finishtimbangneto'));
+            timesRequest.input('waitingfortimbangneto', db.sql.VarChar(8), validateAndFormatTime(waitingfortimbangneto, 'waitingfortimbangneto'));
+            timesRequest.input('totalprocesstimbangneto', db.sql.VarChar(8), validateAndFormatTime(totalprocesstimbangneto, 'totalprocesstimbangneto'));
+            timesRequest.input('waitingforexit', db.sql.VarChar(8), validateAndFormatTime(waitingforexit, 'waitingforexit'));
+            timesRequest.input('totaltruckcompletiontime', db.sql.VarChar(8), validateAndFormatTime(totaltruckcompletiontime, 'totaltruckcompletiontime'));
+            timesRequest.input('exittime', db.sql.DateTime2, exittime || null);
             const timesQuery = `
                 INSERT INTO truck_times (
-                    truck_id, arrivaltime, waitingfortimbang, starttimbang, finishtimbang, totalprocesstimbang,
+                    truck_id, cycle_number, arrivaltime, exittime, waitingfortimbang, starttimbang, finishtimbang, totalprocesstimbang,
                     runtohpc, waitingforarrivalhpc, entryhpc, totalwaitingarrival,
-                    startloadingtime, finishloadingtime, totalprocessloadingtime, actualwaitloadingtime
+                    runtopt, waitingforarrivalpt, entrypt,
+                    startloadingtime, finishloadingtime, totalprocessloadingtime, actualwaitloadingtime,
+                    starttimbangneto, finishtimbangneto, waitingfortimbangneto, totalprocesstimbangneto,
+                    waitingforexit, totaltruckcompletiontime
                 ) VALUES (
-                    @truck_id, @arrivaltime, @waitingfortimbang, @starttimbang, @finishtimbang, @totalprocesstimbang,
+                    @truck_id, @cycle_number, @arrivaltime, @exittime, @waitingfortimbang, @starttimbang, @finishtimbang, @totalprocesstimbang,
                     @runtohpc, @waitingforarrivalhpc, @entryhpc, @totalwaitingarrival,
-                    @startloadingtime, @finishloadingtime, @totalprocessloadingtime, @actualwaitloadingtime
+                    @runtopt, @waitingforarrivalpt, @entrypt,
+                    @startloadingtime, @finishloadingtime, @totalprocessloadingtime, @actualwaitloadingtime,
+                    @starttimbangneto, @finishtimbangneto, @waitingfortimbangneto, @totalprocesstimbangneto,
+                    @waitingforexit, @totaltruckcompletiontime
                 )
             `;
             await timesRequest.query(timesQuery);
@@ -1787,12 +1875,15 @@ app.post('/api/trucks', async (req, res) => {
             const selectQuery = `
                 SELECT 
                     t.*,
-                    tt.arrivaltime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
+                    tt.cycle_number, tt.arrivaltime, tt.exittime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
                     tt.runtohpc, tt.waitingforarrivalhpc, tt.entryhpc, tt.totalwaitingarrival,
+                    tt.runtopt, tt.waitingforarrivalpt, tt.entrypt,
                     tt.startloadingtime, tt.finishloadingtime, tt.totalprocessloadingtime, tt.actualwaitloadingtime,
+                    tt.starttimbangneto, tt.finishtimbangneto, tt.waitingfortimbangneto, tt.totalprocesstimbangneto,
+                    tt.waitingforexit, tt.totaltruckcompletiontime,
                     tp.driver_photo, tp.sim_photo, tp.stnk_photo
                 FROM trucks t
-                LEFT JOIN truck_times tt ON t.id = tt.truck_id
+                LEFT JOIN truck_times tt ON t.id = tt.truck_id AND tt.cycle_number = t.loading_cycle
                 LEFT JOIN truck_photos tp ON t.id = tp.truck_id
                 WHERE t.id = @id
             `;
@@ -1821,9 +1912,6 @@ app.put('/api/trucks/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
-        
-        // Debug: Log the update data
-        console.log('🔍 Update data received:', JSON.stringify(updateData, null, 2));
 
         const imageFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
         const savedImages = {};
@@ -1843,12 +1931,16 @@ app.put('/api/trucks/:id', async (req, res) => {
             const mainTableFields = [
                 'platenumber', 'noticket', 'department', 'nikdriver', 'tlpdriver', 'nosj', 'tglsj',
                 'driver', 'supplier', 'eta', 'status', 'type', 'operation', 'goods',
-                'descin', 'descout', 'statustruck', 'armada', 'kelengkapan', 'jenismobil', 'date', 'exittime'
+                'descin', 'descout', 'statustruck', 'armada', 'kelengkapan', 'jenismobil', 'date',
+                'skipped_steps', 'skip_reason', 'loading_cycle', 'department_history'
             ];
             const timeTableFields = [
                 'arrivaltime', 'waitingfortimbang', 'starttimbang', 'finishtimbang', 'totalprocesstimbang',
                 'runtohpc', 'waitingforarrivalhpc', 'entryhpc', 'totalwaitingarrival',
-                'startloadingtime', 'finishloadingtime', 'totalprocessloadingtime', 'actualwaitloadingtime'
+                'runtopt', 'waitingforarrivalpt', 'entrypt',
+                'startloadingtime', 'finishloadingtime', 'totalprocessloadingtime', 'actualwaitloadingtime',
+                'starttimbangneto', 'finishtimbangneto', 'waitingfortimbangneto', 'totalprocesstimbangneto',
+                'exittime', 'waitingforexit', 'totaltruckcompletiontime'
             ];
             const photoTableFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
 
@@ -1866,80 +1958,174 @@ app.put('/api/trucks/:id', async (req, res) => {
 
             const timeUpdateFields = timeTableFields.filter(field => updateData[field] !== undefined);
             if (timeUpdateFields.length > 0) {
-                // First check if truck_times record exists
-                const checkRequest = pool.request();
-                checkRequest.input('truck_id', db.sql.Int, id);
-                const checkResult = await checkRequest.query('SELECT * FROM truck_times WHERE truck_id = @truck_id');
-                
-                if (checkResult.recordset.length === 0) {
-                    // Insert new record if it doesn't exist
-                    const insertRequest = pool.request();
-                    insertRequest.input('truck_id', db.sql.Int, id);
-                    await insertRequest.query('INSERT INTO truck_times (truck_id) VALUES (@truck_id)');
-                    console.log(`✅ Created new truck_times record for truck_id: ${id}`);
-                }
-                
+                const cycleRequest = transaction.request();
+                cycleRequest.input('get_truck_id', db.sql.Int, id);
+                const cycleQuery = `SELECT loading_cycle FROM trucks WHERE id = @get_truck_id`;
+                const cycleResult = await cycleRequest.query(cycleQuery);
+
+                const currentLoadingCycle = cycleResult.recordset.length > 0
+                    ? (cycleResult.recordset[0].loading_cycle || 1)
+                    : (parseInt(updateData.loading_cycle) || 1);
+                const checkRequest = transaction.request();
+                checkRequest.input('check_truck_id', db.sql.Int, id);
+                checkRequest.input('check_cycle_number', db.sql.Int, currentLoadingCycle);
+
+                const existingRowQuery = `
+                    SELECT COUNT(*) as count FROM truck_times 
+                    WHERE truck_id = @check_truck_id AND cycle_number = @check_cycle_number
+                `;
+                const existingRowResult = await checkRequest.query(existingRowQuery);
+                const rowExists = existingRowResult.recordset[0].count > 0;
+
                 const timeRequest = transaction.request();
                 timeRequest.input('truck_id', db.sql.Int, id);
-                
-                // Helper function to validate and format time
-                const validateAndFormatTime = (timeValue, fieldName) => {
-                    if (!timeValue) return null;
-                    
-                    let timeString = String(timeValue).trim();
-                    console.log(`🕐 Processing time field '${fieldName}': ${timeString}`);
-                    
-                    // Handle various time formats
-                    if (timeString.match(/^\d{1,2}:\d{1,2}:\d{1,2}$/)) {
-                        // Format: H:mm:ss or HH:mm:ss
-                        const parts = timeString.split(':');
-                        const hours = parts[0].padStart(2, '0');
-                        const minutes = parts[1].padStart(2, '0');
-                        const seconds = parts[2].padStart(2, '0');
-                        
-                        // Validate ranges
-                        if (parseInt(hours) > 23 || parseInt(minutes) > 59 || parseInt(seconds) > 59) {
-                            throw new Error(`Invalid time values for '${fieldName}': ${timeString}`);
+
+                if (rowExists) {
+                    const timeSetClause = timeUpdateFields.map(field => {
+                        try {
+                            console.log(`🔍 Processing field: ${field}`);
+                            console.log(`📦 Value:`, updateData[field]);
+                            console.log(`📦 Type:`, typeof updateData[field]);
+
+                            // if (field === 'arrivaltime' || field === 'exittime') {
+                            //     console.log(`⏰ Treating as DateTime2:`, updateData[field]);
+                            //     timeRequest.input(field, db.sql.DateTime2, updateData[field]);
+                            // } else {
+                            //     const formattedTime = validateAndFormatTime(updateData[field], field);
+                            //     console.log(`⏱️ Treating as VarChar (duration):`, formattedTime);
+                            //     timeRequest.input(field, db.sql.VarChar, formattedTime);
+                            // }
+                            if (field === 'arrivaltime' || field === 'exittime') {
+                                console.log(`⏰ Treating as DateTime2:`, updateData[field]);
+
+                                // Convert string ke Date object
+                                let dateTimeValue = updateData[field];
+                                if (typeof dateTimeValue === 'string') {
+                                    // Replace space with T if needed
+                                    if (dateTimeValue.includes(' ')) {
+                                        dateTimeValue = dateTimeValue.replace(' ', 'T');
+                                    }
+                                    // Convert to Date object
+                                    dateTimeValue = new Date(dateTimeValue);
+                                    console.log(`🔄 Converted to Date object:`, dateTimeValue.toISOString());
+                                }
+
+                                timeRequest.input(field, db.sql.DateTime2, dateTimeValue);
+                            } else {
+                                const formattedTime = validateAndFormatTime(updateData[field], field);
+                                console.log(`⏱️ Treating as VarChar (duration):`, formattedTime);
+                                timeRequest.input(field, db.sql.VarChar, formattedTime);
+                            }
+                            return `${field} = @${field}`;
+                        } catch (error) {
+                            console.error(`❌ Error processing field '${field}':`, error);
+                            console.error(`❌ Value was:`, updateData[field]);
+                            throw new Error(`Validation failed for parameter '${field}'. ${error.message}`);
                         }
-                        
-                        return `${hours}:${minutes}:${seconds}`;
-                    } else if (timeString.match(/^\d{1,2}:\d{1,2}$/)) {
-                        // Format: H:mm or HH:mm - add seconds
-                        const parts = timeString.split(':');
-                        const hours = parts[0].padStart(2, '0');
-                        const minutes = parts[1].padStart(2, '0');
-                        
-                        if (parseInt(hours) > 23 || parseInt(minutes) > 59) {
-                            throw new Error(`Invalid time values for '${fieldName}': ${timeString}`);
+                    }).join(', ');
+
+                    timeRequest.input('update_cycle_number', db.sql.Int, currentLoadingCycle);
+                    const timeQuery = `UPDATE truck_times SET ${timeSetClause} WHERE truck_id = @truck_id AND cycle_number = @update_cycle_number`;
+
+                    console.log(`🚀 Final query:`, timeQuery);
+                    console.log(`🚀 About to execute...`);
+
+                    await timeRequest.query(timeQuery);
+                    // const timeSetClause = timeUpdateFields.map(field => {
+                    //     try {
+                    //         if (field === 'arrivaltime' || field === 'exittime') {
+                    //         // if (field === 'arrivaltime' || field === 'exittime' || field === 'totaltruckcompletiontime') {
+                    //             timeRequest.input(field, db.sql.DateTime2, updateData[field]);
+                    //         } else {
+                    //             const formattedTime = validateAndFormatTime(updateData[field], field);
+                    //             // timeRequest.input(field, db.sql.VarChar(8), formattedTime);
+                    //             timeRequest.input(field, db.sql.VarChar, formattedTime);
+                    //         }
+                    //         return `${field} = @${field}`;
+                    //     } catch (error) {
+                    //         console.error(`Error processing field '${field}':`, error);
+                    //         console.error(`❌ Value was:`, updateData[field]); // ← TAMBAH LOG INI
+                    //         throw new Error(`Validation failed for parameter '${field}'. ${error.message}`);
+                    //     }
+                    // }).join(', ');
+
+                    // timeRequest.input('update_cycle_number', db.sql.Int, currentLoadingCycle);
+                    // const timeQuery = `UPDATE truck_times SET ${timeSetClause} WHERE truck_id = @truck_id AND cycle_number = @update_cycle_number`;
+                    // await timeRequest.query(timeQuery);
+                } else {
+                    let arrivalTimeForNewCycle = null;
+                    if (currentLoadingCycle > 1) {
+                        const cycle1Request = transaction.request();
+                        cycle1Request.input('get_truck_id', db.sql.Int, id);
+                        const cycle1Query = `
+                            SELECT arrivaltime FROM truck_times 
+                            WHERE truck_id = @get_truck_id AND cycle_number = 1
+                        `;
+                        const cycle1Result = await cycle1Request.query(cycle1Query);
+                        if (cycle1Result.recordset.length > 0) {
+                            arrivalTimeForNewCycle = cycle1Result.recordset[0].arrivaltime;
                         }
-                        
-                        return `${hours}:${minutes}:00`;
-                    } else {
-                        throw new Error(`Invalid time format for '${fieldName}': ${timeString}. Expected HH:mm:ss or HH:mm`);
                     }
-                };
-                
-                const timeSetClause = timeUpdateFields.map(field => {
-                    try {
-                        if (field === 'arrivaltime') {
-                            timeRequest.input(field, db.sql.DateTime2, updateData[field]);
+                    timeRequest.input('insert_cycle_number', db.sql.Int, currentLoadingCycle);
+                    if (arrivalTimeForNewCycle && !timeUpdateFields.includes('arrivaltime')) {
+                        timeUpdateFields.push('arrivaltime');
+                    }
+
+                    const insertFieldsMap = {};
+                    timeUpdateFields.forEach(field => {
+                        if (field === 'arrivaltime' || field === 'exittime') {
+                            let valueToUse = (field === 'arrivaltime' && arrivalTimeForNewCycle)
+                                ? arrivalTimeForNewCycle
+                                : updateData[field];
+
+                            // Convert string to Date object
+                            if (typeof valueToUse === 'string') {
+                                if (valueToUse.includes(' ')) {
+                                    valueToUse = valueToUse.replace(' ', 'T');
+                                }
+                                valueToUse = new Date(valueToUse);
+                            }
+
+                            timeRequest.input(`insert_${field}`, db.sql.DateTime2, valueToUse);
+                            insertFieldsMap[field] = `@insert_${field}`;
                         } else {
                             const formattedTime = validateAndFormatTime(updateData[field], field);
-                            console.log(`✅ Formatted time for '${field}': ${formattedTime}`);
-                            
-                            // Try using VarChar instead of Time type to avoid tedious validation issues
-                            timeRequest.input(field, db.sql.VarChar(8), formattedTime);
+                            timeRequest.input(`insert_${field}`, db.sql.VarChar, formattedTime);
+                            insertFieldsMap[field] = `@insert_${field}`;
                         }
-                        return `${field} = @${field}`;
-                    } catch (error) {
-                        console.error(`❌ Error processing field '${field}':`, error);
-                        throw new Error(`Validation failed for parameter '${field}'. ${error.message}`);
-                    }
-                }).join(', ');
-                
-                const timeQuery = `UPDATE truck_times SET ${timeSetClause} WHERE truck_id = @truck_id`;
-                console.log(`🗃️ Executing time query: ${timeQuery}`);
-                await timeRequest.query(timeQuery);
+                        // if (field === 'arrivaltime' || field === 'exittime') {  
+                        //     const valueToUse = (field === 'arrivaltime' && arrivalTimeForNewCycle)
+                        //         ? arrivalTimeForNewCycle
+                        //         : updateData[field];
+                        //     timeRequest.input(`insert_${field}`, db.sql.DateTime2, valueToUse);
+                        //     insertFieldsMap[field] = `@insert_${field}`;
+                        // } else {
+                        //     const formattedTime = validateAndFormatTime(updateData[field], field);
+                        //     timeRequest.input(`insert_${field}`, db.sql.VarChar, formattedTime);
+                        //     // timeRequest.input(`insert_${field}`, db.sql.VarChar(8), formattedTime);
+                        //     insertFieldsMap[field] = `@insert_${field}`;
+                        // }
+                    });
+                    // timeUpdateFields.forEach(field => {
+                    //     if (field === 'arrivaltime') {
+                    //         const arrivalTimeToUse = arrivalTimeForNewCycle || updateData[field];
+                    //         timeRequest.input(`insert_${field}`, db.sql.DateTime2, arrivalTimeToUse);
+                    //         insertFieldsMap[field] = `@insert_${field}`;
+                    //     } else {
+                    //         const formattedTime = validateAndFormatTime(updateData[field], field);
+                    //         timeRequest.input(`insert_${field}`, db.sql.VarChar(8), formattedTime);
+                    //         insertFieldsMap[field] = `@insert_${field}`;
+                    //     }
+                    // });
+
+                    const insertFields = ['truck_id', 'cycle_number', ...timeUpdateFields];
+                    const insertValues = ['@truck_id', '@insert_cycle_number', ...timeUpdateFields.map(field => `@insert_${field}`)];
+                    const insertQuery = `
+                        INSERT INTO truck_times (${insertFields.join(', ')})
+                        VALUES (${insertValues.join(', ')})
+                    `;
+                    await timeRequest.query(insertQuery);
+                }
             }
 
             const photoUpdateFields = photoTableFields.filter(field => updateData[field] !== undefined);
@@ -1959,12 +2145,15 @@ app.put('/api/trucks/:id', async (req, res) => {
             const selectQuery = `
                 SELECT 
                     t.*,
-                    tt.arrivaltime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
+                    tt.cycle_number, tt.arrivaltime, tt.exittime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
                     tt.runtohpc, tt.waitingforarrivalhpc, tt.entryhpc, tt.totalwaitingarrival,
+                    tt.runtopt, tt.waitingforarrivalpt, tt.entrypt,
                     tt.startloadingtime, tt.finishloadingtime, tt.totalprocessloadingtime, tt.actualwaitloadingtime,
+                    tt.starttimbangneto, tt.finishtimbangneto, tt.waitingfortimbangneto, tt.totalprocesstimbangneto,
+                    tt.waitingforexit, tt.totaltruckcompletiontime,
                     tp.driver_photo, tp.sim_photo, tp.stnk_photo
                 FROM trucks t
-                LEFT JOIN truck_times tt ON t.id = tt.truck_id
+                LEFT JOIN truck_times tt ON t.id = tt.truck_id AND tt.cycle_number = t.loading_cycle
                 LEFT JOIN truck_photos tp ON t.id = tp.truck_id
                 WHERE t.id = @id
             `;
@@ -1977,13 +2166,18 @@ app.put('/api/trucks/:id', async (req, res) => {
             await transaction.commit();
             res.json(updatedTruck);
         } catch (error) {
+            console.error('❌❌❌ ERROR INSIDE TRANSACTION:', error);
+            console.error('❌ Error name:', error.name);
+            console.error('❌ Error message:', error.message);
+            console.error('❌ Error stack:', error.stack);
             await transaction.rollback();
+            console.error('❌❌❌ ACTUAL ERROR BEFORE ROLLBACK:', error);
             throw error;
         }
     } catch (error) {
-        console.error('💥 Error updating truck:', error);
-        console.error('💥 Error message:', error.message);
-        console.error('💥 Error stack:', error.stack);
+        console.error('Error updating truck:', error);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             error: 'Internal server error',
             message: error.message
@@ -2010,23 +2204,28 @@ app.delete('/api/trucks/:id', async (req, res) => {
 
 app.get('/api/trucks', async (req, res) => {
     try {
-        const { searchTerm, status, type, operation, dateFrom, dateTo } = req.query;
-
+        const { searchTerm, status, type, operation, dateFrom, dateTo, offset } = req.query;
         const pool = await db.getPool();
         const request = pool.request();
+        const cycleOffset = parseInt(offset) || 1;
+        request.input('cycleOffset', db.sql.Int, cycleOffset);
 
         let query = `
             SELECT 
                 t.*,
-                tt.arrivaltime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
+                tt.cycle_number, tt.arrivaltime, tt.exittime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
                 tt.runtohpc, tt.waitingforarrivalhpc, tt.entryhpc, tt.totalwaitingarrival,
+                tt.runtopt, tt.waitingforarrivalpt, tt.entrypt,
                 tt.startloadingtime, tt.finishloadingtime, tt.totalprocessloadingtime, tt.actualwaitloadingtime,
+                tt.starttimbangneto, tt.finishtimbangneto, tt.waitingfortimbangneto, tt.totalprocesstimbangneto,
+                tt.waitingforexit, tt.totaltruckcompletiontime,
                 tp.driver_photo, tp.sim_photo, tp.stnk_photo
             FROM trucks t
-            LEFT JOIN truck_times tt ON t.id = tt.truck_id
+            LEFT JOIN truck_times tt ON t.id = tt.truck_id AND tt.cycle_number = t.loading_cycle
             LEFT JOIN truck_photos tp ON t.id = tp.truck_id
             WHERE 1=1
         `;
+        // LEFT JOIN truck_times tt ON t.id = tt.truck_id AND tt.cycle_number = t.loading_cycle - 1
         let paramIndex = 1;
 
         if (searchTerm) {
@@ -2073,8 +2272,8 @@ app.get('/api/trucks', async (req, res) => {
         const result = await request.query(query);
         res.json(result.recordset);
     } catch (error) {
-        console.error('💥 Error fetching trucks (3-table):', error);
-        console.error('💥 Error details:', error.message);
+        console.error('Error fetching trucks (3-table):', error);
+        console.error('Error details:', error.message);
         res.status(500).json({
             error: 'Internal server error',
             details: error.message
@@ -2097,12 +2296,13 @@ app.delete('/api/trucks/:id', async (req, res) => {
             const selectQuery = `
                 SELECT 
                     t.*,
-                    tt.arrivaltime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
+                    tt.cycle_number, tt.arrivaltime, tt.exittime, tt.waitingfortimbang, tt.starttimbang, tt.finishtimbang, tt.totalprocesstimbang,
                     tt.runtohpc, tt.waitingforarrivalhpc, tt.entryhpc, tt.totalwaitingarrival,
+                    tt.runtopt, tt.waitingforarrivalpt, tt.entrypt,
                     tt.startloadingtime, tt.finishloadingtime, tt.totalprocessloadingtime, tt.actualwaitloadingtime,
                     tp.driver_photo, tp.sim_photo, tp.stnk_photo
                 FROM trucks t
-                LEFT JOIN truck_times tt ON t.id = tt.truck_id
+                LEFT JOIN truck_times tt ON t.id = tt.truck_id AND tt.cycle_number = t.loading_cycle
                 LEFT JOIN truck_photos tp ON t.id = tp.truck_id
                 WHERE t.id = @id
             `;
@@ -2127,7 +2327,7 @@ app.delete('/api/trucks/:id', async (req, res) => {
             throw error;
         }
     } catch (error) {
-        console.error('💥 Error deleting truck (3-table):', error);
+        console.error('Error deleting truck (3-table):', error);
         res.status(500).json({
             error: 'Internal server error',
             details: error.message
@@ -2167,7 +2367,7 @@ app.post('/api/trucks/upload-photo', async (req, res) => {
             filePath: relativePath
         });
     } catch (error) {
-        console.error('❌ Error uploading truck photo:', error);
+        console.error('Error uploading truck photo:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to upload photo',
@@ -2175,297 +2375,145 @@ app.post('/api/trucks/upload-photo', async (req, res) => {
         });
     }
 });
+
+app.get('/api/trucks/export', async (req, res) => {
+    try {
+        const { startDate, endDate, department, status } = req.query;
+
+        let whereClause = 'WHERE 1=1';
+
+        if (startDate) {
+            whereClause += ` AND t.date >= '${startDate}'`;
+        }
+        if (endDate) {
+            whereClause += ` AND t.date <= '${endDate}'`;
+        }
+        if (department && department !== 'ALL') {
+            whereClause += ` AND t.department = '${department}'`;
+        }
+        if (status) {
+            whereClause += ` AND t.status = '${status}'`;
+        }
+
+        // SQL Query
+        const query = `
+            SELECT 
+                -- Data dari trucks
+                t.id as truck_id,
+                t.platenumber,
+                t.noticket,
+                t.driver,
+                t.nikdriver,
+                t.tlpdriver,
+                t.supplier,
+                t.nosj,
+                t.tglsj,
+                t.status,
+                t.type,
+                t.operation,
+                t.goods,
+                t.descin,
+                t.descout,
+                t.statustruck,
+                t.armada,
+                t.kelengkapan,
+                t.jenismobil,
+                t.jenisbarang,
+                t.department,
+                t.date,
+                t.loading_cycle,
+                
+                -- Data dari truck_times cycle 1
+                CONVERT(VARCHAR, tt1.arrivaltime, 120) as arrivaltime,
+                CONVERT(VARCHAR, tt1.waitingfortimbang, 108) as waitingfortimbang,
+                CONVERT(VARCHAR, tt1.starttimbang, 108) as starttimbang,
+                CONVERT(VARCHAR, tt1.finishtimbang, 108) as finishtimbang,
+                CONVERT(VARCHAR, tt1.totalprocesstimbang, 108) as totalprocesstimbang,
+                CONVERT(VARCHAR, tt1.runtohpc, 108) as runtohpc,
+                CONVERT(VARCHAR, tt1.waitingforarrivalhpc, 108) as waitingforarrivalhpc,
+                CONVERT(VARCHAR, tt1.entryhpc, 108) as entryhpc,
+                CONVERT(VARCHAR, tt1.runtopt, 108) as runtopt,
+                CONVERT(VARCHAR, tt1.waitingforarrivalpt, 108) as waitingforarrivalpt,
+                CONVERT(VARCHAR, tt1.entrypt, 108) as entrypt,
+                CONVERT(VARCHAR, tt1.totalwaitingarrival, 108) as totalwaitingarrival,
+                CONVERT(VARCHAR, tt1.startloadingtime, 108) as startloadingtime,
+                CONVERT(VARCHAR, tt1.finishloadingtime, 108) as finishloadingtime,
+                CONVERT(VARCHAR, tt1.totalprocessloadingtime, 108) as totalprocessloadingtime,
+                CONVERT(VARCHAR, tt1.actualwaitloadingtime, 108) as actualwaitloadingtime,
+                CONVERT(VARCHAR, tt1.starttimbangneto, 108) as starttimbangneto,
+                CONVERT(VARCHAR, tt1.finishtimbangneto, 108) as finishtimbangneto,
+                CONVERT(VARCHAR, tt1.totalprocesstimbangneto, 108) as totalprocesstimbangneto,
+                CONVERT(VARCHAR, tt1.waitingfortimbangneto, 108) as waitingfortimbangneto,
+                CONVERT(VARCHAR, tt1.exittime, 108) as exittime,
+                CONVERT(VARCHAR, tt1.totaltruckcompletiontime, 108) as totaltruckcompletiontime,
+                CONVERT(VARCHAR, tt1.waitingforexit, 108) as waitingforexit,
+                
+                -- Data dari truck_times cycle 2
+                CONVERT(VARCHAR, tt2.arrivaltime, 120) as arrivaltime_cycle2,
+                CONVERT(VARCHAR, tt2.waitingfortimbang, 108) as waitingfortimbang_cycle2,
+                CONVERT(VARCHAR, tt2.starttimbang, 108) as starttimbang_cycle2,
+                CONVERT(VARCHAR, tt2.finishtimbang, 108) as finishtimbang_cycle2,
+                CONVERT(VARCHAR, tt2.totalprocesstimbang, 108) as totalprocesstimbang_cycle2,
+                CONVERT(VARCHAR, tt2.runtohpc, 108) as runtohpc_cycle2,
+                CONVERT(VARCHAR, tt2.waitingforarrivalhpc, 108) as waitingforarrivalhpc_cycle2,
+                CONVERT(VARCHAR, tt2.entryhpc, 108) as entryhpc_cycle2,
+                CONVERT(VARCHAR, tt2.runtopt, 108) as runtopt_cycle2,
+                CONVERT(VARCHAR, tt2.waitingforarrivalpt, 108) as waitingfoarrivalpt_cycle2,
+                CONVERT(VARCHAR, tt2.entrypt, 108) as entrypt_cycle2,
+                CONVERT(VARCHAR, tt2.totalwaitingarrival, 108) as totalwaitingarrival_cycle2,
+                CONVERT(VARCHAR, tt2.startloadingtime, 108) as startloadingtime_cycle2,
+                CONVERT(VARCHAR, tt2.finishloadingtime, 108) as finishloadingtime_cycle2,
+                CONVERT(VARCHAR, tt2.totalprocessloadingtime, 108) as totalprocessloadingtime_cycle2,
+                CONVERT(VARCHAR, tt2.actualwaitloadingtime, 108) as actualwaitloadingtime_cycle2,
+                CONVERT(VARCHAR, tt2.starttimbangneto, 108) as starttimbangneto_cycle2,
+                CONVERT(VARCHAR, tt2.finishtimbangneto, 108) as finishtimbangneto_cycle2,
+                CONVERT(VARCHAR, tt2.totalprocesstimbangneto, 108) as totalprocesstimbangneto_cycle2,
+                CONVERT(VARCHAR, tt2.waitingfortimbangneto, 108) as waitingfortimbangneto_cycle2,
+                CONVERT(VARCHAR, tt2.exittime, 108) as exittime_cycle2,
+                CONVERT(VARCHAR, tt2.totaltruckcompletiontime, 108) as totaltruckcompletiontime_cycle2,
+                CONVERT(VARCHAR, tt2.waitingforexit, 108) as waitingforexit_cycle2,
+                
+                -- Data dari truck_queue_actual
+                tqa.queue_position,
+                tqa.queue_ticket,
+                
+                -- Data dari truck_photos
+                tp.driver_photo,
+                tp.stnk_photo,
+                tp.sim_photo
+                
+            FROM trucks t
+            LEFT JOIN truck_times tt1 ON t.id = tt1.truck_id AND tt1.cycle_number = 1
+            LEFT JOIN truck_times tt2 ON t.id = tt2.truck_id AND tt2.cycle_number = 2
+            LEFT JOIN truck_queue_actual tqa ON t.id = tqa.truck_id
+            LEFT JOIN truck_photos tp ON t.id = tp.truck_id
+            ` + whereClause + `
+            ORDER BY t.date DESC, t.id DESC
+        `;
+
+        const pool = await db.getPool();
+        const result = await pool.request().query(query);
+
+        console.log(`📊 Fetched ${result.recordset.length} truck records for export`);
+
+        res.json({
+            success: true,
+            data: result.recordset,
+            count: result.recordset.length
+        });
+
+    } catch (error) {
+        console.error('❌ Export API error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+})
 // !! END OF API FOR TRUCKS
 
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 //-------------------------------------------------------//
-// !! DEBUG ENDPOINTS FOR ROUTING SYSTEM
-app.get('/debug/simple', async (req, res) => {
-    try {
-
-        const routing = await db.query(`SELECT * FROM master_routing WHERE department = 'IT'`);
-        res.json({
-            message: 'Simple debug test',
-            routing: routing.rows
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/debug/test-routing', async (req, res) => {
-    try {
-
-        const routingData = await db.query('SELECT * FROM master_routing WHERE department = $1', ['IT']);
-
-        const leaveData = await db.query(`
-            SELECT * FROM leave_permission 
-            WHERE name LIKE '%MARCELLO%' 
-            AND CONVERT(DATE, date) = CONVERT(DATE, GETDATE())
-        `);
-        res.json({
-            routing: routingData.rows,
-            leaves: leaveData.rows,
-            debug: 'Test routing configuration'
-        });
-    } catch (error) {
-        console.error('Debug routing error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/debug/leave-approval/:licenseplate', async (req, res) => {
-    try {
-        const { licenseplate } = req.params;
-
-        const leaveQuery = `
-            SELECT lp.*, u.role, u.department as user_department, u.name as employee_name
-            FROM leave_permission lp
-            JOIN users u ON lp.licenseplate = u.licenseplate
-            WHERE lp.licenseplate = $1 
-            AND CONVERT(DATE, lp.date) = CONVERT(DATE, GETDATE())
-            AND lp.actual_exittime IS NULL
-        `;
-        const leaveResult = await db.query(leaveQuery, [licenseplate]);
-        if (leaveResult.rows.length === 0) {
-            return res.json({
-                approved: false,
-                reason: 'No leave permission found for today',
-                licenseplate
-            });
-        }
-        const leave = leaveResult.rows[0];
-
-        const routingQuery = `
-            SELECT TOP 1 approval_level1_role, approval_level2_role, 
-                   approval_level1_name, approval_level2_name
-            FROM master_routing 
-            WHERE department = $1 
-            AND (employee_name = $2 OR employee_name IS NULL)
-            ORDER BY CASE WHEN employee_name IS NOT NULL THEN 1 ELSE 2 END
-        `;
-        const routingResult = await db.query(routingQuery, [leave.user_department, leave.employee_name]);
-        if (routingResult.rows.length === 0) {
-            return res.json({
-                approved: false,
-                reason: 'No routing configuration found',
-                leave,
-                routing: null
-            });
-        }
-        const routing = routingResult.rows[0];
-
-        let approved = false;
-        let approvalDetails = {};
-        if (leave.role === 'Staff') {
-            const level1Approved = (routing.approval_level1_role === 'HEAD DEPARTMENT' && leave.statusfromdept === 'approved') ||
-                (routing.approval_level1_role === 'HR' && leave.statusfromhr === 'approved');
-            const level2Approved = (routing.approval_level2_role === 'HEAD DEPARTMENT' && leave.statusfromdept === 'approved') ||
-                (routing.approval_level2_role === 'HR' && leave.statusfromhr === 'approved');
-            approved = level1Approved && level2Approved;
-            approvalDetails = {
-                level1: {
-                    role: routing.approval_level1_role,
-                    name: routing.approval_level1_name,
-                    approved: level1Approved,
-                    status: routing.approval_level1_role === 'HEAD DEPARTMENT' ? leave.statusfromdept : leave.statusfromhr
-                },
-                level2: {
-                    role: routing.approval_level2_role,
-                    name: routing.approval_level2_name,
-                    approved: level2Approved,
-                    status: routing.approval_level2_role === 'HEAD DEPARTMENT' ? leave.statusfromdept : leave.statusfromhr
-                }
-            };
-        } else if (leave.role === 'Head Department') {
-            approved = leave.statusfromhr === 'approved';
-            approvalDetails = {
-                hrApproval: {
-                    approved: approved,
-                    status: leave.statusfromhr
-                }
-            };
-        }
-        res.json({
-            approved,
-            leave,
-            routing,
-            approvalDetails,
-            licenseplate
-        });
-    } catch (error) {
-        console.error('Error in debug endpoint:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-// !! END OF DEBUG ENDPOINTS
-
-// Simple debug endpoint to test database connection
-app.get('/debug/db-test', async (req, res) => {
-    try {
-        //console.log('🔍 Testing database connection...');
-
-        // Test 1: Simple query
-        const simpleTest = await db.query('SELECT 1 as test_value');
-        //console.log('✅ Simple query test passed');
-
-        // Test 2: Check master_routing table
-        const routingCount = await db.query('SELECT COUNT(*) as count FROM master_routing');
-        //console.log('✅ Master routing count:', routingCount.rows[0]?.count);
-
-        // Test 3: Check leave_permission table
-        const leaveCount = await db.query('SELECT COUNT(*) as count FROM leave_permission');
-        //console.log('✅ Leave permission count:', leaveCount.rows[0]?.count);
-
-        // Test 4: Check for specific approver
-        const approverTest = await db.query(`
-            SELECT TOP 3 approval_level1_name, approval_level2_name 
-            FROM master_routing 
-            WHERE approval_level1_name IS NOT NULL OR approval_level2_name IS NOT NULL
-        `);
-        //console.log('✅ Approver test rows:', approverTest.rows?.length);
-
-        res.json({
-            success: true,
-            tests: {
-                simpleQuery: !!simpleTest.rows,
-                routingCount: routingCount.rows[0]?.count || 0,
-                leaveCount: leaveCount.rows[0]?.count || 0,
-                approverRows: approverTest.rows?.length || 0
-            }
-        });
-
-    } catch (e) {
-        console.error('❌ Database test error:', e);
-        res.status(500).json({
-            success: false,
-            error: e.message,
-            stack: e.stack
-        });
-    }
-});
-
-// Debug endpoint to check routing mismatch
-app.get('/debug/routing-mismatch', async (req, res) => {
-    try {
-        //console.log('🔍 Checking routing configuration mismatch...');
-
-        // Get all active routing configurations
-        const routing = await db.query('SELECT * FROM master_routing WHERE is_active = 1 ORDER BY department, role');
-        //console.log('=== ALL ACTIVE ROUTING CONFIGURATIONS ===');
-        routing.rows.forEach(r => {
-            //console.log(`  ID: ${r.id} | Dept: '${r.department}' | Role: '${r.role}' | Employee: '${r.employee_name || 'null'}'`);
-            //console.log(`    Level 1: ${r.approval_level1_name} (${r.approval_level1_role})`);
-            //console.log(`    Level 2: ${r.approval_level2_name} (${r.approval_level2_role})`);
-        });
-
-        // Get all pending leave requests
-        const leaves = await db.query(`SELECT id, name, department, role FROM leave_permission WHERE approval = 'pending' ORDER BY id`);
-        //console.log('=== ALL PENDING LEAVE REQUESTS ===');
-        leaves.rows.forEach(l => {
-            //console.log(`  Leave ID: ${l.id} | Name: '${l.name}' | Dept: '${l.department}' | Role: '${l.role}'`);
-        });
-
-        // Check specific problematic leaves
-        const problematicLeaves = await db.query(`SELECT * FROM leave_permission WHERE name IN ('MIA PUTRI NURDIANTI', 'SITI ROMLAH') AND approval = 'pending'`);
-        //console.log('=== EXACT MATCH CHECK ===');
-        for (const leave of problematicLeaves.rows) {
-            console.log(`\nChecking leave for: ${leave.name}`);
-            console.log(`  Leave dept: '${leave.department}' (length: ${leave.department?.length})`);
-            console.log(`  Leave role: '${leave.role}' (length: ${leave.role?.length})`);
-
-            // Check for exact match
-            const exactMatch = await db.query(`SELECT * FROM master_routing WHERE department = $1 AND role = $2 AND is_active = 1`, [leave.department, leave.role]);
-            console.log(`  Exact matching routing records: ${exactMatch.rows.length}`);
-
-            if (exactMatch.rows.length === 0) {
-                console.log('  ❌ NO EXACT MATCH FOUND!');
-                // Show available departments and roles
-                const allRouting = await db.query(`SELECT DISTINCT department, role FROM master_routing WHERE is_active = 1`);
-                //console.log('    Available departments in routing:');
-                const uniqueDepts = [...new Set(allRouting.rows.map(r => r.department))];
-                uniqueDepts.forEach(dept => console.log(`      '${dept}' (length: ${dept?.length})`));
-
-                console.log('    Available roles in routing:');
-                const uniqueRoles = [...new Set(allRouting.rows.map(r => r.role))];
-                    uniqueRoles.forEach(role => console.log(`'${role}' (length: ${role?.length})`));
-
-                    // Check for department matches only
-                    const deptOnlyMatch = await db.query(`SELECT * FROM master_routing WHERE department = $1 AND is_active = 1`, [leave.department]);
-                    console.log(`    Department-only matches: ${deptOnlyMatch.rows.length}`);
-                    deptOnlyMatch.rows.forEach(match => {
-                        console.log(`      - Role: '${match.role}' (expected: '${leave.role}')`);
-                    });
-                } else {
-                    console.log('  ✅ Found matching routing!');
-                    exactMatch.rows.forEach(match => {
-                        console.log(`    Level 1: ${match.approval_level1_name} (${match.approval_level1_role})`);
-                        console.log(`    Level 2: ${match.approval_level2_name} (${match.approval_level2_role})`);
-                    });
-                }
-        }
-
-            res.json({
-                success: true,
-                routing: routing.rows,
-                leaves: leaves.rows,
-                problematicLeaves: problematicLeaves.rows
-            });
-
-        } catch (e) {
-            console.error('❌ Routing mismatch debug error:', e);
-            res.status(500).json({
-                success: false,
-                error: e.message
-            });
-        }
-    });
-
-// Endpoint to add missing routing configuration
-app.post('/debug/add-missing-routing', async (req, res) => {
-    try {
-        //console.log('🔧 Adding missing routing configuration for HRD GA Staff...');
-
-        // Insert the missing routing configuration for HRD GA Staff
-        const insertResult = await db.query(`
-            INSERT INTO master_routing 
-            (department, role, approval_level1_name, approval_level1_role, approval_level2_name, approval_level2_role, is_active, created_at)
-            VALUES 
-            ('HRD GA', 'Staff', 'DERMAWAN PURBA', 'Head Department', 'MIA PUTRI NURDIANTI', 'HR', 1, GETDATE())
-        `);
-
-        //console.log('✅ Successfully added routing configuration');
-
-        // Verify the insertion
-        const verify = await db.query(`
-            SELECT * FROM master_routing 
-            WHERE department = 'HRD GA' AND role = 'Staff' AND is_active = 1
-        `);
-
-        //console.log('✅ Verification - Found records:', verify.rows.length);
-        verify.rows.forEach(record => {
-            //console.log(`   ID: ${record.id} | Level 1: ${record.approval_level1_name} | Level 2: ${record.approval_level2_name}`);
-        });
-
-        res.json({
-            success: true,
-            message: 'Added missing routing configuration for HRD GA Staff',
-            insertedRecord: verify.rows[0] || null
-        });
-
-    } catch (e) {
-        console.error('❌ Error adding routing configuration:', e);
-        res.status(500).json({
-            success: false,
-            error: e.message
-        });
-    }
-});
-
-//-------------------------------------------------------//
-//-------------------------------------------------------//
-//-------------------------------------------------------//
-
 server.listen(port, () => {
 });

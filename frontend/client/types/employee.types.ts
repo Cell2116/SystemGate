@@ -37,4 +37,5 @@ export interface User {
     department: string;
     role: string;
     licenseplate?: string;
+    phonenumber?: string;
 }

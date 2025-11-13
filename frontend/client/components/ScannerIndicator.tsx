@@ -34,7 +34,7 @@ export const ScannerIndicator = () => {
                         <span className="text-sm font-medium">Truck Updated</span>
                     </div>
                     <div className="text-xs mt-1">
-                        <div className="font-mono truncate">{lastTruckUpdate.plateNumber}</div>
+                        <div className="font-mono truncate">{lastTruckUpdate.platenumber}</div>
                         <div className="flex justify-between">
                             <span>{lastTruckUpdate.operation.toUpperCase()}</span>
                             <span className={`px-1 rounded text-xs font-semibold ${

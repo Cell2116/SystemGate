@@ -1,7 +1,431 @@
 import { create } from 'zustand';
 import { getIndonesianDateTime } from '../lib/timezone';
-export const API_BASE_URL = "http://192.168.4.108:3000";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// export const API_BASE_URL = "http://192.168.4.108:3000";
 
+const generateAvailableActions = (truck: any): string[] => {
+    const actions: string[] = [];
+    const operation = truck.operation;
+    if (operation === "muat") {
+        return generateAvailableActionsMuat(truck);
+    } else if (operation === "bongkar") {
+        return generateAvailableActionsBongkar(truck);
+    }
+    // Fallback
+    return ['Mulai Timbang Gross'];
+}
+const generateAvailableActionsMuat = (truck: any): string[] => {
+    console.log('🔍 Generate Actions Muat for ticket:', truck.noticket);
+    console.log('Truck data:', {
+        status: truck.status,
+        department: truck.department,
+        starttimbang: truck.starttimbang,
+        finishtimbang: truck.finishtimbang,
+        runtohpc: truck.runtohpc,
+        runtopt: truck.runtopt,
+        entryhpc: truck.entryhpc,
+        entrypt: truck.entrypt,
+        startloadingtime: truck.startloadingtime,
+        finishloadingtime: truck.finishloadingtime,
+        starttimbangneto: truck.starttimbangneto,
+        finishtimbangneto: truck.finishtimbangneto,
+        loading_cycle: truck.loading_cycle
+    });
+
+    const hasValue = (field: any) => {
+        return field && field !== '' && field !== null && field !== undefined;
+    };
+
+    const actions: string[] = [];
+
+    switch (truck.status) {
+        case 'timbang':
+            console.log('➡️ Status: timbang -> Selesai Timbang Gross');
+            // actions.push('Selesai Timbang Gross');
+            if (hasValue(truck.starttimbangneto) && !hasValue(truck.startloadingtime)) {
+                actions.push('Selesai Timbang Neto');
+            } else if (hasValue(truck.starttimbangneto) && !hasValue(truck.finishtimbangneto)) {
+                actions.push('Selesai Timbang Neto');
+            } else if (hasValue(truck.starttimbang) && !hasValue(truck.finishtimbang)) {
+                actions.push('Selesai Timbang Gross');
+            } else if ((truck.loading_cycle || 1) > 1) {
+                if (hasValue(truck.starttimbang) && !hasValue(truck.startloadingtime)) {
+                    actions.push('Selesai Timbang Gross');
+                }
+            }
+            break;
+
+        case 'waiting':
+            console.log('➡️ Status: waiting, checking conditions...');
+            // === CYCLE > 1 (Multi-cycle) ===
+            if ((truck.loading_cycle || 1) > 1) {
+                console.log('🔄 Multi-cycle detected, cycle:', truck.loading_cycle);
+
+                if (hasValue(truck.runtopt) && !hasValue(truck.entrypt)) {
+                    console.log('✅ Action: Masuk PT');
+                    actions.push('Masuk PT');
+                    return actions;
+                }
+
+                if (hasValue(truck.runtohpc) && !hasValue(truck.entryhpc)) {
+                    console.log('✅ Action: Masuk HPC');
+                    actions.push('Masuk HPC');
+                    return actions;
+                }
+
+                if (hasValue(truck.entrypt) || hasValue(truck.entryhpc)) {
+                    if (!hasValue(truck.starttimbangneto) || !hasValue(truck.startloadingtime)) {
+                        console.log('Action: Mulai Timbang Gross');
+                        actions.push('Mulai Timbang Gross');
+                        console.log('Action: Memulai Muat/Bongkar');
+                        actions.push('Memulai Muat/Bongkar');
+                    } else if (!hasValue(truck.finishloadingtime) || !hasValue(truck.finishtimbangneto)) {
+                        console.log('Action: Selesai Muat/Bongkar');
+                        actions.push('Selesai Muat/Bongkar');
+                    } else {
+                        console.log('Action: Keluar');
+                        actions.push('Keluar');
+                    }
+                    return actions;
+                }
+            }
+
+            // === CYCLE 1 (Normal flow) ===
+            console.log('Normal cycle (cycle 1)');
+            if (truck.finishtimbangneto && !truck.runtohpc && !truck.runtopt) {
+                console.log('CRITICAL: finishtimbang has value:', truck.finishtimbang);
+                console.log('runtohpc empty:', truck.runtohpc);
+                console.log('runtopt empty:', truck.runtopt);
+                console.log('Department:', truck.department);
+
+                if (truck.department === 'PT') {
+                    console.log('✅ Action: Menuju PT');
+                    actions.push('Menuju PT');  
+                } else if (truck.department === 'HPC' || truck.department === 'PBPG') {
+                    console.log('✅ Action: Menuju HPC');
+                    actions.push('Menuju HPC');
+                } else {
+                    console.log('⚠️ Department not set, defaulting to Menuju HPC');
+                    actions.push('Menuju HPC');
+                }
+                return actions;
+            }
+
+            if (hasValue(truck.starttimbang) && !hasValue(truck.finishtimbang)) {
+                console.log('✓ starttimbang has value, finishtimbang empty');
+                console.log('✅ Action: Selesai Timbang Gross');
+                actions.push('Selesai Timbang Gross');
+                return actions;
+            }
+
+            if (hasValue(truck.finishloadingtime)) {
+                console.log('✓ finishloadingtime has value:', truck.finishloadingtime);
+                if (!hasValue(truck.starttimbangneto)) {
+                    console.log('✅ Action: Mulai Timbang Neto');
+                    actions.push('Mulai Timbang Neto');
+                } else if (!hasValue(truck.finishtimbangneto)) {
+                    console.log('✅ Action: Selesai Timbang Neto');
+                    actions.push('Selesai Timbang Neto');
+                } else {
+                    console.log('✅ Action: Keluar');
+                    actions.push('Keluar');
+                }
+                return actions;
+            }
+
+            if (hasValue(truck.startloadingtime)) {
+                console.log('✓ startloadingtime has value:', truck.startloadingtime);
+                console.log('✅ Action: Selesai Muat/Bongkar');
+                actions.push('Selesai Muat/Bongkar');
+                return actions;
+            }
+
+            if (hasValue(truck.entryhpc) || hasValue(truck.entrypt)) {
+                console.log('✓ entryhpc or entrypt has value');
+                console.log('✅ Action: Memulai Muat/Bongkar');
+                actions.push('Memulai Muat/Bongkar');
+                return actions;
+            }
+
+            if (hasValue(truck.runtopt) && !hasValue(truck.entrypt)) {
+                console.log('✓ runtopt has value, entrypt empty');
+                console.log('✅ Action: Masuk PT');
+                actions.push('Masuk PT');
+                return actions;
+            }
+
+            if (hasValue(truck.runtohpc) && !hasValue(truck.entryhpc)) {
+                console.log('✓ runtohpc has value, entryhpc empty');
+                console.log('✅ Action: Masuk HPC');
+                actions.push('Masuk HPC');
+                return actions;
+            }
+            console.log('❌ No condition matched:');
+            console.log('  - finishloadingtime:', truck.finishloadingtime);
+            console.log('  - startloadingtime:', hasValue(truck.startloadingtime));
+            console.log('  - entryhpc/entrypt:', hasValue(truck.entryhpc) || hasValue(truck.entrypt));
+            console.log('  - runtopt:', hasValue(truck.runtopt));
+            console.log('  - runtohpc:', hasValue(truck.runtohpc));
+            console.log('  - finishtimbang:', hasValue(truck.finishtimbang));
+            console.log('  - starttimbang:', truck.starttimbang);
+
+            console.log('Defaulting to Mulai Timbang Neto');
+            actions.push('Mulai Timbang Neto');
+            break;
+
+        case 'loading':
+        case 'unloading':
+            console.log('➡️ Status: loading/unloading -> Selesai Muat/Bongkar');
+            actions.push('Selesai Muat/Bongkar');
+            break;
+
+        case 'weighing_neto':
+            console.log('➡️ Status: weighing_neto -> Selesai Timbang Neto');
+            actions.push('Selesai Timbang Neto');
+            break;
+
+        case 'weighing_neto_finished':
+            console.log('➡️ Status: weighing_neto_finished -> Keluar');
+            actions.push('Keluar');
+            break;
+
+        case 'finished':
+            console.log('➡️ Status: finished');
+            if (!hasValue(truck.starttimbanggross)) {
+                console.log('✅ Action: Mulai Timbang Gross');
+                actions.push('Mulai Timbang Gross');
+            } else if (!hasValue(truck.finishtimbanggross)) {
+                console.log('✅ Action: Selesai Timbang Gross');
+                actions.push('Selesai Timbang Gross');
+            } else {
+                console.log('✅ Action: Keluar');
+                actions.push('Keluar');
+            }
+            break;
+
+        case 'done':
+        case 'exit':
+            console.log('➡️ Status: done/exit -> No actions');
+            break;
+
+        default:
+            console.log('⚠️ Unknown status:', truck.status, '-> Mulai Timbang Gross');
+            actions.push('Mulai Timbang Gross');
+            break;
+    }
+
+    console.log('✅ Final generated actions:', actions);
+    return actions;
+};
+
+const generateAvailableActionsBongkar = (truck: any): string[] => {
+    console.log('🔍 Generate Actions Muat for ticket:', truck.noticket);
+    console.log('Truck data:', {
+        status: truck.status,
+        department: truck.department,
+        starttimbang: truck.starttimbang,
+        finishtimbang: truck.finishtimbang,
+        runtohpc: truck.runtohpc,
+        runtopt: truck.runtopt,
+        entryhpc: truck.entryhpc,
+        entrypt: truck.entrypt,
+        startloadingtime: truck.startloadingtime,
+        finishloadingtime: truck.finishloadingtime,
+        starttimbangneto: truck.starttimbangneto,
+        finishtimbangneto: truck.finishtimbangneto,
+        loading_cycle: truck.loading_cycle
+    });
+
+    // Helper function untuk cek apakah field time ada nilai
+    const hasValue = (field: any) => {
+        return field && field !== '' && field !== null && field !== undefined;
+    };
+
+    const actions: string[] = [];
+
+    switch (truck.status) {
+        case 'timbang':
+            console.log('➡️ Status: timbang -> Selesai Timbang gross');
+            if(hasValue(truck.starttimbang) && !hasValue(truck.startloadingtime)){
+                actions.push('Selesai Timbang Gross');
+            } else if(hasValue(truck.starttimbang) && !hasValue(truck.startloadingtime)){
+                actions.push('Selesai Timbang Gross');
+            } else if (hasValue(truck.starttimbangneto) && !hasValue(truck.finishtimbangneto)) {
+                actions.push('Selesai Timbang Neto');
+            } else if ((truck.loading_cycle || 1) > 1){
+                if (hasValue(truck.starttimbangneto) && !hasValue(truck.startloadingtime)) {
+                    actions.push('Selesai Timbang Neto');
+                }
+            }
+            break;
+
+        case 'waiting':
+            console.log('➡️ Status: waiting, checking conditions...');
+            // === CYCLE > 1 (Multi-cycle) ===
+            if ((truck.loading_cycle || 1) > 1) {
+                console.log('🔄 Multi-cycle detected, cycle:', truck.loading_cycle);
+                if (hasValue(truck.runtopt) && !hasValue(truck.entrypt)) {
+                    console.log('✅ Action: Masuk PT');
+                    actions.push('Masuk PT');
+                    return actions;
+                }
+
+                if (hasValue(truck.runtohpc) && !hasValue(truck.entryhpc)) {
+                    console.log('✅ Action: Masuk HPC');
+                    actions.push('Masuk HPC');
+                    return actions;
+                }
+
+                if (hasValue(truck.entrypt) || hasValue(truck.entryhpc)) {
+                    if (!hasValue(truck.starttimbangneto) || !hasValue(truck.startloadingtime)) {
+                        console.log('Action: Mulai Timbang Neto');
+                        actions.push('Mulai Timbang Neto');
+                        console.log('Action: Memulai Muat/Bongkar');
+                        actions.push('Memulai Muat/Bongkar');
+                    } else if (!hasValue(truck.starttimbang) || !hasValue(truck.finishtimbang)) {
+                        console.log('Action: Mulai Timbang gross');
+                        actions.push('Mulai Timbang Gross');
+                        console.log('Action: Memulai Muat/Bongkar');
+                        actions.push('Memulai Muat/Bongkar');
+                    } else if (!hasValue(truck.finishloadingtime) || !hasValue(truck.finishtimbang)) {
+                        console.log('Action: Selesai Muat/Bongkar');
+                        actions.push('Selesai Muat/Bongkar');
+                    } else {
+                        console.log('Action: Keluar');
+                        actions.push('Keluar');
+                    }
+                    return actions;
+                }
+            }
+
+            // === CYCLE 1 (Normal flow) ===
+            console.log('Normal cycle (cycle 1)');
+            if (truck.finishtimbang && !truck.runtohpc && !truck.runtopt) {
+                console.log('CRITICAL: finishtimbang has value:', truck.finishtimbang);
+                console.log('runtohpc empty:', truck.runtohpc);
+                console.log('runtopt empty:', truck.runtopt);
+                console.log('Department:', truck.department);
+
+                if (truck.department === 'PT') {
+                    console.log('✅ Action: Menuju PT');
+                    actions.push('Menuju PT');
+                } else if (truck.department === 'HPC' || truck.department === 'PBPG') {
+                    console.log('✅ Action: Menuju HPC');
+                    actions.push('Menuju HPC');
+                } else {
+                    console.log('⚠️ Department not set, defaulting to Menuju HPC');
+                    actions.push('Menuju HPC');
+                }
+                return actions;
+            }
+
+            if (hasValue(truck.starttimbang) && !hasValue(truck.finishtimbang)) {
+                console.log('✓ starttimbang has value, finishtimbang empty');
+                console.log('✅ Action: Selesai Timbang Gross');
+                actions.push('Selesai Timbang Gross');
+                return actions;
+            }
+
+            if (hasValue(truck.finishloadingtime)) {
+                console.log('✓ finishloadingtime has value:', truck.finishloadingtime);
+                if (!hasValue(truck.starttimbangneto)) {
+                    console.log('✅ Action: Mulai Timbang Neto');
+                    actions.push('Mulai Timbang Neto');
+                } else if (!hasValue(truck.finishtimbangneto)) {
+                    console.log('✅ Action: Selesai Timbang Neto');
+                    actions.push('Selesai Timbang Neto');
+                } else {
+                    console.log('✅ Action: Keluar');
+                    actions.push('Keluar');
+                }
+                return actions;
+            }
+
+            if (hasValue(truck.startloadingtime)) {
+                console.log('✓ startloadingtime has value:', truck.startloadingtime);
+                console.log('✅ Action: Selesai Muat/Bongkar');
+                actions.push('Selesai Muat/Bongkar');
+                return actions;
+            }
+
+            if (hasValue(truck.entryhpc) || hasValue(truck.entrypt)) {
+                console.log('✓ entryhpc or entrypt has value');
+                console.log('✅ Action: Memulai Muat/Bongkar');
+                actions.push('Memulai Muat/Bongkar');
+                return actions;
+            }
+
+            if (hasValue(truck.runtopt) && !hasValue(truck.entrypt)) {
+                console.log('✓ runtopt has value, entrypt empty');
+                console.log('✅ Action: Masuk PT');
+                actions.push('Masuk PT');
+                return actions;
+            }
+
+            if (hasValue(truck.runtohpc) && !hasValue(truck.entryhpc)) {
+                console.log('✓ runtohpc has value, entryhpc empty');
+                console.log('✅ Action: Masuk HPC');
+                actions.push('Masuk HPC');
+                return actions;
+            }
+            console.log('❌ No condition matched:');
+            console.log('  - finishloadingtime:', truck.finishloadingtime);
+            console.log('  - startloadingtime:', hasValue(truck.startloadingtime));
+            console.log('  - entryhpc/entrypt:', hasValue(truck.entryhpc) || hasValue(truck.entrypt));
+            console.log('  - runtopt:', hasValue(truck.runtopt));
+            console.log('  - runtohpc:', hasValue(truck.runtohpc));
+            console.log('  - finishtimbang:', hasValue(truck.finishtimbang));
+            console.log('  - starttimbang:', truck.starttimbang);
+
+            // Default: Belum mulai apapun
+            console.log('⚠️ Defaulting to Mulai Timbang Gross');
+            actions.push('Mulai Timbang Gross');
+            break;
+
+        case 'loading':
+        case 'unloading':
+            console.log('➡️ Status: loading/unloading -> Selesai Muat/Bongkar');
+            actions.push('Selesai Muat/Bongkar');
+            break;
+
+        case 'weighing_neto':
+            console.log('➡️ Status: weighing_neto -> Selesai Timbang Neto');
+            actions.push('Selesai Timbang Neto');
+            break;
+
+        case 'weighing_neto_finished':
+            console.log('➡️ Status: weighing_neto_finished -> Mulai Bongkar/Muat');
+            actions.push('Mulai Muat/Bongkar');
+            break;
+
+        case 'finished':
+            console.log('➡️ Status: finished');
+            if (!hasValue(truck.starttimbangneto)) {
+                console.log('✅ Action: Mulai Timbang Neto');
+                actions.push('Mulai Timbang Neto');
+            } else if (!hasValue(truck.finishtimbangneto)) {
+                console.log('✅ Action: Selesai Timbang Neto');
+                actions.push('Selesai Timbang Neto');
+            } else {
+                console.log('✅ Action: Keluar');
+                actions.push('Keluar');
+            }
+            break;
+
+        case 'done':
+        case 'exit':
+            console.log('➡️ Status: done/exit -> No actions');
+            break;
+
+        default:
+            console.log('⚠️ Unknown status:', truck.status, '-> Mulai Timbang Gross');
+            actions.push('Mulai Timbang Gross');
+            break;
+    }
+
+    console.log('✅ Final generated actions:', actions);
+    return actions;
+};
 interface ScanData {
     data: string;
     result: "loading" | "unloading" | null;
@@ -32,7 +456,7 @@ interface ScannerState {
     isActionModalOpen: boolean;
     selectedTicket: string | null;
     availableActions: string[];
-    
+
     openActionModal: (ticket: string, type: "SU" | "CU") => Promise<void>
     closeActionModal: () => void;
     setScanData: (data: string) => void;
@@ -57,105 +481,85 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
     isActionModalOpen: false,
     selectedTicket: null,
     availableActions: [],
-    
+
     openActionModal: async (ticket, type) => {
-        const suActions = [
-            // "Masuk",
-            "Mulai Timbang",
-            "Selesai Timbang",
-            "Menuju HPC",
-            "Masuk HPC",
-            "Memulai Muat/Bongkar",
-            "Selesai Muat/Bongkar",
-            "Keluar",
-        ];
-        const cuActions = [
-            // "Masuk",
-            "Mulai Timbang",
-            "Selesai Timbang",
-            "Menuju HPC",
-            "Masuk HPC",
-            "Memulai Muat/Bongkar",
-            "Selesai Muat/Bongkar",
-            "Keluar",
-        ];
+        console.log('🚪 Opening action modal for ticket:', ticket);
+
         try {
             const { useTruckStore } = await import('./truckStore');
             const truckStoreState = useTruckStore.getState();
-            
-            console.log('🔍 Initial trucks state:', {
-                hasTrucks: !!truckStoreState.trucks,
-                trucksLength: truckStoreState.trucks?.length || 0,
-                trucksType: typeof truckStoreState.trucks
+            console.log('🔄 Force refreshing trucks data...');
+            await truckStoreState.fetchTrucks();
+
+            const updatedState = useTruckStore.getState();
+            const currentTruck = updatedState.trucks?.find(truck => truck.noticket === ticket);
+
+            console.log('📋 Current truck found:', {
+                ticket,
+                found: !!currentTruck,
+                status: currentTruck?.status,
+                operation: currentTruck?.operation,
+                department: currentTruck?.department,
+                starttimbang: currentTruck?.starttimbang,
+                finishtimbang: currentTruck?.finishtimbang,
+                runtohpc: currentTruck?.runtohpc,
+                runtopt: currentTruck?.runtopt
             });
-            
-            if (!truckStoreState.trucks || truckStoreState.trucks.length === 0) {
-                console.log('📡 Fetching trucks data...');
-                await truckStoreState.fetchTrucks();
-                const updatedState = useTruckStore.getState();
-                // console.log('📡 After fetchTrucks:', {
-                //     hasTrucks: !!updatedState.trucks,
-                //     trucksLength: updatedState.trucks?.length || 0,
-                //     trucksType: typeof updatedState.trucks,
-                //     firstTruck: updatedState.trucks?.[0] || null
-                // });
-            }            
-            const finalTruckState = useTruckStore.getState();
-            // console.log('🔍 Debug before search:', {
-            //     ticket: ticket,
-            //     ticketType: typeof ticket,
-            //     ticketLength: ticket?.length,
-            //     totalTrucks: finalTruckState.trucks?.length || 0,
-            //     sampleTrucks: finalTruckState.trucks?.slice(0, 3).map(t => ({
-            //         id: t.id,
-            //         noticket: t.noticket,
-            //         noticketType: typeof t.noticket,
-            //         exactMatch: t.noticket === ticket,
-            //         stringMatch: String(t.noticket).trim() === String(ticket).trim()
-            //     })),
-            //     allNotickets: finalTruckState.trucks?.map(t => t.noticket)
-            // });
-            
-            const foundTruck = finalTruckState.trucks?.find((t: any) =>
-                String(t.noticket).trim() === String(ticket).trim()
-            );
-            // console.log(foundTruck)
-            // console.log('🔍 Truck search result:', { 
-            //     ticket, 
-            //     found: !!foundTruck,
-            //     totalTrucks: truckStoreState.trucks?.length || 0,
-            //     foundTruckDetails: foundTruck ? {
-            //         id: foundTruck.id,
-            //         noticket: foundTruck.noticket,
-            //         platenumber: foundTruck.platenumber,
-            //         status: foundTruck.status
-            //     } : null
-            // });
+            let availableActionsForTruck: string[] = [];
+
+            if (currentTruck) {
+                console.log('🎯 Generating actions for truck...');
+                availableActionsForTruck = generateAvailableActions(currentTruck);
+            } else {
+                console.log('⚠️ Truck not found, using default actions');
+                availableActionsForTruck = [
+                    "Mulai Timbang Gross",
+                    "Selesai Timbang Gross",
+                    "Menuju HPC",
+                    "Masuk HPC",
+                    "Memulai Muat/Bongkar",
+                    "Selesai Muat/Bongkar",
+                    "Keluar"
+                ];
+            }
+            console.log('📝 Final available actions:', availableActionsForTruck);
+            set({
+                isActionModalOpen: true,
+                selectedTicket: ticket,
+                availableActions: availableActionsForTruck,
+            });
         } catch (error) {
-            console.error('❌ Error ensuring trucks data:', error);
+            console.error('Error ensuring trucks data:', error);
+            set({
+                isActionModalOpen: true,
+                selectedTicket: ticket,
+                availableActions: [
+                    "Mulai Timbang Gross",
+                    "Selesai Timbang Gross",
+                    "Menuju HPC",
+                    "Masuk HPC",
+                    "Memulai Muat/Bongkar",
+                    "Selesai Muat/Bongkar",
+                    "Keluar"
+                ],
+            });
         }
-        
-        set({
-            isActionModalOpen: true,
-            selectedTicket: ticket,
-            availableActions: type === "SU" ? suActions : cuActions,
-        });
     },
-    closeActionModal: () => set({ isActionModalOpen: false, selectedTicket: null, availableActions: []}),
+    closeActionModal: () => set({ isActionModalOpen: false, selectedTicket: null, availableActions: [] }),
     setScanData: (data) => set({ scannedData: data }),
     setScanResult: (result) => set({ scanResult: result }),
     setIsScanning: (scanning) => set({ isScanning: scanning }),
-    setScanBuffer: (buffer) => set({ scanBuffer: buffer }), 
-    clearScan: () => set({ 
-        scannedData: "", 
-        scanResult: null, 
-        lastScanTime: "", 
+    setScanBuffer: (buffer) => set({ scanBuffer: buffer }),
+    clearScan: () => set({
+        scannedData: "",
+        scanResult: null,
+        lastScanTime: "",
         isScanning: false,
         scanBuffer: "",
         lastTruckUpdate: null
     }),
     addToHistory: (scan) => set((state) => ({
-        scanHistory: [scan, ...state.scanHistory.slice(0, 9)] 
+        scanHistory: [scan, ...state.scanHistory.slice(0, 9)]
     })),
     updateTruckStatus: async (ticketNumber: string) => {
         try {
@@ -165,7 +569,7 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
             if (!truck) {
                 return;
             }
-            
+
             const currentTimeForDB = getIndonesianDateTime();
             let newStatus = truck.status;
             let updates: any = {};
@@ -173,12 +577,11 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
                 newStatus = "loading";
                 updates.startLoadingTime = currentTimeForDB;
                 updates.status = newStatus;
-                
+
             } else if (truck.status === "loading") {
                 newStatus = "finished";
                 updates.finishloadingtime = currentTimeForDB;
                 updates.status = newStatus;
-                
                 if (truck.startloadingtime) {
                     try {
                         const startTime = new Date(truck.startloadingtime);
@@ -189,16 +592,15 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
                         const minutes = diffMinutes % 60;
                         const totalTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
                         updates.totalProcessLoadingTime = totalTime;
-                        
+
                     } catch (timeError) {
-                        console.error('⚠️ Error calculating processing time:', timeError);
+                        console.error('Error calculating processing time:', timeError);
                     }
                 }
             } else {
-                
                 return;
             }
-            await truckStoreState.updateTruckAPI(truck.id, updates);            
+            await truckStoreState.updateTruckAPI(truck.id, updates);
             await truckStoreState.refreshTrucks();
             const truckUpdate: TruckStatusUpdate = {
                 ticketNumber,
@@ -207,36 +609,36 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
                 operation: truck.operation,
                 timestamp: new Date().toISOString()
             };
-            
+
             set({ lastTruckUpdate: truckUpdate });
-            
+
         } catch (error) {
-            console.error('💥 Error updating truck status:', error);
+            console.error('Error updating truck status:', error);
             if (error && typeof error === 'object' && 'response' in error) {
                 const axiosError = error as any;
-                console.error('💥 Error details:', axiosError.response?.data);
-                console.error('💥 Error status:', axiosError.response?.status);
+                console.error('Error details:', axiosError.response?.data);
+                console.error('Error status:', axiosError.response?.status);
             }
         }
     },
     processScan: async (data) => {
         const timestamp = new Date().toLocaleTimeString();
         let result: "loading" | "unloading" | null = null;
-        
+
         if (data.includes("CU") || data.includes("SU")) {
             const type = data.includes("SU") ? "SU" : "CU";
             await get().openActionModal(data, type);
         } else {
-            
+
         }
-        set({ 
+        set({
             scannedData: data,
             scanResult: result,
             lastScanTime: timestamp,
             isScanning: true,
             scanBuffer: ""
         });
-        
+
         const historyEntry: ScanData = {
             data,
             result,
@@ -246,16 +648,16 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
         setTimeout(() => {
             set({ isScanning: false });
         }, 500);
-        
-        
+
+
     },
     updateTruckAPI: async (truckId: number, updateData: any) => {
-        console.log('📡 Sending update to backend:', { 
+        console.log('Sending update to backend:', {
             truckId,
             updateData,
             url: `${API_BASE_URL}/api/trucks/${truckId}`
         });
-        
+
         const response = await fetch(`${API_BASE_URL}/api/trucks/${truckId}`, {
             method: 'PUT',
             headers: {
@@ -265,7 +667,7 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
         });
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ Backend error response:', {
+            console.error('Backend error response:', {
                 status: response.status,
                 statusText: response.statusText,
                 errorText
@@ -273,7 +675,7 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
             throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
         const result = await response.json();
-        
+
         return result;
     }
 }));

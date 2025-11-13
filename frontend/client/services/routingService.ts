@@ -40,7 +40,8 @@ interface RoutingConfig {
 }
 
 export class RoutingService {
-    private static baseURL = "http://192.168.4.108:3000";
+    // private static baseURL = "http://192.168.4.108:3000";
+    private static baseURL = import.meta.env.VITE_API_BASE_URL;
     /**
      * Get pending leave requests for a specific approver
      */

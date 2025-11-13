@@ -16,8 +16,8 @@ export const roleAccess: Record<string, Role[]> = {
   "Operation.scan": ["Security", "HR", "Super User", "Admin"], 
   "History Operation.employee-history": ["HR", "Head Department", "Super User"], 
   "History Operation.trucks-history": ["HR", "Super User", "Admin"], 
+  "Contact Support": ["HR", "Staff","Security","Admin","Head Department", "Director"]
 };
-
 
 export const hasMenuAccess = (
   menuKey: string,

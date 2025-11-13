@@ -5,7 +5,7 @@ import sql from 'mssql';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const config = {
-    server: process.env.DB_HOST || '192.168.4.108',
+    server: process.env.DB_HOST || '192.168.1.37',
     user: process.env.DB_USER || 'sa',
     password: process.env.DB_PASSWORD || 'Marcello21',
     database: process.env.DB_NAME || 'thirdparty',
@@ -54,7 +54,7 @@ async function migrateImages() {
                         const filePath = await saveImageToFile(truck[field], filename);
                         updates[field] = filePath;
                     } catch (error) {
-                        console.error(`❌ Failed to migrate ${field} for truck ${truck.id}:`, error);
+                        console.error(`Failed to migrate ${field} for truck ${truck.id}:`, error);
                     }
                 }
             }
@@ -71,7 +71,7 @@ async function migrateImages() {
             }
         }
     } catch (error) {
-        console.error('💥 Migration failed:', error);
+        console.error('Migration failed:', error);
     } finally {
         if (pool) {
             await pool.close();

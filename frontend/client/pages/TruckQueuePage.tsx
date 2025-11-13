@@ -4,6 +4,7 @@ import { Scale, Truck, Clock5, Package, PackageOpen, FileQuestion } from "lucide
 import { useAudio } from "@/hooks/useAudio"
 import { CombinedTruckData } from "@/store/truckStore"
 import TimeTickerSimple from "@/components/dashboard/timeTickerSimple"
+import { Dialog, DialogContent, DialogOverlay } from "@radix-ui/react-dialog";
 
 import { ReactNode, CSSProperties } from "react";
 import { spawn } from "child_process";
@@ -33,11 +34,23 @@ const CardContent = ({ children, className = "", style = {} }: CardContentProps)
 );
 
 export default function TruckQueuePage() {
+    const [zoomImage, setZoomImage] = useState<{
+        src: string;
+        alt: string;
+        label: string;
+    } | null>(null);
+    const handleImageClick = (src: string, alt: string, label: string) => {
+        setZoomImage({ src, alt, label });
+    };
+    const closeZoom = () => {
+        setZoomImage(null);
+    };
     const { playDingDongBell } = useAudio();
     const {
         trucks,
         fetchTrucks,
     } = useTruckStore();
+    const baseurl = import.meta.env.VITE_API_BASE_URL;
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedDepartment, setSelectedDepartment] = useState("HPC/PBPG");
@@ -51,7 +64,7 @@ export default function TruckQueuePage() {
                 status === 'unloading';
             if (status === 'timbang') {
                 return selectedDepartment === "ALL" || selectedDepartment === "PT";
-            }            
+            }
             const matchesDepartment = selectedDepartment === "ALL" ||
                 (selectedDepartment === "HPC/PBPG" && (truck.department === "HPC" || truck.department === "PBPG")) ||
                 truck.department === selectedDepartment;
@@ -177,6 +190,7 @@ export default function TruckQueuePage() {
         }, 10000);
         return () => clearInterval(interval);
     }, [fetchTrucks]);
+
     return (
         <>
             <div className="h-[130vh] flex flex-col bg-gray-50 p-3 overflow-hidden">
@@ -291,15 +305,11 @@ export default function TruckQueuePage() {
                                                         </h3>
                                                         <img
                                                             src={truck.driver_photo
-                                                                ? `http://192.168.4.108:3000/uploads/trucks/${truck.driver_photo}`
+                                                                ? `${baseurl}/uploads/trucks/${truck.driver_photo}`
                                                                 : "https://via.placeholder.com/150x150?text=No+Photo"
                                                             }
                                                             alt="driver"
                                                             className="h-[15vh] w-[40vw] md:h-[17vh] md:w-[10vw] xl:h-[17vh] xl:w-[10vw] object-cover rounded-lg border shadow-sm text-gray-300 border-none text-center cursor-pointer"
-                                                            onClick={() => {
-                                                                if (truck.driver_photo)
-                                                                    setModalImage(`http://192.168.4.108:3000/uploads/trucks/${truck.driver_photo}`);
-                                                            }}
                                                         />
                                                     </div>
                                                 </div>
@@ -369,33 +379,46 @@ export default function TruckQueuePage() {
                                                 </div>
                                                 <div className="flex items-center">
                                                     <span className="font-medium text-gray-600 lg:text-xl sm:text-sm">Waktu Proses:</span>
-                                                    {["timbang", "loading", "unloading"].includes(truck.status?.toLowerCase() || "") ? (
-                                                        (() => {
+                                                    {(() => {
+                                                        const status = truck.status?.toLowerCase().trim();
+                                                        if (!status || status === 'waiting') {
+                                                            return (
+                                                                <span className="ml-2 text-gray-400 font-bold lg:text-xl sm:text-sm">
+                                                                    -
+                                                                </span>
+                                                            );
+                                                        }
+                                                        if (['timbang', 'loading', 'unloading'].includes(status)) {
                                                             let timeField = null;
-                                                            const status = truck.status?.toLowerCase();
+
                                                             if (status === 'timbang') {
                                                                 timeField = truck.starttimbang;
                                                             } else if (status === 'loading' || status === 'unloading') {
                                                                 timeField = truck.startloadingtime;
                                                             }
-                                                            // console.log(`🚛 Truck ${truck.plateNumber} (${status}):`, {
-                                                            //     starttimbang: truck.starttimbang,
-                                                            //     startloadingtime: truck.startloadingtime,
-                                                            //     selectedField: timeField
-                                                            // });
-                                                            return timeField ? (
-                                                                <TimeTickerSimple startTime={timeField} status={truck.status} />
-                                                            ) : (
-                                                                <span className="ml-2 text-red-500 font-bold lg:text-xl sm:text-sm">
-                                                                    Belum dimulai
-                                                                </span>
-                                                            );
-                                                        })()
-                                                    ) : (
-                                                        <span className="ml-2 text-black font-bold lg:text-xl sm:text-sm">
-                                                            {formatTime(truck.startloadingtime || truck.arrivaltime)}
-                                                        </span>
-                                                    )}
+
+                                                            console.log(`🚛 Truck ${truck.platenumber} (${status}):`, {
+                                                                starttimbang: truck.starttimbang,
+                                                                startloadingtime: truck.startloadingtime,
+                                                                selectedField: timeField,
+                                                                status: truck.status
+                                                            });
+                                                            if (timeField) {
+                                                                return <TimeTickerSimple startTime={timeField} status={truck.status} />;
+                                                            } else {
+                                                                return (
+                                                                    <span className="ml-2 text-red-500 font-bold lg:text-xl sm:text-sm">
+                                                                        Belum dimulai
+                                                                    </span>
+                                                                );
+                                                            }
+                                                        }
+                                                        return (
+                                                            <span className="ml-2 text-gray-400 font-bold lg:text-xl sm:text-sm">
+                                                                -
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="flex-row">
                                                     <span className="font-medium text-gray-600 lg:text-2xl sm:text-sm">No. </span>
@@ -409,7 +432,6 @@ export default function TruckQueuePage() {
                                 </Card>
                             );
                         })}
-                        {/* Spacer untuk memastikan item terakhir tidak terpotong */}
                         {sortedAndFilteredTrucks.length > 0 && (
                             <div className="h-16"></div>
                         )}
@@ -417,26 +439,32 @@ export default function TruckQueuePage() {
                 </Card>
             </div>
             {/* Image Modal */}
-            {modalImage && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
-                    onClick={() => setModalImage(null)}
-                >
-                    <img
-                        src={modalImage}
-                        alt="Full Preview"
-                        className="max-h-[100vh] max-w-[100vw] rounded-lg shadow-2xl border-4 border-white"
-                        onClick={e => e.stopPropagation()}
-                    />
-                    <button
-                        className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-50 rounded-full px-3 py-1"
-                        onClick={() => setModalImage(null)}
-                        aria-label="Close"
-                    >
-                        ×
-                    </button>
-                </div>
-            )}
+            <Dialog open={!!zoomImage} onOpenChange={closeZoom}>
+                {/* <DialogPortal> */}
+                <DialogOverlay className="fixed inset-0 bg-black/80" />
+                <DialogContent className="max-w-[70vw] max-h-[70vh] w-full h-full p-0 items-center justify-center flex bg-transparent border-none shadow-none">
+                    <div className="relative w-full h-full flex items-center justify-center">
+                        <button
+                            onClick={closeZoom}
+                            className="absolute top-4 right-4 z-50 bg-black/50 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-black/70 transition-all"
+                            aria-label="Close zoom"
+                        >
+                            ✕
+                        </button>
+                        {zoomImage && (
+                            <img
+                                src={zoomImage.src}
+                                alt={zoomImage.alt}
+                                className="max-w-full max-h-full object-contain rounded-lg"
+                                onError={(e) => {
+                                    console.error('Failed to load zoomed image:', zoomImage.src);
+                                }}
+                            />
+                        )}
+                    </div>
+                </DialogContent>
+                {/* </DialogPortal> */}
+            </Dialog>
         </>
     );
 }

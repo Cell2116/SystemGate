@@ -9,7 +9,8 @@ export let options = {
     ],
 };
 
-const BASE_URL = "http://192.168.4.108:3000";
+// const BASE_URL = "http://192.168.4.108:3000";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const endpoints = [
     { method: "GET", url: "/logs" },
