@@ -50,11 +50,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 const USE_DUMMY_DATA = false;
 const convertIntervalToString = (interval: any): string | null => {
     if (!interval) return null;
-    
+
     if (typeof interval === 'string') {
         return interval;
     }
-    
+
     if (typeof interval === 'object' && interval !== null) {
         if (interval.minutes !== undefined || interval.hours !== undefined || interval.seconds !== undefined) {
             const hours = interval.hours || 0;
@@ -62,7 +62,7 @@ const convertIntervalToString = (interval: any): string | null => {
             const seconds = interval.seconds || 0;
             return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}`;
         }
-        
+
         if (interval.toString && typeof interval.toString === 'function') {
             const stringValue = interval.toString();
             if (stringValue !== '[object Object]') {
@@ -104,7 +104,7 @@ const transformTruckFromDB = (dbTruck: any): CombinedTruckData => {
         loading_cycle: dbTruck.loading_cycle || 1,
         department_history: dbTruck.department_history || undefined,
         cycle_number: dbTruck.cycle_number || undefined,
-        
+
         arrivaltime: dbTruck.arrivaltime || dbTruck.arrivalTime || "",
         waitingfortimbang: convertIntervalToString(dbTruck.waitingfortimbang) || "",
         starttimbang: dbTruck.starttimbang || "",
@@ -129,18 +129,14 @@ const transformTruckFromDB = (dbTruck: any): CombinedTruckData => {
         actualwaitloadingtime: convertIntervalToString(dbTruck.actualwaitloadingtime) || "",
         waitingforexit: dbTruck.waitingforexit || "",
         totaltruckcompletiontime: dbTruck.totaltruckcompletiontime || "",
-        
+
         truck_id: dbTruck.truck_id || '',
         driver_photo: dbTruck.driver_photo || "",
         sim_photo: dbTruck.sim_photo || "",
-        stnk_photo: dbTruck.stnk_photo || "",    
-
-
-
-
+        stnk_photo: dbTruck.stnk_photo || "",
         queue_ticket: dbTruck.queue_ticket || undefined,
-        queue_position: dbTruck.queue_position || undefined,    
-    }; 
+        queue_position: dbTruck.queue_position || undefined,
+    };
 };
 
 
@@ -201,7 +197,7 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                     result.message || "Gagal menyimpan nomor surat jalan",
                 );
             }
-            
+
         } catch (error) {
             console.error("Error saving surat jalan to database:", error);
         }
@@ -294,12 +290,12 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 descin: data.descin,
                 descout: data.descout,
                 statustruck: data.statustruck,
-                date: data.date || new Date().toISOString().split('T')[0], 
+                date: data.date || new Date().toISOString().split('T')[0],
                 armada: data.armada,
                 kelengkapan: data.kelengkapan,
                 jenismobil: data.jenismobil,
                 jenisbarang: data.jenisbarang,
-                
+
                 arrivaltime: data.arrivaltime || null,
                 waitingfortimbang: null,
                 starttimbang: null,
@@ -313,12 +309,12 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 finishloadingtime: data.finishloadingtime || null,
                 totalprocessloadingtime: data.totalprocessloadingtime || null,
                 actualwaitloadingtime: data.actualwaitloadingtime || null,
-                
+
                 driver_photo: data.driver_photo || null,
                 sim_photo: data.sim_photo || null,
                 stnk_photo: data.stnk_photo || null,
             };
-            
+
             const response = await axios.post(
                 `${API_BASE_URL}/api/trucks`,
                 truckData,
@@ -333,6 +329,13 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
     },
     updateTruckAPI: async (id: string, updates) => {
         try {
+            console.log('🔍 RAW UPDATES RECEIVED:', updates);
+            console.log('🔍 loading_cycle type:', typeof updates.loading_cycle);
+            console.log('🔍 loading_cycle value:', updates.loading_cycle);
+            // if (updates.loading_cycle !== undefined) {
+            //     updates.loading_cycle = parseInt(updates.loading_cycle as any, 10) as any;
+            // }
+
             const cleanedUpdates: any = {};
             Object.keys(updates).forEach(key => {
                 const value = updates[key as keyof typeof updates];
@@ -341,17 +344,17 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 }
             });
             const dbUpdates: any = {};
-            
-            const truckMainFields = ['platenumber', 'noticket', 'department', 'nikdriver', 'tlpdriver', 
-                                    'nosj', 'tglsj', 'driver', 'supplier', 'eta', 'status', 'type', 
-                                    'operation', 'goods', 'descin', 'descout', 'statustruck', 'armada', 
-                                    'kelengkapan', 'jenismobil', 'jenisbarang', 'date', 'exittime'];
-            
-            const truckTimeFields = ['arrivaltime', 'waitingfortimbang', 'starttimbang', 'finishtimbang', 
-                                    'totalprocesstimbang', 'runtohpc', 'waitingforarrivalhpc', 'entryhpc', 
-                                    'totalwaitingarrival', 'startloadingtime', 'finishloadingtime', 
-                                    'totalprocessloadingtime', 'actualwaitloadingtime', 'starttimbangneto', 
-                                    'finishtimbangneto', 'waitingfortimbangneto', 'totalprocesstimbangneto'];
+
+            const truckMainFields = ['platenumber', 'noticket', 'department', 'nikdriver', 'tlpdriver',
+                'nosj', 'tglsj', 'driver', 'supplier', 'eta', 'status', 'type',
+                'operation', 'goods', 'descin', 'descout', 'statustruck', 'armada',
+                'kelengkapan', 'jenismobil', 'jenisbarang', 'date', 'exittime,loading_cycle'];
+
+            const truckTimeFields = ['arrivaltime', 'waitingfortimbang', 'starttimbang', 'finishtimbang',
+                'totalprocesstimbang', 'runtohpc', 'waitingforarrivalhpc', 'entryhpc',
+                'totalwaitingarrival', 'startloadingtime', 'finishloadingtime',
+                'totalprocessloadingtime', 'actualwaitloadingtime', 'starttimbangneto',
+                'finishtimbangneto', 'waitingfortimbangneto', 'totalprocesstimbangneto'];
             const truckPhotoFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
             const fieldMapping = {
                 platenumber: 'platenumber',
@@ -395,6 +398,7 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 finishtimbangneto: 'finishtimbangneto',
                 waitingfortimbangneto: 'waitingfortimbangneto',
                 totalprocesstimbangneto: 'totalprocesstimbangneto',
+                loading_cycle: 'loading_cycle',
                 driver_photo: 'driver_photo',
                 sim_photo: 'sim_photo',
                 stnk_photo: 'stnk_photo',
@@ -402,26 +406,26 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
             Object.entries(cleanedUpdates).forEach(([frontendKey, value]) => {
                 if (value !== undefined && value !== null) {
                     const dbKey = fieldMapping[frontendKey as keyof typeof fieldMapping] || frontendKey;
-                    
+
                     if (frontendKey === 'operation') {
                         if (value === 'bongkar' || value === 'muat') {
                             dbUpdates[dbKey] = value;
-                            
+
                         } else {
                             console.warn('Invalid operation value:', value, '- skipping field');
                         }
                     }
                     else if (frontendKey === 'status') {
                         dbUpdates[dbKey] = value;
-                        
+
                     }
                     else if (frontendKey === 'startloadingtime') {
                         dbUpdates[dbKey] = value;
-                        
+
                     }
                     else if (frontendKey === 'finishloadingtime') {
                         dbUpdates[dbKey] = value;
-                        
+
                     }
                     else {
                         dbUpdates[dbKey] = value;
@@ -429,7 +433,7 @@ export const useTruckStore = create<TruckStore>((set, get) => ({
                 }
             });
             if (Object.keys(dbUpdates).length === 0) {
-                
+
                 throw new Error('No fields to update');
             }
             const response = await axios.put(

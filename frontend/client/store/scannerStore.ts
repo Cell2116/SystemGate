@@ -98,10 +98,7 @@ const generateAvailableActionsMuat = (truck: any): string[] => {
                 console.log('runtopt empty:', truck.runtopt);
                 console.log('Department:', truck.department);
 
-                if (truck.department === 'PT') {
-                    console.log('✅ Action: Menuju PT');
-                    actions.push('Menuju PT');  
-                } else if (truck.department === 'HPC' || truck.department === 'PBPG') {
+                if (truck.department === 'HPC' || truck.department === 'PBPG') {
                     console.log('✅ Action: Menuju HPC');
                     actions.push('Menuju HPC');
                 } else {
@@ -307,9 +304,10 @@ const generateAvailableActionsBongkar = (truck: any): string[] => {
                 console.log('Department:', truck.department);
 
                 if (truck.department === 'PT') {
-                    console.log('✅ Action: Menuju PT');
-                    actions.push('Menuju PT');
-                } else if (truck.department === 'HPC' || truck.department === 'PBPG') {
+                    console.log('✅ Action: Mulai Bongkar');
+                    actions.push('Memulai Muat/Bongkar');
+                }
+                else if (truck.department === 'HPC' || truck.department === 'PBPG') {
                     console.log('✅ Action: Menuju HPC');
                     actions.push('Menuju HPC');
                 } else {

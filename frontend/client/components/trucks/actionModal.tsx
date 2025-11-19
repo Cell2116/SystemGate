@@ -90,10 +90,11 @@ export default function ActionDialog() {
         if (department === 'HPC' || department === 'PBPG') {
             steps.push({ icon: Navigation, label: 'Menuju HPC', color: 'bg-yellow-500', action: 'Menuju HPC' });
             steps.push({ icon: DoorOpen, label: 'Masuk HPC', color: 'bg-orange-500', action: 'Masuk HPC' });
-        } else if (department === 'PT') {
-            steps.push({ icon: MapPin, label: 'Menuju PT', color: 'bg-indigo-500', action: 'Menuju PT' });
-            steps.push({ icon: DoorOpen, label: 'Masuk PT', color: 'bg-purple-600', action: 'Masuk PT' });
-        }
+        } 
+        // else if (department === 'PT') {
+        //     steps.push({ icon: MapPin, label: 'Menuju PT', color: 'bg-indigo-500', action: 'Menuju PT' });
+        //     steps.push({ icon: DoorOpen, label: 'Masuk PT', color: 'bg-purple-600', action: 'Masuk PT' });
+        // }
         steps.push({ icon: PackageOpen, label: 'Memulai Muat/Bongkar', color: 'bg-purple-500', action: 'Memulai Muat/Bongkar' });
         steps.push({ icon: PackageCheck, label: 'Selesai Muat/Bongkar', color: 'bg-pink-500', action: 'Selesai Muat/Bongkar' });
         if (operation === "muat") {
@@ -266,7 +267,7 @@ export default function ActionDialog() {
                 } else if ((currentTruck.loading_cycle || 1) > 1 && currentTruck.entryhpc && !currentTruck.startloadingtime) {
                     if (stepActionLower.includes('memulai muat/bongkar')) {
                         return 'in-progress';
-                    } else if (stepActionLower.includes('selesai muat/bongkar') || stepActionLower.includes('keluar') || stepActionLower.includes('timbang neto')) {
+                    } else if (stepActionLower.includes('selesai muat/bongkar') || stepActionLower.includes('keluar') || stepActionLower.includes('timbang gross')) {
                         return 'pending';
                     } else {
                         return 'completed';
@@ -598,7 +599,7 @@ export default function ActionDialog() {
                         return 'completed';
                     }
                 } else if (currentTruck.finishtimbang) {
-                    if (stepActionLower.includes('menuju hpc') || stepActionLower.includes('menuju pt')) {
+                    if (stepActionLower.includes('menuju hpc') || stepActionLower.includes('menuju pt') || stepActionLower.includes('mulai muat/bongkar')) {
                         return 'in-progress';
                     } else if (stepActionLower.includes('masuk hpc') || stepActionLower.includes('masuk pt') || stepActionLower.includes('muat/bongkar') || stepActionLower.includes('timbang neto') || stepActionLower.includes('keluar')) {
                         return 'pending';
@@ -1122,7 +1123,7 @@ export default function ActionDialog() {
                         try {
                             const waitingTime = deviationTime(currentTruck.finishtimbangneto)
                             const timediff = calculateTimeDifference(currentTruck.arrivaltime, formatDateTimeForSQL())
-                            const completionTime = timediff.split('')[1];
+                            const completionTime = timediff;
                             console.log(`arrival Time: ${currentTruck.arrivaltime} || Exit Time: ${formatDateTimeForSQL()}`);
                             updateData = {
                                 exittime: formatDateTimeForSQL(),
@@ -1227,7 +1228,7 @@ export default function ActionDialog() {
                 if (currentTruck.department === 'PT') {
                     skippedSteps = ['Mulai Timbang Gross', 'Selesai Timbang Gross', 'Menuju PT', 'Masuk PT'];
                 } else {
-                    skippedSteps = ['Mulai Timbang Gross', 'Selesai Timbang Gross', 'Menuju HPC', 'Masuk HPC'];
+                    skippedSteps = ['Mulai Timbang Neto', 'Selesai Timbang Neto', 'Menuju HPC', 'Masuk HPC'];
                 }
             } else if (availableActions.includes('Selesai Timbang Gross')) {
                 if (currentTruck.department === 'PT') {
@@ -1243,7 +1244,7 @@ export default function ActionDialog() {
                 skippedSteps = ['Menuju PT', 'Masuk PT'];
             } else if (availableActions.includes('Masuk PT')) {
                 skippedSteps = ['Masuk PT'];
-            }
+            } 
             updateData = {
                 startloadingtime: sqlTimeFormat,
                 status: currentTruck.operation === 'muat' ? 'loading' : 'unloading',

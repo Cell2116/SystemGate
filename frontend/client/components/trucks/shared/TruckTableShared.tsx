@@ -117,17 +117,68 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
             loadSuratJalanRecommendations();
         }
     };
+    // const handleSaveEdit = async () => {
+    //     if (editFormData) {
+    //         try {
+    //             const cleanedEditData = { ...editFormData };
+    //             if (cleanedEditData.loading_cycle !== undefined) {
+    //                 const cycle = parseInt(cleanedEditData.loading_cycle as any, 10);
+    //                 if (!isNaN(cycle) && cycle > 0) {
+    //                     cleanedEditData.loading_cycle = cycle as any;
+    //                 } else {
+    //                     delete (cleanedEditData as any).loading_cycle;
+    //                 }
+    //             }
+    //             // delete (cleanedEditData as any).loading_cycle;
+    //             // delete (cleanedEditData as any).cycle_number;
+    //             (['arrivalTime', 'startLoadingTime', 'finishloadingtime', 'eta', 'tglsj', 'date'] as (keyof CombinedTruckData)[]).forEach(field => {
+    //                 if (cleanedEditData[field] === "") (cleanedEditData as any)[field] = null;
+    //             });
+    //             if (config.features.suratJalanRecommendations && cleanedEditData.nosj && cleanedEditData.nosj.trim()) {
+    //                 await saveSuratJalanToDatabase(cleanedEditData.nosj.trim().toUpperCase());
+    //             }
+    //             await updateTruckAPI(cleanedEditData.id, cleanedEditData);
+    //             setIsEditModalOpen(false);
+    //             setEditFormData(null);
+    //             setSuratJalanRecommendations([]);
+    //         } catch (error) {
+    //             console.error('Error updating truck:', error);
+    //         }
+    //     }
+    // };
     const handleSaveEdit = async () => {
         if (editFormData) {
             try {
-                const cleanedEditData = { ...editFormData };
-                (['arrivalTime', 'startLoadingTime', 'finishloadingtime', 'eta', 'tglsj', 'date'] as (keyof CombinedTruckData)[]).forEach(field => {
-                    if (cleanedEditData[field] === "") (cleanedEditData as any)[field] = null;
-                });
-                if (config.features.suratJalanRecommendations && cleanedEditData.nosj && cleanedEditData.nosj.trim()) {
-                    await saveSuratJalanToDatabase(cleanedEditData.nosj.trim().toUpperCase());
+                // ✅ HANYA kirim field yang ada di form modal
+                const updatePayload = {
+                    id: editFormData.id,
+                    platenumber: editFormData.platenumber,
+                    driver: editFormData.driver,
+                    nikdriver: editFormData.nikdriver,
+                    tlpdriver: editFormData.tlpdriver,
+                    department: editFormData.department,
+                    status: editFormData.status,
+                    goods: editFormData.goods,
+                    supplier: editFormData.supplier,
+                    statustruck: editFormData.statustruck,
+                    armada: editFormData.armada,
+                    jenismobil: editFormData.jenismobil,
+                    type: editFormData.type,
+                    descin: editFormData.descin,
+                    descout: editFormData.descout,
+                };
+
+                if (config.features.suratJalanRecommendations) {
+                    (updatePayload as any).nosj = editFormData.nosj || '';
+
+                    if (editFormData.nosj && editFormData.nosj.trim()) {
+                        await saveSuratJalanToDatabase(editFormData.nosj.trim().toUpperCase());
+                    }
                 }
-                await updateTruckAPI(cleanedEditData.id, cleanedEditData);
+
+                console.log('📤 Update payload (only form fields):', updatePayload);
+
+                await updateTruckAPI(editFormData.id, updatePayload as any);
                 setIsEditModalOpen(false);
                 setEditFormData(null);
                 setSuratJalanRecommendations([]);
@@ -136,6 +187,7 @@ export default function TrucksTableComponent({ config }: TrucksTableComponentPro
             }
         }
     };
+    
     const handleFormChange = (field: keyof CombinedTruckData, value: string | null | undefined) => {
         if (editFormData) {
             const safeValue = typeof value === 'string' ? value : '';

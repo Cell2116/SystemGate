@@ -108,36 +108,36 @@ export default function TruckModal({ selectedRecord, onClose }: TruckModalProps)
     const closeZoom = () => {
         setZoomImage(null);
     };
+    const TOTAL_CYCLE = 3;
+
     const handleCycleButton = async () => {
-        const nextCycle = currentCycle === 1 ? 2 : 1;
-        setCurrentCycle(nextCycle);
-        // const baseurl = "${baseurl}"
         try {
-            const currentOffset = currentCycle === 1 ? 0 : 1;
-            const nextOffset = currentOffset === 0 ? 1 : 0;
-            const nextCycle = nextOffset === 0 ? 1 : 2;
+            const nextCycle = currentCycle % TOTAL_CYCLE + 1;
+            const nextOffset = nextCycle - 1;
+            console.log("Current Cycle:", currentCycle);
+            console.log("Next Cycle:", nextCycle);
+            console.log("Offset:", nextOffset);
 
             const response = await fetch(`${baseurl}/api/trucks/history?offset=${nextOffset}`);
             const data = await response.json();
-            console.log("Raw API Response:", data);
-            if (data && Array.isArray(data)) {
+            if (Array.isArray(data)) {
                 const updatedRecord = data.find(
                     (r: TruckHistoryRecord) => r.id === selectedRecord?.id
                 );
                 if (updatedRecord) {
-                    console.log("Found matching record:", updatedRecord);
                     setCycleData(updatedRecord);
-                    setCurrentCycle(nextCycle)
+                    setCurrentCycle(nextCycle); 
                 } else {
-                    console.warn("No matching record found for ID:", selectedRecord?.id);
+                    console.warn("No record found with ID:", selectedRecord?.id);
                 }
             } else {
-                console.warn("Invalid data format received:", data);
+                console.warn("Invalid API format:", data);
             }
         } catch (error) {
-            console.error("Failed to fetch next cycle data:", error);
+            console.error("Failed to load next cycle:", error);
         }
     };
+
     if (!selectedRecord) return null;
     console.log("Record SelectedRecord: ", selectedRecord);
     return (

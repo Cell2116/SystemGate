@@ -1,46 +1,5 @@
 version: "3.8"
 services:
-  # postgres:
-  #   image: postgres:15
-  #   container_name: esp32_postgres
-  #   restart: always
-  #   environment:
-  #     POSTGRES_USER: espuser
-  #     POSTGRES_PASSWORD: esp123
-  #     POSTGRES_DB: esp32db
-  #   ports:
-  #     - "5434:5432"
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-  #     - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
-  #     - ./backend/sql/DK4.csv:/docker-entrypoint-initdb.d/DK4.csv
-  #     - ./backend/sql/userlogin.csv:/docker-entrypoint-initdb.d/userlogin.csv
-  # mqtt:
-  #   image: eclipse-mosquitto
-  #   container_name: esp32_mqtt
-  #   restart: always
-  #   ports:
-  #     - "1884:1884"
-  #   volumes:
-  #     - ./mosquitto/config:/mosquitto/config
-
-  # backend:
-  #   build: ./backend
-  #   container_name: esp32_backend
-  #   restart: always
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     DB_HOST: 192.168.1.37
-  #     DB_PORT: 1433
-  #     DB_USER: sa
-  #     DB_PASSWORD: Marcello21
-  #     DB_NAME: thirdparty
-  #   volumes:
-  #     # - C:/Users/iotal/Documents/SystemGate/backend/uploads:/usr/src/app/uploads
-  #     # - uploads_data:/usr/src/app/uploads
-  #     - C:/Users/iotal/Documents/SystemGate/backend/uploads:/app/uploads
-
   backend:
     build: ./backend
     container_name: esp32_backend

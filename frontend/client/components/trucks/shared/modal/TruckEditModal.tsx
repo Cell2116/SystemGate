@@ -116,9 +116,10 @@ export default function TruckEditModal({
                                 onChange={(e) => onChange('status', e.target.value as "pending" | "weighing" | "loading" | "finished")}
                                 className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                                <option value="pending">Menunggu</option>
-                                <option value="weighing">Timbang</option>
-                                <option value="loading">Muat/Bongkar</option>
+                                <option value="waiting">Menunggu</option>
+                                <option value="timbang">Timbang</option>
+                                <option value="loading">Muat</option>
+                                <option value="unloading">Bongkar</option>
                                 <option value="finished">Selesai</option>
                             </select>
                         </div>
@@ -168,6 +169,7 @@ export default function TruckEditModal({
                                 value={truck.statustruck}
                                 onChange={(e) => onChange('statustruck', e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                disabled
                             >
                                 <option value="kosong">Kosong</option>
                                 <option value="isi">Isi</option>

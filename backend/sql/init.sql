@@ -315,7 +315,7 @@ BEGIN
         exittime TIME,
         totaltruckcompletiontime VARCHAR(10),
         -- totaltruckcompletiontime TIME, -> Change to Varchar SQL SERVER Limitation
-        waitingforexit TIME,
+        waitingforexit DATETIME2,
         cycle_number INT DEFAULT 1
     );
 END

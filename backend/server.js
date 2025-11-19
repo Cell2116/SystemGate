@@ -1912,7 +1912,12 @@ app.put('/api/trucks/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
-
+        // if (updateData.loading_cycle !== undefined && updateData.loading_cycle !== null) {
+        //     updateData.loading_cycle = Number(updateData.loading_cycle);
+        //     if (isNaN(updateData.loading_cycle) || updateData.loading_cycle < 1) {
+        //         delete updateData.loading_cycle;
+        //     }
+        // }
         const imageFields = ['driver_photo', 'sim_photo', 'stnk_photo'];
         const savedImages = {};
         for (const field of imageFields) {
@@ -1952,6 +1957,14 @@ app.put('/api/trucks/:id', async (req, res) => {
                     mainRequest.input(field, db.sql.VarChar, updateData[field]);
                     return `${field} = @${field}`;
                 }).join(', ');
+                // const setClause = mainUpdateFields.map(field => {
+                //     if (field === 'loading_cycle') {
+                //         mainRequest.input(field, db.sql.Int, updateData[field]);
+                //     } else {
+                //         mainRequest.input(field, db.sql.VarChar, updateData[field]);
+                //     }
+                //     return `${field} = @${field}`;
+                // }).join(', ');
                 const mainQuery = `UPDATE trucks SET ${setClause} WHERE id = @id`;
                 await mainRequest.query(mainQuery);
             }

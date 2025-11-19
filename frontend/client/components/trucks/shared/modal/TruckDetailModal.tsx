@@ -73,43 +73,76 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
     const closeZoom = () => {
         setZoomImage(null);
     };
+    // const baseurl = "http://192.168.4.108:3000";
 
+    // const handleCycleButton = async () => {
+    //     if (!hasCycle2) return;
+
+    //     const nextCycle = currentCycle === 1 ? 2 : 1;
+    //     setCurrentCycle(nextCycle);
+    //     try {
+    //         const currentOffset = currentCycle === 1 ? 0 : 1;
+    //         const nextOffset = currentOffset === 0 ? 1 : 0;
+    //         const nextCycle = nextOffset === 0 ? 1 : 2;
+
+    //         const response = await fetch(`${baseurl}/api/trucks/history?offset=${nextOffset}`);
+    //         const data = await response.json();
+
+    //         if (data && Array.isArray(data)) {
+    //             // Convert IDs to strings for comparison
+    //             const targetId = String(truck?.id);
+    //             const updatedRecord = data.find(
+    //                 (r: CombinedTruckData) => String(r.id) === targetId
+    //             );
+    //             if (updatedRecord) {
+    //                 console.log("Found matching record:", updatedRecord);
+    //                 setCycleData(updatedRecord);
+    //                 setCurrentCycle(nextCycle);
+    //             } else {
+    //                 console.warn("No matching record found for ID:", truck?.id);
+    //                 // Debug: Log all IDs from the response
+    //                 console.log("Available IDs in response:", data.map(r => r.id));
+    //             }
+    //         } else {
+    //             console.warn("Invalid data format received:", data);
+    //         }
+    //     } catch (error) {
+    //         console.error("Failed to fetch next cycle data:", error);
+    //     }
+    // };
     const handleCycleButton = async () => {
         if (!hasCycle2) return;
 
-        const nextCycle = currentCycle === 1 ? 2 : 1;
-        setCurrentCycle(nextCycle);
-        const baseurl = "http://192.168.4.108:3000";
         try {
-            const currentOffset = currentCycle === 1 ? 0 : 1;
-            const nextOffset = currentOffset === 0 ? 1 : 0;
-            const nextCycle = nextOffset === 0 ? 1 : 2;
+            const TOTAL_CYCLE = 3;
 
-            const response = await fetch(`${baseurl}/api/trucks/history?offset=${nextOffset}`);
+            const newCycle = currentCycle % TOTAL_CYCLE + 1;
+            const offset = newCycle - 1;
+            console.log("Switching cycle:", currentCycle, "→", newCycle);
+            console.log("Using offset:", offset);
+            const response = await fetch(`${baseurl}/api/trucks/history?offset=${offset}`);
             const data = await response.json();
-
-            if (data && Array.isArray(data)) {
-                // Convert IDs to strings for comparison
+            if (Array.isArray(data)) {
                 const targetId = String(truck?.id);
                 const updatedRecord = data.find(
                     (r: CombinedTruckData) => String(r.id) === targetId
                 );
                 if (updatedRecord) {
-                    console.log("Found matching record:", updatedRecord);
                     setCycleData(updatedRecord);
-                    setCurrentCycle(nextCycle);
+                    setCurrentCycle(newCycle);  // set ONCE
                 } else {
-                    console.warn("No matching record found for ID:", truck?.id);
-                    // Debug: Log all IDs from the response
-                    console.log("Available IDs in response:", data.map(r => r.id));
+                    console.warn("Record not found for ID:", truck?.id);
+                    console.log("IDs in response:", data.map(r => r.id));
                 }
             } else {
-                console.warn("Invalid data format received:", data);
+                console.warn("Invalid API data:", data);
             }
+
         } catch (error) {
-            console.error("Failed to fetch next cycle data:", error);
+            console.error("Failed to fetch next cycle:", error);
         }
     };
+
     const formatTime = (isoString: string): string => {
         if (!isoString) return 'Not set';
         const dateTimeStr = isoString.replace('T', ' ').split('.')[0];
