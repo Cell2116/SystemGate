@@ -444,7 +444,15 @@ export default function ActionDialog() {
         const stepActionLower = stepAction.toLowerCase();
         switch (truckStatus) {
             case "timbang":
-                if (currentTruck.starttimbang) {
+                if (currentTruck.starttimbangneto) {
+                    if (stepActionLower.includes('selesai timbang neto')) {
+                        return 'in-progress';
+                    } else if (stepActionLower.includes('keluar')) {
+                        return 'pending';
+                    } else {
+                        return 'completed';
+                    }
+                } else if (currentTruck.starttimbang) {
                     if (stepActionLower.includes('selesai timbang gross')) {
                         return 'in-progress';
                     } else if (stepActionLower.includes('mulai timbang gross') ||
@@ -458,6 +466,12 @@ export default function ActionDialog() {
                         return 'in-progress';
                     } else if (stepActionLower.includes('keluar')) {
                         return 'pending';
+                    } else {
+                        return 'completed';
+                    }
+                } else if (currentTruck.finishtimbangneto) {
+                    if (stepActionLower.includes('keluar')) {
+                        return 'in-progress';
                     } else {
                         return 'completed';
                     }
