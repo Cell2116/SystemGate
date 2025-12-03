@@ -305,7 +305,7 @@ export default function TruckQueuePage() {
                                                         </h3>
                                                         <img
                                                             src={truck.driver_photo
-                                                                ? `${baseurl}/uploads/trucks/${truck.driver_photo}`
+                                                                ? `${baseurl}/backend/uploads/trucks/${truck.driver_photo}`
                                                                 : "https://via.placeholder.com/150x150?text=No+Photo"
                                                             }
                                                             alt="driver"

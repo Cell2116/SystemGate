@@ -268,7 +268,7 @@ BEGIN
         skipped_steps VARCHAR(255) NULL,
         skip_reason VARCHAR(255) NULL,
         loading_cycle VARCHAR(255) NULL,
-        department_history VARCHAR(255) NULL,
+        department_history VARCHAR(255) NULL
     );
 END
 GO

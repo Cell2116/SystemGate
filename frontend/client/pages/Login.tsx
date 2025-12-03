@@ -12,6 +12,7 @@ import {
 import {useUser} from "../authentication/userContext";
 import {useNavigate} from "react-router-dom";
 import DebugAuth from "@/components/DebugAuth";
+import { normalize } from "path";
 
 
 export default function LoginPage() {
@@ -38,7 +39,8 @@ export default function LoginPage() {
         const normalizedRole = result.user.role === "Staff" ? "Staff" : result.user.role;
         setRole(normalizedRole as Role);
         setName(result.user.name);
-        setDepartment(result.user.department);
+        // setDepartment(result.user.department);
+        console.log("role:",normalizedRole)
         // Navigate based on role
         switch (normalizedRole) {
           case "HR":

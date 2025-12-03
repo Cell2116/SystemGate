@@ -90,7 +90,7 @@ export default function ActionDialog() {
         if (department === 'HPC' || department === 'PBPG') {
             steps.push({ icon: Navigation, label: 'Menuju HPC', color: 'bg-yellow-500', action: 'Menuju HPC' });
             steps.push({ icon: DoorOpen, label: 'Masuk HPC', color: 'bg-orange-500', action: 'Masuk HPC' });
-        } 
+        }
         // else if (department === 'PT') {
         //     steps.push({ icon: MapPin, label: 'Menuju PT', color: 'bg-indigo-500', action: 'Menuju PT' });
         //     steps.push({ icon: DoorOpen, label: 'Masuk PT', color: 'bg-purple-600', action: 'Masuk PT' });
@@ -230,11 +230,11 @@ export default function ActionDialog() {
                 } if (currentTruck.starttimbangneto) {
                     if (stepActionLower.includes('selesai timbang neto')) {
                         return 'in-progress'
-                    } 
+                    }
                     else if (stepActionLower.includes('hpc') || stepActionLower.includes('muat/bongkar') || stepActionLower.includes('pt') || stepActionLower.includes('timbang gross') || stepActionLower.includes('keluar')) {
                         return 'pending'
                     }
-                    else{
+                    else {
                         return 'completed'
                     }
                 }
@@ -613,12 +613,23 @@ export default function ActionDialog() {
                         return 'completed';
                     }
                 } else if (currentTruck.finishtimbang) {
-                    if (stepActionLower.includes('menuju hpc') || stepActionLower.includes('menuju pt') || stepActionLower.includes('mulai muat/bongkar')) {
-                        return 'in-progress';
-                    } else if (stepActionLower.includes('masuk hpc') || stepActionLower.includes('masuk pt') || stepActionLower.includes('muat/bongkar') || stepActionLower.includes('timbang neto') || stepActionLower.includes('keluar')) {
-                        return 'pending';
-                    } else {
-                        return 'completed';
+                    if (currentTruck.department === "PT") {
+                        if (stepActionLower.includes('menuju hpc') || stepActionLower.includes('menuju pt') || stepActionLower.includes('mulai muat/bongkar')) {
+                            return 'in-progress';
+                        } else if (stepActionLower.includes('masuk hpc') || stepActionLower.includes('masuk pt') || stepActionLower.includes('muat/bongkar') || stepActionLower.includes('timbang neto') || stepActionLower.includes('keluar')) {
+                            return 'pending';
+                        } else {
+                            return 'completed';
+                        }
+                    }
+                    else {
+                        if (stepActionLower.includes('menuju hpc') || stepActionLower.includes('menuju pt')) {
+                            return 'in-progress';
+                        } else if (stepActionLower.includes('masuk hpc') || stepActionLower.includes('masuk pt') || stepActionLower.includes('muat/bongkar') || stepActionLower.includes('timbang neto') || stepActionLower.includes('keluar')) {
+                            return 'pending';
+                        } else {
+                            return 'completed';
+                        }
                     }
                 } else if (currentTruck.starttimbang) {
                     if (stepActionLower.includes('selesai timbang gross')) {
@@ -663,13 +674,13 @@ export default function ActionDialog() {
                     return 'completed';
                 }
             case "finished":
-            if (currentTruck.finishtimbangneto) {
-                if (stepActionLower.includes('keluar')) {
-                    return 'in-progress';
-                } else {
-                    return 'completed';
-                }
-            } else if (currentTruck.finishloadingtime) {
+                if (currentTruck.finishtimbangneto) {
+                    if (stepActionLower.includes('keluar')) {
+                        return 'in-progress';
+                    } else {
+                        return 'completed';
+                    }
+                } else if (currentTruck.finishloadingtime) {
                     if (stepActionLower.includes('mulai timbang neto')) {
                         return 'in-progress';
                     } else if (stepActionLower.includes('keluar') || (stepActionLower.includes('timbang neto'))) {
@@ -1258,7 +1269,7 @@ export default function ActionDialog() {
                 skippedSteps = ['Menuju PT', 'Masuk PT'];
             } else if (availableActions.includes('Masuk PT')) {
                 skippedSteps = ['Masuk PT'];
-            } 
+            }
             updateData = {
                 startloadingtime: sqlTimeFormat,
                 status: currentTruck.operation === 'muat' ? 'loading' : 'unloading',
@@ -1300,7 +1311,7 @@ export default function ActionDialog() {
     //     closeActionModal();
     // };
 
-    
+
     // const handleContinueAction = async (action: string) => {
     //     if (!currentTruck) return;
     //     const targetDepartment = action.includes('PT') ? 'PT' : 'HPC';

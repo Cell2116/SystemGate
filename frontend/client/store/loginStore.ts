@@ -51,7 +51,8 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
     set({ loading: true, error: null });
     try{
       const response = await axios.post("/auth/login", credentials);
-      const { success, message, user, token } = response.data;
+      const { success, message, token, user } = response.data;
+      // const { user } = response.data.data;
       if(success && user && token){
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
@@ -64,7 +65,7 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
           loading: false,
           error: null
         });
-        return { success: true, message: "Login Successful", user, token };
+        return { success: true, message: "Login Successfully", user, token };
       }
       else{
         set({
@@ -97,12 +98,10 @@ export const useLoginStore = create <LoginStore>((set, get) => ({
       isAuthenticated: false,
       error: null
     });
-    
   },
   checkAuth: async () => {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
-    
     if (!token || !userStr) {
       set({ isAuthenticated: false, user: null, token: null });
       return false;

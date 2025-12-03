@@ -73,43 +73,6 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
     const closeZoom = () => {
         setZoomImage(null);
     };
-    // const baseurl = "http://192.168.4.108:3000";
-
-    // const handleCycleButton = async () => {
-    //     if (!hasCycle2) return;
-
-    //     const nextCycle = currentCycle === 1 ? 2 : 1;
-    //     setCurrentCycle(nextCycle);
-    //     try {
-    //         const currentOffset = currentCycle === 1 ? 0 : 1;
-    //         const nextOffset = currentOffset === 0 ? 1 : 0;
-    //         const nextCycle = nextOffset === 0 ? 1 : 2;
-
-    //         const response = await fetch(`${baseurl}/api/trucks/history?offset=${nextOffset}`);
-    //         const data = await response.json();
-
-    //         if (data && Array.isArray(data)) {
-    //             // Convert IDs to strings for comparison
-    //             const targetId = String(truck?.id);
-    //             const updatedRecord = data.find(
-    //                 (r: CombinedTruckData) => String(r.id) === targetId
-    //             );
-    //             if (updatedRecord) {
-    //                 console.log("Found matching record:", updatedRecord);
-    //                 setCycleData(updatedRecord);
-    //                 setCurrentCycle(nextCycle);
-    //             } else {
-    //                 console.warn("No matching record found for ID:", truck?.id);
-    //                 // Debug: Log all IDs from the response
-    //                 console.log("Available IDs in response:", data.map(r => r.id));
-    //             }
-    //         } else {
-    //             console.warn("Invalid data format received:", data);
-    //         }
-    //     } catch (error) {
-    //         console.error("Failed to fetch next cycle data:", error);
-    //     }
-    // };
     const handleCycleButton = async () => {
         if (!hasCycle2) return;
 
@@ -912,7 +875,7 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
                                         truck.driver_photo!.startsWith('data:image')
                                             ? truck.driver_photo!
                                             // : `http://192.168.4.108:3000/uploads/trucks/${truck.driver_photo}`,
-                                            : `${baseurl}/uploads/trucks/${truck.driver_photo}`,
+                                            : `${baseurl}/backend/uploads/trucks/${truck.driver_photo}`,
                                         "Driver",
                                         "Driver Photo"
                                     )}>
@@ -920,7 +883,7 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
                                             src={truck.driver_photo.startsWith('data:image')
                                                 ? truck.driver_photo
                                                 // : `http://192.168.4.108:3000/uploads/trucks/${truck.driver_photo}`}
-                                                : `${baseurl}/uploads/trucks/${truck.driver_photo}`}
+                                                : `${baseurl}/backend/uploads/trucks/${truck.driver_photo}`}
                                             alt="Driver"
                                             className="w-full h-32 object-cover rounded-lg border mx-auto transition-transform group-hover:scale-105"
                                             onError={(e) => {
@@ -950,7 +913,7 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
                                     <div className="relative group cursor-pointer" onClick={() => handleImageClick(
                                         truck.sim_photo!.startsWith('data:image')
                                             ? truck.sim_photo!
-                                            : `${baseurl}/uploads/trucks/${truck.sim_photo}`,
+                                            : `${baseurl}/backend/uploads/trucks/${truck.sim_photo}`,
                                         // : `http://192.168.4.108:3000/uploads/trucks/${truck.sim_photo}`,
                                         "SIM",
                                         "SIM Photo"
@@ -958,7 +921,7 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
                                         <img
                                             src={truck.sim_photo.startsWith('data:image')
                                                 ? truck.sim_photo
-                                                : `${baseurl}/uploads/trucks/${truck.sim_photo}`}
+                                                : `${baseurl}/backend/uploads/trucks/${truck.sim_photo}`}
                                             // : `http://192.168.4.108:3000/uploads/trucks/${truck.sim_photo}`}
                                             alt="SIM"
                                             className="w-full h-32 object-cover rounded-lg border mx-auto transition-transform group-hover:scale-105"
@@ -989,7 +952,7 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
                                     <div className="relative group cursor-pointer" onClick={() => handleImageClick(
                                         truck.stnk_photo!.startsWith('data:image')
                                             ? truck.stnk_photo!
-                                            : `${baseurl}/uploads/trucks/${truck.stnk_photo}`,
+                                            : `${baseurl}/backend/uploads/trucks/${truck.stnk_photo}`,
                                         // : `http://192.168.4.108:3000/uploads/trucks/${truck.stnk_photo}`,
                                         "STNK",
                                         "STNK Photo"
@@ -997,7 +960,7 @@ export default function TruckDetailModal({ truck, isOpen, onClose }: TruckDetail
                                         <img
                                             src={truck.stnk_photo.startsWith('data:image')
                                                 ? truck.stnk_photo
-                                                : `${baseurl}/uploads/trucks/${truck.stnk_photo}`}
+                                                : `${baseurl}/backend/uploads/trucks/${truck.stnk_photo}`}
                                             // : `http://192.168.4.108:3000/uploads/trucks/${truck.stnk_photo}`}
                                             alt="STNK"
                                             className="w-full h-32 object-cover rounded-lg border mx-auto transition-transform group-hover:scale-105"

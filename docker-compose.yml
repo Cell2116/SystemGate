@@ -32,6 +32,23 @@ services:
       - backend
     env_file:
       - ./frontend/.env
+  sql2022:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sql2022
+    hostname: sql2022
+    restart: always
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Marcello21!
+    ports:
+      - "1433:1433"
+    volumes:
+      - C:/mssql/data:/var/opt/mssql
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    mem_limit: 4g
 volumes:
   pgdata:
   uploads_data:

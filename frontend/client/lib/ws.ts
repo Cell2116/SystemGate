@@ -22,7 +22,7 @@ export function initWebSocket() {
     }
     try {
         
-        socket = new WebSocket("ws://192.168.4.108:3000");
+        socket = new WebSocket("ws://192.168.1.37:3000");
         
         notifyConnectionListeners('connecting');
         socket.onopen = () => {

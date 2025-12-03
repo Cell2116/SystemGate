@@ -273,14 +273,14 @@ export default function TruckModal({ selectedRecord, onClose }: TruckModalProps)
                                         <div className="relative group cursor-pointer" onClick={() => handleImageClick(
                                             selectedRecord.driver_photo!.startsWith('data:image')
                                                 ? selectedRecord.driver_photo!
-                                                : `${baseurl}/uploads/trucks/${selectedRecord.driver_photo}`,
+                                                : `${baseurl}/backend/uploads/trucks/${selectedRecord.driver_photo}`,
                                             "Driver",
                                             "Driver Photo"
                                         )}>
                                             <img
                                                 src={selectedRecord.driver_photo.startsWith('data:image')
                                                     ? selectedRecord.driver_photo
-                                                    : `${baseurl}/uploads/trucks/${selectedRecord.driver_photo}`}
+                                                    : `${baseurl}/backend/uploads/trucks/${selectedRecord.driver_photo}`}
                                                 alt="Driver"
                                                 className="w-full h-32 object-cover rounded-lg border mx-auto transition-transform group-hover:scale-105"
                                                 onError={(e) => {
@@ -310,14 +310,14 @@ export default function TruckModal({ selectedRecord, onClose }: TruckModalProps)
                                         <div className="relative group cursor-pointer" onClick={() => handleImageClick(
                                             selectedRecord.sim_photo!.startsWith('data:image')
                                                 ? selectedRecord.sim_photo!
-                                                : `${baseurl}/uploads/trucks/${selectedRecord.sim_photo}`,
+                                                : `${baseurl}/backend/uploads/trucks/${selectedRecord.sim_photo}`,
                                             "SIM",
                                             "SIM Photo"
                                         )}>
                                             <img
                                                 src={selectedRecord.sim_photo.startsWith('data:image')
                                                     ? selectedRecord.sim_photo
-                                                    : `${baseurl}/uploads/trucks/${selectedRecord.sim_photo}`}
+                                                    : `${baseurl}/backend/uploads/trucks/${selectedRecord.sim_photo}`}
                                                 alt="SIM"
                                                 className="w-full h-32 object-cover rounded-lg border mx-auto transition-transform group-hover:scale-105"
                                                 onError={(e) => {
@@ -347,14 +347,14 @@ export default function TruckModal({ selectedRecord, onClose }: TruckModalProps)
                                         <div className="relative group cursor-pointer" onClick={() => handleImageClick(
                                             selectedRecord.stnk_photo!.startsWith('data:image')
                                                 ? selectedRecord.stnk_photo!
-                                                : `${baseurl}/uploads/trucks/${selectedRecord.stnk_photo}`,
+                                                : `${baseurl}/backend/uploads/trucks/${selectedRecord.stnk_photo}`,
                                             "STNK",
                                             "STNK Photo"
                                         )}>
                                             <img
                                                 src={selectedRecord.stnk_photo.startsWith('data:image')
                                                     ? selectedRecord.stnk_photo
-                                                    : `${baseurl}/uploads/trucks/${selectedRecord.stnk_photo}`}
+                                                    : `${baseurl}/backend/uploads/trucks/${selectedRecord.stnk_photo}`}
                                                 alt="STNK"
                                                 className="w-full h-32 object-cover rounded-lg border mx-auto transition-transform group-hover:scale-105"
                                                 onError={(e) => {
